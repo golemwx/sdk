@@ -1,0 +1,272 @@
+syntax = "proto3";
+
+package golem.sdk;
+
+import "golem/sdk/model.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/golemwx/sdk/internal/wire;wire";
+
+// SubscribeMode 事件订阅模式
+enum SubscribeMode {
+  // SUBSCRIBE_MODE_UNKNOWN 未知订阅模式
+  SUBSCRIBE_MODE_UNKNOWN = 0;
+  // SUBSCRIBE_MODE_RESPOND 参与普通响应链，可返回消费结果
+  SUBSCRIBE_MODE_RESPOND = 1;
+  // SUBSCRIBE_MODE_OBSERVE 仅观察授权事件，不影响路由
+  SUBSCRIBE_MODE_OBSERVE = 2;
+}
+
+// ArgType 命令参数类型
+enum ArgType {
+  // ARG_TYPE_UNKNOWN 未知命令参数类型
+  ARG_TYPE_UNKNOWN = 0;
+  // ARG_TYPE_STRING 字符串参数
+  ARG_TYPE_STRING = 1;
+  // ARG_TYPE_INT 整数参数
+  ARG_TYPE_INT = 2;
+  // ARG_TYPE_FLOAT 浮点数参数
+  ARG_TYPE_FLOAT = 3;
+  // ARG_TYPE_BOOL 布尔参数
+  ARG_TYPE_BOOL = 4;
+  // ARG_TYPE_ENUM 限定候选值的枚举参数
+  ARG_TYPE_ENUM = 5;
+}
+
+// Subscription 事件订阅声明
+message Subscription {
+  // topic 订阅或投递的事件主题
+  string topic = 1;
+  // mode 事件订阅模式，区分普通响应与观察
+  SubscribeMode mode = 2;
+  // priority 订阅优先级，数值越小越优先，同值按插件 ID 稳定排序
+  int32 priority = 3;
+}
+
+// ArgSpec 命令参数声明
+message ArgSpec {
+  // name 命名参数名称
+  string name = 1;
+  // type 命令参数类型
+  ArgType type = 2;
+  // required 参数是否必须提供
+  bool required = 3;
+  // default 参数缺失时使用的默认值
+  string default = 4;
+  // enum_values 枚举参数允许的候选值
+  repeated string enum_values = 5;
+  // min 参数最小值，缺失时不设置下界
+  optional double min = 6;
+  // max 参数最大值，缺失时不设置上界
+  optional double max = 7;
+  // help 面向用户的帮助说明
+  string help = 8;
+}
+
+// CommandSpec 命令声明
+message CommandSpec {
+  // path 由各级命令名称组成的路径
+  repeated string path = 1;
+  // args 显式命令参数声明，不通过反射推断
+  repeated ArgSpec args = 2;
+  // permission 执行命令所需权限
+  string permission = 3;
+  // help 面向用户的帮助说明
+  string help = 4;
+}
+
+// CapabilitySpec 插件公开能力声明
+message CapabilitySpec {
+  // name 公开能力名，调用方只按此名称发起调用
+  string name = 1;
+  // input_type 能力输入内容类型
+  string input_type = 2;
+  // output_type 能力输出内容类型
+  string output_type = 3;
+  // description 面向使用者的业务说明
+  string description = 4;
+  // max_inline_size 能力内联结果字节上限，0 使用默认 256 KiB，不得大于 256 KiB
+  int32 max_inline_size = 5;
+}
+
+// Descriptor 插件固定声明
+message Descriptor {
+  // id 插件固定唯一标识
+  string id = 1;
+  // name 插件展示名称
+  string name = 2;
+  // description 面向使用者的业务说明
+  string description = 3;
+  // author 插件作者
+  string author = 4;
+  // version 插件展示版本，不参与握手、加载判断或能力路由
+  string version = 5;
+  // requested_permissions 插件请求的权限，最终授权以宿主决定为准
+  repeated string requested_permissions = 6;
+  // subscriptions 插件声明的事件订阅
+  repeated Subscription subscriptions = 7;
+  // commands 插件声明的命令集合
+  repeated CommandSpec commands = 8;
+  // capabilities 插件公开提供的能力声明
+  repeated CapabilitySpec capabilities = 9;
+  // uses_capabilities 插件声明需要调用的能力名
+  repeated string uses_capabilities = 10;
+}
+
+// DescribeResponse 插件描述查询响应
+message DescribeResponse {
+  // descriptor 插件固定声明
+  Descriptor descriptor = 1;
+  // error 业务错误，成功时为空；部分成功仍保留逐项结果
+  Error error = 2;
+}
+
+// InitializeRequest 插件实例初始化请求
+message InitializeRequest {
+  // broker_id 用于建立反向宿主连接的 broker 标识
+  uint32 broker_id = 1;
+  // granted_permissions 宿主实际授予当前插件实例的权限
+  repeated string granted_permissions = 2;
+  // config 插件初始化时的自身业务配置快照
+  ConfigSnapshot config = 3;
+  // data_dir 宿主分配的插件数据目录
+  string data_dir = 4;
+  // control_token 绑定插件实例的控制通道凭据，不作为业务参数暴露
+  string control_token = 5;
+  // instance_generation 插件实例代次，用于拒绝旧实例请求
+  uint64 instance_generation = 6;
+  // account_epoch 账号运行代次，用于隔离账号切换前的请求
+  uint64 account_epoch = 7;
+}
+
+// OperationResponse 仅携带业务错误的通用操作响应
+message OperationResponse {
+  // error 业务错误，成功时为空；部分成功仍保留逐项结果
+  Error error = 1;
+}
+
+// LifecycleRequest 插件生命周期调用请求
+message LifecycleRequest {
+  // invocation_id 关联执行的唯一标识
+  string invocation_id = 1;
+}
+
+// DrainRequest 停止新准入并查询在途执行的排空请求
+message DrainRequest {
+  // control_token 绑定插件实例的控制通道凭据，不作为业务参数暴露
+  string control_token = 1;
+  // instance_generation 插件实例代次，用于拒绝旧实例请求
+  uint64 instance_generation = 2;
+}
+
+// DrainResponse 插件执行排空响应
+message DrainResponse {
+  // active_invocation_ids 处理函数尚未实际结束的执行标识集合
+  repeated string active_invocation_ids = 1;
+  // error 业务错误，成功时为空；部分成功仍保留逐项结果
+  Error error = 2;
+}
+
+// ConfigCandidateRequest 配置校验或应用的候选内容
+message ConfigCandidateRequest {
+  // candidate 待校验或应用的业务配置，包装保留缺失与显式空的区别
+  BytesValue candidate = 1;
+  // invocation_id 本次配置校验或应用执行的唯一标识
+  string invocation_id = 2;
+}
+
+// ConfigDefaultsResponse 插件默认配置响应
+message ConfigDefaultsResponse {
+  // data 插件自身业务配置字节，缺失与显式空字节可区分
+  BytesValue data = 1;
+  // error 业务错误，成功时为空；部分成功仍保留逐项结果
+  Error error = 2;
+}
+
+// EventRequest 带执行身份的事件处理请求
+message EventRequest {
+  // invocation_id 关联执行的唯一标识
+  string invocation_id = 1;
+  // invocation_token 宿主为本次执行签发的凭据
+  string invocation_token = 2;
+  // event 待处理的归一化事件
+  Event event = 3;
+}
+
+// EventResponse 事件处理响应
+message EventResponse {
+  // result 业务处理结果，失败时结合 error 判断
+  EventResult result = 1;
+  // error 业务错误，成功时为空；部分成功仍保留逐项结果
+  Error error = 2;
+}
+
+// CommandRequest 带执行身份的命令处理请求
+message CommandRequest {
+  // invocation_id 关联执行的唯一标识
+  string invocation_id = 1;
+  // invocation_token 宿主为本次执行签发的凭据
+  string invocation_token = 2;
+  // command 待处理的已校验命令
+  Command command = 3;
+}
+
+// CommandResponse 命令处理响应
+message CommandResponse {
+  // result 业务处理结果，失败时结合 error 判断
+  CommandResult result = 1;
+  // error 业务错误，成功时为空；部分成功仍保留逐项结果
+  Error error = 2;
+}
+
+// CapabilityRequest 带执行身份的能力处理请求
+message CapabilityRequest {
+  // invocation_id 关联执行的唯一标识
+  string invocation_id = 1;
+  // invocation_token 宿主为本次执行签发的凭据
+  string invocation_token = 2;
+  // request 待处理的按能力名调用请求
+  CallRequest request = 3;
+}
+
+// CapabilityResponse 能力处理响应
+message CapabilityResponse {
+  // result 业务处理结果，失败时结合 error 判断
+  CallResult result = 1;
+  // error 业务错误，成功时为空；部分成功仍保留逐项结果
+  Error error = 2;
+}
+
+// PluginControlService 插件描述、初始化、生命周期、排空及配置控制服务
+service PluginControlService {
+  // Describe 读取插件固定声明
+  rpc Describe(google.protobuf.Empty) returns (DescribeResponse);
+  // Initialize 绑定宿主反向连接、权限及实例初始化上下文
+  rpc Initialize(InitializeRequest) returns (OperationResponse);
+  // OnLoad 执行插件加载初始化
+  rpc OnLoad(LifecycleRequest) returns (OperationResponse);
+  // OnEnable 启用插件并开始当前启用周期
+  rpc OnEnable(LifecycleRequest) returns (OperationResponse);
+  // OnDisable 禁用插件并结束当前启用周期
+  rpc OnDisable(LifecycleRequest) returns (OperationResponse);
+  // OnUnload 卸载插件并释放实例资源
+  rpc OnUnload(LifecycleRequest) returns (OperationResponse);
+  // Drain 停止新的业务准入并返回尚未实际结束的执行
+  rpc Drain(DrainRequest) returns (DrainResponse);
+  // ConfigDefaults 获取插件业务默认配置
+  rpc ConfigDefaults(google.protobuf.Empty) returns (ConfigDefaultsResponse);
+  // ConfigValidate 纯校验候选配置，不改变当前生效配置
+  rpc ConfigValidate(ConfigCandidateRequest) returns (OperationResponse);
+  // ConfigApply 原子应用候选配置，失败时保留此前生效配置
+  rpc ConfigApply(ConfigCandidateRequest) returns (OperationResponse);
+}
+
+// PluginBusinessService 插件事件、命令及能力处理服务
+service PluginBusinessService {
+  // HandleEvent 处理一次授权事件投递
+  rpc HandleEvent(EventRequest) returns (EventResponse);
+  // HandleCommand 处理一次已校验的命令
+  rpc HandleCommand(CommandRequest) returns (CommandResponse);
+  // HandleCapability 处理一次按能力名路由的调用
+  rpc HandleCapability(CapabilityRequest) returns (CapabilityResponse);
+}

@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package golem.sdk;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/golemwx/sdk/internal/wire;wire";
+
+// MediaKind 媒体种类
+enum MediaKind {
+  // MEDIA_KIND_UNKNOWN 未知媒体种类
+  MEDIA_KIND_UNKNOWN = 0;
+  // MEDIA_KIND_IMAGE 图片媒体
+  MEDIA_KIND_IMAGE = 1;
+  // MEDIA_KIND_VOICE 语音媒体
+  MEDIA_KIND_VOICE = 2;
+  // MEDIA_KIND_VIDEO 视频媒体
+  MEDIA_KIND_VIDEO = 3;
+  // MEDIA_KIND_FILE 文件媒体
+  MEDIA_KIND_FILE = 4;
+  // MEDIA_KIND_EMOJI 表情媒体
+  MEDIA_KIND_EMOJI = 5;
+  // MEDIA_KIND_OTHER 已知消息类型但暂未归类的媒体
+  MEDIA_KIND_OTHER = 6;
+}
+
+// VoiceEncoding 公共音频格式
+enum VoiceEncoding {
+  // VOICE_ENCODING_UNKNOWN 未知音频格式
+  VOICE_ENCODING_UNKNOWN = 0;
+  // VOICE_ENCODING_AMR AMR 音频格式
+  VOICE_ENCODING_AMR = 1;
+  // VOICE_ENCODING_SPEEX SPEEX 音频格式
+  VOICE_ENCODING_SPEEX = 2;
+  // VOICE_ENCODING_MP3 MP3 音频格式
+  VOICE_ENCODING_MP3 = 3;
+  // VOICE_ENCODING_WAVE WAVE 音频格式
+  VOICE_ENCODING_WAVE = 4;
+  // VOICE_ENCODING_SILK SILK 音频格式
+  VOICE_ENCODING_SILK = 5;
+}
+
+// MediaRef 宿主管理的媒体引用，不包含私有协议材料
+message MediaRef {
+  // token 绑定账号、插件实例和资源范围的不透明媒体引用凭据
+  string token = 1;
+  // kind 业务种类，未知枚举归一为对应零值
+  MediaKind kind = 2;
+  // file_name 展示用文件名及扩展名，不得用于拼接宿主路径
+  string file_name = 3;
+  // size_bytes 媒体字节数，-1 代表未知
+  int64 size_bytes = 4;
+  // expires_at 媒体引用到期时间，失效后使用返回 FailedPrecondition
+  google.protobuf.Timestamp expires_at = 5;
+}
+
+// RevokeRef 宿主管理的消息撤回引用
+message RevokeRef {
+  // token 绑定账号、插件实例和目标消息的不透明撤回引用凭据
+  string token = 1;
+  // expires_at 撤回引用到期时间，失效后使用返回 FailedPrecondition
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+// VoiceOptions 业务音频参数
+message VoiceOptions {
+  // duration 音频时长，必须为正，精确到毫秒，毫秒数不得超过 int32 上限
+  google.protobuf.Duration duration = 1;
+  // encoding 公共音频编码格式
+  VoiceEncoding encoding = 2;
+}
+
+// MediaChunk 媒体下载流的单个字节分块
+message MediaChunk {
+  // data 媒体下载字节分块，单块不超过 MaxMediaChunkSize
+  bytes data = 1;
+}

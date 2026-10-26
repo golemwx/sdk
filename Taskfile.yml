@@ -1,0 +1,15 @@
+version: "3"
+
+vars:
+  BUF_VERSION: v1.75.0
+
+tasks:
+  proto:
+    desc: 格式化、检查并生成 Proto 后运行 wire 测试
+    cmds:
+      - go run github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}} format -w
+      - go run github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}} format --diff --exit-code
+      - go run github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}} lint
+      - go run github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}} generate
+      - go run ./internal/cmd/protocheck
+      - go test ./internal/wire
