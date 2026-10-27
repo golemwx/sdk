@@ -113,6 +113,100 @@ func TestInvocationAuthorityRevocation(t *testing.T) {
 	}
 }
 
+// TestLifecycleRegistrationBindsAndRevokes 验证宿主登记先于 SDK 凭据生效，并在统一清理时一起撤销
+func TestLifecycleRegistrationBindsAndRevokes(t *testing.T) {
+	type contextKey struct{}
+	parent := context.WithValue(t.Context(), contextKey{}, "original")
+	invocation := Invocation{ID: "lifecycle", Token: "host-token"}
+	registered, revoked := false, false
+	control := &hostControl{}
+	// 回调内无需持有 hostControl，本地凭据必须在回调成功返回后才生效
+	control.register = func(ctx context.Context, received Invocation, operation LifecycleOperation) (func(), error) {
+		if ctx.Value(contextKey{}) != "original" || received != invocation || operation != LifecycleEnable {
+			return nil, errors.New("registration lost lifecycle context")
+		}
+		registered = true
+		if _, err := control.invocationContext(received); err == nil {
+			return nil, errors.New("SDK credential became valid before registration returned")
+		}
+		return func() { revoked = true }, nil
+	}
+	revoke, err := control.bindLifecycle(parent, invocation, LifecycleEnable)
+	if err != nil || !registered {
+		t.Fatalf("lifecycle registration failed: %v", err)
+	}
+	if bound, err := control.invocationContext(invocation); err != nil || bound.Value(contextKey{}) != "original" {
+		t.Fatalf("lifecycle context was not bound: %v", err)
+	}
+	revoke()
+	if !revoked {
+		t.Fatal("host lifecycle registration was not revoked")
+	}
+	if _, err := control.invocationContext(invocation); !hasCategory(err, sdk.CategoryPermissionDenied) {
+		t.Fatal("SDK lifecycle credential remained valid")
+	}
+}
+
+// TestLifecycleRegistrationRequiresRevocation 验证宿主回调不能通过遗漏撤销函数留下无期限凭据
+func TestLifecycleRegistrationRequiresRevocation(t *testing.T) {
+	control := &hostControl{register: func(context.Context, Invocation, LifecycleOperation) (func(), error) { return nil, nil }}
+	invocation := Invocation{ID: "lifecycle", Token: "host-token"}
+	if _, err := control.bindLifecycle(t.Context(), invocation, LifecycleLoad); !hasCategory(err, sdk.CategoryInternal) {
+		t.Fatalf("missing revocation was accepted: %v", err)
+	}
+	if _, err := control.invocationContext(invocation); err == nil {
+		t.Fatal("failed lifecycle registration opened SDK credential")
+	}
+}
+
+// TestLifecycleCallbackPanicsAreIsolated 验证后续生命周期的宿主登记 panic 可返回，异步撤销 panic 不会带崩进程
+func TestLifecycleCallbackPanicsAreIsolated(t *testing.T) {
+	invocation := Invocation{ID: "lifecycle", Token: "host-token"}
+	control := &hostControl{register: func(context.Context, Invocation, LifecycleOperation) (func(), error) {
+		panic("private registration data")
+	}}
+	if _, err := control.bindLifecycle(t.Context(), invocation, LifecycleLoad); !hasCategory(err, sdk.CategoryInternal) {
+		t.Fatalf("registration panic escaped: %v", err)
+	}
+	control.register = func(context.Context, Invocation, LifecycleOperation) (func(), error) {
+		return func() { panic("private revocation data") }, nil
+	}
+	revoke, err := control.bindLifecycle(t.Context(), invocation, LifecycleUnload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	revoke()
+	if _, err := control.invocationContext(invocation); !hasCategory(err, sdk.CategoryPermissionDenied) {
+		t.Fatal("revocation panic retained SDK credential")
+	}
+}
+
+// TestLifecycleCancellationRevokesImmediately 验证用户 handler 尚未退出时，取消已能立即撤销生命周期授权
+func TestLifecycleCancellationRevokesImmediately(t *testing.T) {
+	revoked := make(chan struct{})
+	control := &hostControl{register: func(context.Context, Invocation, LifecycleOperation) (func(), error) {
+		return func() { close(revoked) }, nil
+	}}
+	ctx, cancel := context.WithCancel(t.Context())
+	invocation := Invocation{ID: "lifecycle", Token: "host-token"}
+	revoke, err := control.bindLifecycle(ctx, invocation, LifecycleDisable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer revoke()
+	cancel()
+	guard, stop := context.WithTimeout(t.Context(), time.Second)
+	defer stop()
+	select {
+	case <-revoked:
+	case <-guard.Done():
+		t.Fatal("cancellation did not revoke lifecycle registration")
+	}
+	if _, err := control.invocationContext(invocation); !hasCategory(err, sdk.CategoryPermissionDenied) {
+		t.Fatal("canceled lifecycle retained SDK credential")
+	}
+}
+
 // renewalFixture 观察非法时长是否进入宿主业务
 type renewalFixture struct {
 	fixtureSessions // 复用人工租约的其他方法

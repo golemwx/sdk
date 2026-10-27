@@ -23,6 +23,15 @@ func newInvocationID() (string, error) {
 	return hex.EncodeToString(value[:]), nil
 }
 
+// newInvocation 为 SDK 控制操作同时签发不可预测的标识和凭据
+func newInvocation() (Invocation, error) {
+	var value [64]byte
+	if _, err := rand.Read(value[:]); err != nil {
+		return Invocation{}, err
+	}
+	return Invocation{ID: hex.EncodeToString(value[:32]), Token: hex.EncodeToString(value[32:])}, nil
+}
+
 // validateInvocation 宿主必须显式提供自身签发的唯一执行标识和 token
 func validateInvocation(invocation Invocation) error {
 	if invocation.ID == "" || invocation.Token == "" {

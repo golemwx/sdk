@@ -131,7 +131,7 @@ func Start(ctx context.Context, options ClientOptions) (_ *Client, err error) {
 	if _, err := rand.Read(secret[:]); err != nil {
 		return nil, err
 	}
-	client.control = &hostControl{token: hex.EncodeToString(secret[:]), ready: make(chan struct{}), validate: options.Services.ReverseReady, generation: options.InstanceGeneration, completed: options.Services.ExecutionCompleted}
+	client.control = &hostControl{token: hex.EncodeToString(secret[:]), ready: make(chan struct{}), validate: options.Services.ReverseReady, register: options.Services.RegisterLifecycle, generation: options.InstanceGeneration, completed: options.Services.ExecutionCompleted}
 	client.serverDone = make(chan struct{})
 	serverReady := make(chan struct{})
 	brokerID := client.endpoint.Broker.NextId()
@@ -170,7 +170,7 @@ func Start(ctx context.Context, options ClientOptions) (_ *Client, err error) {
 	default:
 		return nil, sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.initialize", "reverse connection was not confirmed")
 	}
-	if err := client.lifecycle(ctx, "load"); err != nil {
+	if err := client.lifecycle(ctx, LifecycleLoad); err != nil {
 		return nil, err
 	}
 	return client, nil
@@ -211,38 +211,54 @@ func (c *Client) Descriptor() plugin.Descriptor {
 	return wire.FromWireDescriptor(wire.ToWireDescriptor(c.descriptor))
 }
 
-// lifecycle 发送生命周期控制请求，控制面不占业务执行额度
-func (c *Client) lifecycle(ctx context.Context, method string) error {
+// lifecycle 登记宿主签发的单次凭据后发送控制请求，不占业务执行额度
+func (c *Client) lifecycle(ctx context.Context, operation LifecycleOperation) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	id, err := newInvocationID()
+	invocation, err := newInvocation()
 	if err != nil {
+		cancel()
 		return err
 	}
-	request := &wire.LifecycleRequest{InvocationId: id}
-	var response *wire.OperationResponse
-	switch method {
-	case "load":
-		response, err = c.endpoint.Control.OnLoad(ctx, request)
-	case "enable":
-		response, err = c.endpoint.Control.OnEnable(ctx, request)
-	case "disable":
-		response, err = c.endpoint.Control.OnDisable(ctx, request)
-	case "unload":
-		response, err = c.endpoint.Control.OnUnload(ctx, request)
+	revoke, err := c.control.bindLifecycle(ctx, invocation, operation)
+	if err != nil {
+		cancel()
+		return err
 	}
-	return transport.DecodeError(response.GetError(), err, "plugin."+method)
+	defer func() {
+		// 先使所有已取得原 ctx 的反向调用失效，再确认两处登记已幂等撤销
+		cancel()
+		revoke()
+	}()
+	ctx = metadata.AppendToOutgoingContext(ctx,
+		transport.LifecycleInvocationIDHeader, invocation.ID,
+		transport.LifecycleInvocationTokenHeader, invocation.Token,
+	)
+	request := &wire.LifecycleRequest{InvocationId: invocation.ID}
+	var response *wire.OperationResponse
+	switch operation {
+	case LifecycleLoad:
+		response, err = c.endpoint.Control.OnLoad(ctx, request)
+	case LifecycleEnable:
+		response, err = c.endpoint.Control.OnEnable(ctx, request)
+	case LifecycleDisable:
+		response, err = c.endpoint.Control.OnDisable(ctx, request)
+	case LifecycleUnload:
+		response, err = c.endpoint.Control.OnUnload(ctx, request)
+	default:
+		return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.lifecycle", "invalid lifecycle operation")
+	}
+	return transport.DecodeError(response.GetError(), err, string(operation))
 }
 
 // Enable 显式启用已加载实例
-func (c *Client) Enable(ctx context.Context) error { return c.lifecycle(ctx, "enable") }
+func (c *Client) Enable(ctx context.Context) error { return c.lifecycle(ctx, LifecycleEnable) }
 
 // Disable 显式禁用已启用实例
-func (c *Client) Disable(ctx context.Context) error { return c.lifecycle(ctx, "disable") }
+func (c *Client) Disable(ctx context.Context) error { return c.lifecycle(ctx, LifecycleDisable) }
 
 // Unload 调用插件卸载并无条件回收实例，卸载错误不会跳过清理
 func (c *Client) Unload(ctx context.Context) error {
-	err := c.lifecycle(ctx, "unload")
+	err := c.lifecycle(ctx, LifecycleUnload)
 	_ = c.Close()
 	return err
 }

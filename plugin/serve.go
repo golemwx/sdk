@@ -152,6 +152,11 @@ func (s *controlServer) lifecycle(ctx context.Context, method, id string) (*wire
 		if s.conn == nil || s.unloaded {
 			return sdk.NewError(sdk.CategoryFailedPrecondition, method, "instance is not initialized")
 		}
+		var err error
+		ctx, err = lifecycleContext(ctx, id)
+		if err != nil {
+			return err
+		}
 		if err := s.beginExecution(ctx, id, executionControl); err != nil {
 			return err
 		}
@@ -232,6 +237,16 @@ func (s *controlServer) lifecycle(ctx context.Context, method, id string) (*wire
 		return nil
 	})
 	return &wire.OperationResponse{Error: transport.EncodeError(err, method)}, nil
+}
+
+// lifecycleContext 仅接受安全正向连接 metadata 中与请求标识一致的宿主单次凭据
+func lifecycleContext(ctx context.Context, id string) (context.Context, error) {
+	ids := metadata.ValueFromIncomingContext(ctx, transport.LifecycleInvocationIDHeader)
+	tokens := metadata.ValueFromIncomingContext(ctx, transport.LifecycleInvocationTokenHeader)
+	if id == "" || len(ids) != 1 || len(tokens) != 1 || tokens[0] == "" || subtle.ConstantTimeCompare([]byte(id), []byte(ids[0])) != 1 {
+		return nil, sdk.NewError(sdk.CategoryPermissionDenied, "plugin.lifecycle", "invalid lifecycle invocation identity")
+	}
+	return transport.WithInvocation(ctx, id, tokens[0]), nil
 }
 
 // OnLoad 将显式 Host 交给实现了 Loader 的插件

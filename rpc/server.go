@@ -21,12 +21,24 @@ type Invocation struct {
 	Token string // 宿主签发的本次执行凭据
 }
 
+// LifecycleOperation 是由 SDK 控制面确定的生命周期操作，不接受插件自行声明
+type LifecycleOperation string
+
+const (
+	LifecycleLoad    LifecycleOperation = "plugin.load"    // 插件初始加载
+	LifecycleEnable  LifecycleOperation = "plugin.enable"  // 插件启用
+	LifecycleDisable LifecycleOperation = "plugin.disable" // 插件禁用
+	LifecycleUnload  LifecycleOperation = "plugin.unload"  // 插件卸载
+)
+
 // HostServices 当前实例绑定的宿主实现与授权入口
 type HostServices struct {
 	Host *plugin.Host // 已绑定实例和账号的七类宿主业务实现
 	// 检查实例、调用凭据及操作授权，未提供时默认拒绝
 	Authorize    func(context.Context, Invocation, string) (context.Context, error)
 	ReverseReady func(context.Context) error // 可选的反向连接就绪校验，失败会使整个启动失败
+	// 可选的单次生命周期登记；ctx 保留调用方的值、取消和有效期，返回的撤销函数必须非空
+	RegisterLifecycle func(ctx context.Context, invocation Invocation, operation LifecycleOperation) (revoke func(), err error)
 	// 仅在 handler 实际退出后接收当前实例的独立完成确认
 	ExecutionCompleted func(ctx context.Context, invocationID string, generation uint64) error
 }
@@ -35,14 +47,64 @@ type HostServices struct {
 type hostControl struct {
 	wire.UnimplementedHostControlServiceServer // 为未来新增控制方法提供明确失败
 
-	token        string                                      // 当前实例唯一的随机控制凭据
-	ready        chan struct{}                               // 反向连接就绪信号
-	once         sync.Once                                   // 保证就绪信号只关闭一次
-	validate     func(context.Context) error                 // 可选的宿主就绪校验
-	generation   uint64                                      // 反向连接绑定的实例代次
-	completed    func(context.Context, string, uint64) error // 宿主实际执行记录的完成入口，不能根据业务 RPC 返回自行触发
-	invocationMu sync.Mutex                                  // 保护用户调用权限，与真实执行完成记录独立
-	invocations  map[string]hostInvocation                   // 仅保存宿主仍在等待且尚未取消的用户调用
+	token        string                                                                // 当前实例唯一的随机控制凭据
+	ready        chan struct{}                                                         // 反向连接就绪信号
+	once         sync.Once                                                             // 保证就绪信号只关闭一次
+	validate     func(context.Context) error                                           // 可选的宿主就绪校验
+	register     func(context.Context, Invocation, LifecycleOperation) (func(), error) // 可选的宿主生命周期登记
+	generation   uint64                                                                // 反向连接绑定的实例代次
+	completed    func(context.Context, string, uint64) error                           // 宿主实际执行记录的完成入口，不能根据业务 RPC 返回自行触发
+	invocationMu sync.Mutex                                                            // 保护用户调用权限，与真实执行完成记录独立
+	invocations  map[string]hostInvocation                                             // 仅保存宿主仍在等待且尚未取消的用户调用
+}
+
+// bindLifecycle 先让宿主登记可绑定实例策略的单次身份，再开放 SDK 反向调用凭据
+func (s *hostControl) bindLifecycle(ctx context.Context, invocation Invocation, operation LifecycleOperation) (func(), error) {
+	revokeHost := func() {}
+	if s.register != nil {
+		var err error
+		revokeHost, err = callLifecycleRegistration(s.register, ctx, invocation, operation)
+		if err != nil {
+			return nil, err
+		}
+		if revokeHost == nil {
+			return nil, sdk.NewError(sdk.CategoryInternal, "plugin.lifecycle", "lifecycle registration returned no revocation")
+		}
+	}
+	revokeLocal, err := s.bindInvocation(ctx, invocation)
+	if err != nil {
+		revokeHost()
+		return nil, err
+	}
+	var once sync.Once
+	cleanup := func() {
+		once.Do(func() {
+			revokeLocal()
+			callLifecycleRevocation(revokeHost)
+		})
+	}
+	stop := context.AfterFunc(ctx, cleanup)
+	return func() {
+		stop()
+		cleanup()
+	}, nil
+}
+
+// callLifecycleRegistration 将宿主回调 panic 转换为可返回错误，避免后续生命周期直接带崩宿主
+func callLifecycleRegistration(register func(context.Context, Invocation, LifecycleOperation) (func(), error), ctx context.Context, invocation Invocation, operation LifecycleOperation) (revoke func(), err error) {
+	defer func() {
+		if recover() != nil {
+			revoke = nil
+			err = sdk.NewError(sdk.CategoryInternal, "plugin.lifecycle", "lifecycle registration panicked")
+		}
+	}()
+	return register(ctx, invocation, operation)
+}
+
+// callLifecycleRevocation 隔离清理回调 panic，特别是取消后由 context.AfterFunc 执行的异步路径
+func callLifecycleRevocation(revoke func()) {
+	defer func() { _ = recover() }()
+	revoke()
 }
 
 // hostInvocation 将随机凭据绑定到宿主原调用上下文

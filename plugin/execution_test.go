@@ -198,7 +198,7 @@ func TestCanceledEnableImmediatelyCancelsTasks(t *testing.T) {
 	var release sync.Once
 	t.Cleanup(func() { release.Do(func() { close(p.release) }) })
 	go func() {
-		response, _ := s.OnEnable(ctx, &wire.LifecycleRequest{InvocationId: "canceled-enable"})
+		response, _ := s.OnEnable(lifecycleIncomingContext(ctx, "canceled-enable", "token"), &wire.LifecycleRequest{InvocationId: "canceled-enable"})
 		finished <- response
 	}()
 	task := <-p.entered
@@ -273,16 +273,16 @@ func TestTaskContextCycles(t *testing.T) {
 	p.host = s.host
 	s.enabled = false
 	s.accepting = false
-	response, _ := s.OnEnable(t.Context(), &wire.LifecycleRequest{InvocationId: "enable-1"})
+	response, _ := s.OnEnable(lifecycleIncomingContext(t.Context(), "enable-1", "token"), &wire.LifecycleRequest{InvocationId: "enable-1"})
 	first := s.host.TaskContext()
 	if response.GetError() != nil || first == nil || first.Err() != nil || transport.InvocationFromContext(first) != nil {
 		t.Fatal("enable did not create independent task context")
 	}
-	response, _ = s.OnDisable(t.Context(), &wire.LifecycleRequest{InvocationId: "disable-1"})
+	response, _ = s.OnDisable(lifecycleIncomingContext(t.Context(), "disable-1", "token"), &wire.LifecycleRequest{InvocationId: "disable-1"})
 	if response.GetError() != nil || first.Err() == nil {
 		t.Fatal("disable did not cancel task context")
 	}
-	response, _ = s.OnEnable(t.Context(), &wire.LifecycleRequest{InvocationId: "enable-2"})
+	response, _ = s.OnEnable(lifecycleIncomingContext(t.Context(), "enable-2", "token"), &wire.LifecycleRequest{InvocationId: "enable-2"})
 	second := s.host.TaskContext()
 	if response.GetError() != nil || second == first || second.Err() != nil {
 		t.Fatal("re-enable reused canceled task context")
@@ -296,7 +296,7 @@ func TestTaskContextCycles(t *testing.T) {
 	failure.host = s.host
 	s.enabled = false
 	s.accepting = false
-	response, _ = s.OnEnable(t.Context(), &wire.LifecycleRequest{InvocationId: "enable-fail"})
+	response, _ = s.OnEnable(lifecycleIncomingContext(t.Context(), "enable-fail", "token"), &wire.LifecycleRequest{InvocationId: "enable-fail"})
 	if response.GetError() == nil || s.host.TaskContext().Err() == nil || s.enabled || s.accepting {
 		t.Fatal("failed enable left active background context or admission")
 	}
@@ -323,7 +323,7 @@ func TestDrainWhileEnableIgnoresCancellation(t *testing.T) {
 	var release sync.Once
 	t.Cleanup(func() { release.Do(func() { close(p.release) }) })
 	go func() {
-		response, _ := s.OnEnable(t.Context(), &wire.LifecycleRequest{InvocationId: "enabling"})
+		response, _ := s.OnEnable(lifecycleIncomingContext(t.Context(), "enabling", "token"), &wire.LifecycleRequest{InvocationId: "enabling"})
 		finished <- response
 	}()
 	task := <-p.entered

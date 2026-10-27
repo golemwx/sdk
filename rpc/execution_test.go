@@ -128,10 +128,24 @@ func TestInvocationAcrossAllHostClients(t *testing.T) {
 	options.Services.Host = fullFixtureHost()
 	var mu sync.Mutex
 	methods := map[string]bool{}
+	lifecycle := map[string]string{}
 	deadline := time.Now().Add(time.Minute)
+	options.Services.RegisterLifecycle = func(_ context.Context, invocation Invocation, _ LifecycleOperation) (func(), error) {
+		mu.Lock()
+		lifecycle[invocation.ID] = invocation.Token
+		mu.Unlock()
+		return func() {
+			mu.Lock()
+			delete(lifecycle, invocation.ID)
+			mu.Unlock()
+		}, nil
+	}
 	options.Services.Authorize = func(ctx context.Context, invocation Invocation, method string) (context.Context, error) {
-		if invocation.ID == "" && invocation.Token == "" {
-			return ctx, nil // 仅允许测试的 OnLoad 读取人工账号
+		mu.Lock()
+		lifecycleToken, lifecycleCall := lifecycle[invocation.ID]
+		mu.Unlock()
+		if lifecycleCall && invocation.Token == lifecycleToken && method == wire.HostAccountService_Current_FullMethodName {
+			return ctx, nil // 仅允许测试的 OnLoad 凭据读取人工账号
 		}
 		if !strings.HasPrefix(invocation.ID, "event-") || invocation.Token != "host-issued" {
 			return nil, sdk.NewError(sdk.CategoryPermissionDenied, "fixture.authorize", "invalid invocation")
