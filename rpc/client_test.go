@@ -310,6 +310,64 @@ func fixtureOptions(t *testing.T, mode string) ClientOptions {
 	}
 }
 
+// TestValidateDescriptorChecksCommands 验证宿主不信任插件自行提供的命令声明
+func TestValidateDescriptorChecksCommands(t *testing.T) {
+	tests := []struct {
+		name     string
+		commands []plugin.CommandSpec
+		category sdk.Category
+	}{
+		{
+			name: "invalid schema",
+			commands: []plugin.CommandSpec{{Path: []string{"fixture"}, Args: []plugin.ArgSpec{{
+				Name: "count", Type: plugin.ArgTypeInt, Default: "invalid",
+			}}}},
+			category: sdk.CategoryInvalidArgument,
+		},
+		{
+			name: "duplicate path",
+			commands: []plugin.CommandSpec{
+				{Path: []string{"fixture", "echo"}},
+				{Path: []string{"fixture", "echo"}},
+			},
+			category: sdk.CategoryAlreadyExists,
+		},
+		{
+			name:     "reserved namespace",
+			commands: []plugin.CommandSpec{{Path: []string{"golem", "status"}}},
+			category: sdk.CategoryInvalidArgument,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := validateDescriptor(
+				ClientOptions{ExpectedID: "fixture"},
+				plugin.Descriptor{ID: "fixture", Commands: test.commands},
+			)
+			var business *sdk.Error
+			if !errors.As(err, &business) || business.Category != test.category {
+				t.Fatalf("unexpected descriptor validation error: %v", err)
+			}
+		})
+	}
+}
+
+// TestValidateDescriptorRejectsUnknownWireArgType 验证宿主在解码后拒绝未知传输枚举
+func TestValidateDescriptorRejectsUnknownWireArgType(t *testing.T) {
+	descriptor := wire.FromWireDescriptor(&wire.Descriptor{
+		Id: "fixture",
+		Commands: []*wire.CommandSpec{{
+			Path: []string{"fixture"},
+			Args: []*wire.ArgSpec{{Name: "value", Type: wire.ArgType(99)}},
+		}},
+	})
+	err := validateDescriptor(ClientOptions{ExpectedID: "fixture"}, descriptor)
+	var business *sdk.Error
+	if !errors.As(err, &business) || business.Category != sdk.CategoryInvalidArgument {
+		t.Fatalf("unknown wire argument type returned unexpected error: %v", err)
+	}
+}
+
 // assertReaped 检查 go-plugin 已等待其拥有的唯一子进程退出
 func assertReaped(t *testing.T, command *exec.Cmd) {
 	t.Helper()

@@ -12,6 +12,7 @@ import (
 
 	"github.com/golemwx/sdk"
 	"github.com/golemwx/sdk/config"
+	"github.com/golemwx/sdk/internal/contract"
 	"github.com/golemwx/sdk/internal/transport"
 	"github.com/golemwx/sdk/internal/wire"
 	"github.com/golemwx/sdk/plugin"
@@ -183,6 +184,9 @@ func validateDescriptor(options ClientOptions, descriptor plugin.Descriptor) err
 	}
 	if descriptor.ID != options.ExpectedID {
 		return sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.describe", "descriptor ID does not match expected plugin")
+	}
+	if err := contract.ValidateCommands(descriptor.Commands); err != nil {
+		return err
 	}
 	for _, permission := range options.GrantedPermissions {
 		if !slices.Contains(descriptor.RequestedPermissions, permission) {

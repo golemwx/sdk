@@ -13,6 +13,19 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// commandDescriptorFixture 提供可控命令声明并实现对应业务接口
+type commandDescriptorFixture struct {
+	descriptor Descriptor // 当前测试使用的固定声明
+}
+
+// Descriptor 返回当前测试的命令声明
+func (p commandDescriptorFixture) Descriptor() Descriptor { return p.descriptor }
+
+// OnCommand 满足命令声明对应的业务接口
+func (commandDescriptorFixture) OnCommand(context.Context, Command) (CommandResult, error) {
+	return CommandResult{}, nil
+}
+
 // lifecycleFixture 观察取消后的排队控制操作是否仍进入用户代码
 type lifecycleFixture struct {
 	enabled    atomic.Int32          // 已实际进入的启用调用数
@@ -21,6 +34,77 @@ type lifecycleFixture struct {
 
 // Descriptor 提供测试固定声明
 func (*lifecycleFixture) Descriptor() Descriptor { return Descriptor{ID: "fixture"} }
+
+// TestCommandDescriptorValidationAtControlBoundary 验证 Describe 与 Initialize 共用已缓存的命令校验结果
+func TestCommandDescriptorValidationAtControlBoundary(t *testing.T) {
+	tests := []struct {
+		name     string
+		commands []CommandSpec
+		category wire.Category
+	}{
+		{
+			name: "invalid command",
+			commands: []CommandSpec{{Path: []string{"fixture"}, Args: []ArgSpec{{
+				Name: "count", Type: ArgTypeInt, Default: "invalid",
+			}}}},
+			category: wire.Category_CATEGORY_INVALID_ARGUMENT,
+		},
+		{
+			name: "duplicate path",
+			commands: []CommandSpec{
+				{Path: []string{"fixture", "echo"}},
+				{Path: []string{"fixture", "echo"}},
+			},
+			category: wire.Category_CATEGORY_ALREADY_EXISTS,
+		},
+		{
+			name:     "reserved namespace",
+			commands: []CommandSpec{{Path: []string{"golem", "status"}}},
+			category: wire.Category_CATEGORY_INVALID_ARGUMENT,
+		},
+		{
+			name: "unknown argument type",
+			commands: []CommandSpec{{Path: []string{"fixture"}, Args: []ArgSpec{{
+				Name: "value", Type: ArgType(99),
+			}}}},
+			category: wire.Category_CATEGORY_INVALID_ARGUMENT,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server := &controlServer{implementation: commandDescriptorFixture{descriptor: Descriptor{ID: "fixture", Commands: test.commands}}}
+			described, _ := server.Describe(t.Context(), nil)
+			if described.GetError().GetCategory() != test.category || described.GetDescriptor_() != nil {
+				t.Fatalf("Describe accepted invalid commands: %v", described)
+			}
+			initialized, _ := server.Initialize(t.Context(), &wire.InitializeRequest{
+				BrokerId: 1, ControlToken: "control", InstanceGeneration: 1, DataDir: t.TempDir(),
+			})
+			if initialized.GetError().GetCategory() != test.category {
+				t.Fatalf("Initialize bypassed cached command validation: %v", initialized)
+			}
+		})
+	}
+}
+
+// TestDescribeCachesIndependentDescriptorSnapshot 验证声明源和返回值均不能改写已校验缓存
+func TestDescribeCachesIndependentDescriptorSnapshot(t *testing.T) {
+	implementation := &commandDescriptorFixture{descriptor: Descriptor{
+		ID: "fixture", Commands: []CommandSpec{{Path: []string{"fixture", "echo"}}},
+	}}
+	server := &controlServer{implementation: implementation}
+	first, _ := server.Describe(t.Context(), nil)
+	if first.GetError() != nil || first.GetDescriptor_() == nil {
+		t.Fatalf("valid descriptor was rejected: %v", first)
+	}
+
+	implementation.descriptor.Commands[0].Path[0] = "golem"
+	first.Descriptor_.Commands[0].Path[0] = "changed"
+	second, _ := server.Describe(t.Context(), nil)
+	if got := second.GetDescriptor_().GetCommands()[0].GetPath(); len(got) != 2 || got[0] != "fixture" || got[1] != "echo" {
+		t.Fatalf("cached descriptor was mutated through an external declaration: %v", got)
+	}
+}
 
 // OnEnable 登记实际执行次数
 func (p *lifecycleFixture) OnEnable(ctx context.Context) error {

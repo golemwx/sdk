@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/golemwx/sdk"
+	"github.com/golemwx/sdk/internal/contract"
 	"github.com/golemwx/sdk/internal/transport"
 	"github.com/golemwx/sdk/internal/wire"
 	"github.com/hashicorp/go-hclog"
@@ -78,7 +79,12 @@ func (s *controlServer) Describe(ctx context.Context, _ *emptypb.Empty) (*wire.D
 			if s.implementation == nil {
 				return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.describe", "plugin is nil")
 			}
-			s.descriptor = wire.ToWireDescriptor(s.implementation.Descriptor())
+			// 先形成独立 wire 快照，再校验将被缓存和发送的同一份声明
+			descriptor := wire.ToWireDescriptor(s.implementation.Descriptor())
+			if err := contract.ValidateCommands(wire.FromWireDescriptor(descriptor).Commands); err != nil {
+				return err
+			}
+			s.descriptor = descriptor
 			return nil
 		})
 	})

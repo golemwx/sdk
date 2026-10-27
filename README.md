@@ -5,7 +5,7 @@ Golem 插件 SDK 定义插件与 frame 之间的稳定业务模型、RPC 协议�
 ## 包结构
 
 - `plugin`：插件描述、生命周期、业务处理接口与自动绑定 Host 的 `Base`
-- `event`、`command`、`capability`：事件、命令和跨插件能力契约
+- `event`、`command`、`capability`：事件、命令和跨插件能力契约；`command` 提供 schema 与输入校验
 - `message`、`contact`、`chatroom`、`session`、`config`：领域模型及类型化宿主客户端
 - `rpc`：共享配对配置、真实插件启动、生命周期控制及实例绑定的反向宿主服务
 - `internal/wire`：由 Proto 生成的传输类型和业务类型转换，不属于插件公共 API
@@ -53,6 +53,11 @@ Base 不得复用到其他连接。单测可通过
 固定使用 `github.com/hashicorp/go-plugin v1.8.0`，仅启用 gRPC、AutoMTLS 和 SkipHostEnv。
 七类 Host 服务共用一条反向连接，所有宿主回调都必须经过显式授权，缺少授权默认拒绝。
 调用命令的 `Env` 只提供明确允许的变量，不会自动继承宿主环境。
+
+命令声明通过 `command.ValidateSpec` 校验，词法解析后的命名参数通过
+`command.ValidateArgs` 复制、补默认并校验。SDK 会在插件 `Describe` 及宿主启动的可信边界
+重复校验每条命令，同一 Descriptor 的重复完整路径返回 `AlreadyExists`。类型化反射绑定留待
+T23 冻结字段与标签规则后接入，本阶段不提供全局注册器。
 
 详细用法、资源所有权和阶段边界见 [插件通信](docs/插件通信.md)。
 T08 已接入事件、命令与能力 handler、invocation 自动透传、启用周期 `TaskContext`、
