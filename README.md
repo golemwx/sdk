@@ -4,7 +4,7 @@ Golem 插件 SDK 定义插件与 frame 之间的稳定业务模型、RPC 协议�
 
 ## 包结构
 
-- `plugin`：插件描述、生命周期、业务处理接口与显式 `Host`
+- `plugin`：插件描述、生命周期、业务处理接口与自动绑定 Host 的 `Base`
 - `event`、`command`、`capability`：事件、命令和跨插件能力契约
 - `message`、`contact`、`chatroom`、`session`、`config`：领域模型及类型化宿主客户端
 - `rpc`：共享配对配置、真实插件启动、生命周期控制及实例绑定的反向宿主服务
@@ -37,6 +37,14 @@ go test ./...
 插件入口调用 `plugin.Serve(implementation)`；宿主通过 `rpc.Start(ctx, options)`
 启动实例，启动成功后必须显式 `Close`，或调用会同时回收资源的 `Unload`。
 初始化按握手、Describe、宿主校验、反向服务、Initialize、反向就绪确认、OnLoad 的顺序执行。
+
+需要宿主能力的插件嵌入零值 `plugin.Base`，以指针交给 Serve。SDK 在反向就绪确认后、
+OnLoad 之前自动绑定实例 Host，通过 `p.Host` 读取；即使不实现 Loader 也会绑定。
+Loader 的签名为 `OnLoad(ctx context.Context) error`，只处理业务初始化。
+Host 字段仅供初始化后的回调读取，不得改写；SDK 不在失效时清空字段，避免并发读写。
+禁用保留绑定；卸载回调结束或连接失效后关闭连接并取消后台上下文，保留的 Host 句柄已不可用。
+Base 不得复用到其他连接。单测可通过
+`plugin.NewBase(fakeHost)` 构造本地替身，正式启动使用零值 Base。
 
 配对配置由 SDK 唯一定义：`ProtocolVersion=1`、`MagicCookieKey=GOLEM_PLUGIN_MAGIC_COOKIE`、
 `MagicCookieValue=golem-sdk-grpc`、PluginSet 键为 `golem`。普通发布与兼容的 Proto 新增字段

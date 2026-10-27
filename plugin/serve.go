@@ -45,7 +45,8 @@ type controlServer struct {
 	descriptor     *wire.Descriptor              // 缓存的不可变传输声明
 	describeError  error                         // 描述读取或插件 panic 对应的脱敏错误
 	conn           *grpc.ClientConn              // 初始化成功建立的唯一反向宿主连接
-	host           *Host                         // 显式传给 OnLoad 的宿主客户端集合
+	host           *Host                         // 当前反向连接对应的宿主客户端集合
+	binding        *hostBinding                  // Base 引用对应的私有连接代次
 	controlToken   string                        // 当前实例的控制凭据
 	generation     uint64                        // 当前插件实例代次
 	loaded         bool                          // 插件是否已经完成加载
@@ -105,7 +106,9 @@ func (s *controlServer) Initialize(ctx context.Context, request *wire.Initialize
 		if err := s.validateHandlers(ctx); err != nil {
 			return err
 		}
-		conn, err := s.broker.DialWithOptions(request.BrokerId, transport.DialOptions()...)
+		// 反向连接与实例同寿命，禁止因长时间无调用而主动进入 Idle
+		dialOptions := append(transport.DialOptions(), grpc.WithIdleTimeout(0))
+		conn, err := s.broker.DialWithOptions(request.BrokerId, dialOptions...)
 		if err != nil {
 			return sdk.NewError(sdk.CategoryUnavailable, "plugin.initialize", "reverse connection failed")
 		}
@@ -119,16 +122,35 @@ func (s *controlServer) Initialize(ctx context.Context, request *wire.Initialize
 		if err := transport.DecodeError(response.GetError(), err, "host.reverse_ready"); err != nil {
 			return err
 		}
-		s.executionMu.Lock()
-		s.host = newRemoteHost(conn, request.DataDir)
-		s.conn, s.controlToken, s.generation = conn, request.ControlToken, request.InstanceGeneration
+		host := newRemoteHost(conn, request.DataDir)
+		var binding *hostBinding
+		if binder, ok := s.implementation.(hostBinder); ok {
+			binding = &hostBinding{}
+			if err := binder.bindHost(host, binding); err != nil {
+				return err
+			}
+			defer func() {
+				if !succeeded {
+					binder.unbindHost(binding)
+				}
+			}()
+		}
 		// Initialize 没有用户 invocation，脱离该单次 RPC 仅用于实例控制及后台周期
-		s.controlContext, s.controlCancel = context.WithCancel(context.WithoutCancel(ctx))
-		s.host.startTasks(s.controlContext)
-		s.host.stopTasks()
+		controlContext, controlCancel := context.WithCancel(context.WithoutCancel(ctx))
+		defer func() {
+			if !succeeded {
+				controlCancel()
+			}
+		}()
+		host.startTasks(controlContext)
+		host.stopTasks()
+		s.executionMu.Lock()
+		s.host, s.binding = host, binding
+		s.conn, s.controlToken, s.generation = conn, request.ControlToken, request.InstanceGeneration
+		s.controlContext, s.controlCancel = controlContext, controlCancel
 		s.completion = wire.NewHostControlServiceClient(conn)
 		s.executionMu.Unlock()
-		go s.watchConnection()
+		go s.watchConnection(conn, controlContext, controlCancel, binding)
 		succeeded = true
 		return nil
 	})
@@ -141,7 +163,7 @@ func (s *controlServer) lifecycle(ctx context.Context, method, id string) (*wire
 	defer s.mu.Unlock()
 	defer func() {
 		if method == "plugin.unload" && s.unloaded {
-			s.controlCancel()
+			s.invalidateConnection(s.conn, s.controlCancel, s.binding)
 			_ = s.conn.Close()
 		}
 	}()
@@ -169,7 +191,7 @@ func (s *controlServer) lifecycle(ctx context.Context, method, id string) (*wire
 				return sdk.NewError(sdk.CategoryFailedPrecondition, method, "instance already loaded")
 			}
 			if handler, ok := s.implementation.(Loader); ok {
-				if err := handler.OnLoad(ctx, s.host); err != nil {
+				if err := handler.OnLoad(ctx); err != nil {
 					return err
 				}
 			}
@@ -249,7 +271,7 @@ func lifecycleContext(ctx context.Context, id string) (context.Context, error) {
 	return transport.WithInvocation(ctx, id, tokens[0]), nil
 }
 
-// OnLoad 将显式 Host 交给实现了 Loader 的插件
+// OnLoad 调用可选加载接口，Base 已在 Initialize 中自动绑定 Host
 func (s *controlServer) OnLoad(ctx context.Context, request *wire.LifecycleRequest) (*wire.OperationResponse, error) {
 	return s.lifecycle(ctx, "plugin.load", request.GetInvocationId())
 }
@@ -300,18 +322,41 @@ func (s *controlServer) validateHandlers(ctx context.Context) error {
 	return nil
 }
 
-// watchConnection 在宿主连接失效时撤销后台周期和后续业务准入
-func (s *controlServer) watchConnection() {
+// watchConnection 在所属宿主连接失效时撤销后台周期、业务准入和 Base 绑定
+func (s *controlServer) watchConnection(conn *grpc.ClientConn, controlContext context.Context, controlCancel context.CancelFunc, binding *hostBinding) {
 	for {
-		state := s.conn.GetState()
-		if state == connectivity.Shutdown || state == connectivity.TransientFailure {
-			s.stopAdmission()
-			s.controlCancel()
+		state := conn.GetState()
+		// 已完成 ReverseReady 且关闭闲置超时后，Idle 也说明底层连接已断开
+		if state == connectivity.Idle || state == connectivity.Shutdown || state == connectivity.TransientFailure {
+			s.invalidateConnection(conn, controlCancel, binding)
+			_ = conn.Close()
 			return
 		}
-		if !s.conn.WaitForStateChange(s.controlContext, state) {
+		if !conn.WaitForStateChange(controlContext, state) {
 			return
 		}
+	}
+}
+
+// invalidateConnection 仅清理由同一连接和私有代次建立的实例状态
+func (s *controlServer) invalidateConnection(conn *grpc.ClientConn, controlCancel context.CancelFunc, binding *hostBinding) {
+	s.executionMu.Lock()
+	if s.conn != conn || s.binding != binding {
+		s.executionMu.Unlock()
+		return
+	}
+	s.accepting = false
+	s.admissionEpoch++
+	host := s.host
+	s.executionMu.Unlock()
+	if host != nil {
+		host.stopTasks()
+	}
+	if controlCancel != nil {
+		controlCancel()
+	}
+	if binder, ok := s.implementation.(hostBinder); ok {
+		binder.unbindHost(binding)
 	}
 }
 

@@ -22,7 +22,6 @@ import (
 type executionPlugin struct {
 	fixturePlugin // 复用人工配置与固定声明
 
-	host           *plugin.Host    // 由 OnLoad 显式提供
 	task           context.Context // 保存上次启用周期以核对重启用
 	release        chan struct{}   // 真实退出许可，业务故意忽略原请求取消
 	releaseOnce    sync.Once       // 保证控制释放可重复调用
@@ -39,18 +38,21 @@ func (p *executionPlugin) Descriptor() plugin.Descriptor {
 	return d
 }
 
-// OnLoad 保存显式 Host 并确保启用前没有可用的后台周期
-func (p *executionPlugin) OnLoad(ctx context.Context, host *plugin.Host) error {
-	p.host = host
+// OnLoad 读取自动绑定的 Host 并确保启用前没有可用的后台周期
+func (p *executionPlugin) OnLoad(ctx context.Context) error {
+	host := p.Host
+	if host == nil {
+		return errors.New("Host was not injected before OnLoad")
+	}
 	if host.TaskContext() == nil || host.TaskContext().Err() == nil {
 		return errors.New("background context active before enable")
 	}
-	return p.fixturePlugin.OnLoad(ctx, host)
+	return p.fixturePlugin.OnLoad(ctx)
 }
 
 // OnEnable 检查后台周期不继承已返回的生命周期 RPC
 func (p *executionPlugin) OnEnable(ctx context.Context) error {
-	current := p.host.TaskContext()
+	current := p.Host.TaskContext()
 	if current == nil || current.Err() != nil || current == p.task || (p.task != nil && p.task.Err() == nil) {
 		return errors.New("enable did not replace canceled task context")
 	}
@@ -71,15 +73,15 @@ func (p *executionPlugin) OnEvent(ctx context.Context, value event.Event) (event
 	if p.task.Err() != nil {
 		return event.EventResult{}, errors.New("lifecycle RPC canceled task context")
 	}
-	if _, err := p.host.Account.Current(ctx); err != nil {
+	if _, err := p.Host.Account.Current(ctx); err != nil {
 		return event.EventResult{}, err
 	}
-	return event.EventResult{Consumed: true}, exerciseHost(ctx, p.host)
+	return event.EventResult{Consumed: true}, exerciseHost(ctx, p.Host)
 }
 
 // OnCommand 通过反向能力调用传播父请求取消，错误保留类别和机器元数据
 func (p *executionPlugin) OnCommand(ctx context.Context, value command.Command) (command.CommandResult, error) {
-	_, err := p.host.Caller.Call(ctx, capability.CallRequest{CapabilityName: "nested"})
+	_, err := p.Host.Caller.Call(ctx, capability.CallRequest{CapabilityName: "nested"})
 	return command.CommandResult{}, err
 }
 
@@ -89,7 +91,7 @@ func (p *executionPlugin) OnCall(ctx context.Context, request capability.CallReq
 	p.lastInvocation = ctx
 	p.invocationMu.Unlock()
 	if request.CapabilityName == "ignore" {
-		if _, err := p.host.Account.Current(ctx); err != nil {
+		if _, err := p.Host.Account.Current(ctx); err != nil {
 			return capability.CallResult{}, err
 		}
 		<-p.release
@@ -104,7 +106,7 @@ func (p *executionPlugin) ConfigApply(ctx context.Context, data []byte) error {
 		p.invocationMu.Lock()
 		saved := p.lastInvocation
 		p.invocationMu.Unlock()
-		_, err := p.host.Account.Current(context.WithoutCancel(saved))
+		_, err := p.Host.Account.Current(context.WithoutCancel(saved))
 		if !hasCategory(err, sdk.CategoryPermissionDenied) {
 			return errors.New("stale invocation retained user authority")
 		}

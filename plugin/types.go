@@ -1,4 +1,4 @@
-// Package plugin 定义插件接口、描述和显式宿主依赖
+// Package plugin 定义插件接口、描述和宿主依赖
 package plugin
 
 import (
@@ -111,7 +111,7 @@ type Host struct {
 	taskCancel  context.CancelFunc // 结束当前启用周期
 }
 
-// NewHost 创建显式宿主能力集合
+// NewHost 创建宿主能力集合
 func NewHost(messages MessagesClient, contacts ContactsClient, chatrooms ChatroomsClient, sessions SessionsClient, caller CallerClient, configClient ConfigClient, account AccountClient, dataDir string, taskContext context.Context) *Host {
 	return &Host{
 		Messages:    messages,
@@ -167,7 +167,7 @@ type Plugin interface {
 
 // Loader 加载初始化接口
 type Loader interface {
-	OnLoad(ctx context.Context, host *Host) error
+	OnLoad(ctx context.Context) error
 }
 
 // Enabler 插件启用接口

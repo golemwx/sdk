@@ -84,7 +84,9 @@ func (s *controlServer) stopAdmission() {
 	s.executionMu.Lock()
 	s.accepting = false
 	s.admissionEpoch++
-	s.host.stopTasks()
+	if s.host != nil {
+		s.host.stopTasks()
+	}
 	s.executionMu.Unlock()
 }
 

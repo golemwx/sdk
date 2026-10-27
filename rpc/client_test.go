@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -22,10 +23,11 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-// fixturePlugin 只实现必要的 Loader，以真实进程验证可选生命周期
+// fixturePlugin 嵌入 Base，以真实进程验证自动 Host 注入
 type fixturePlugin struct {
-	mode string       // 当前进程的受控测试场景
-	host *plugin.Host // 仅用于验证后续生命周期的反向凭据
+	plugin.Base
+
+	mode string // 当前进程的受控测试场景
 }
 
 // lifecycleMarker 用于验证登记回调收到调用方的原始上下文值
@@ -48,9 +50,12 @@ func (p *fixturePlugin) Descriptor() plugin.Descriptor {
 	return plugin.Descriptor{ID: "fixture", RequestedPermissions: []sdk.Permission{sdk.PermissionContactRead}}
 }
 
-// OnLoad 在反向就绪确认之后使用显式 Host 回调宿主
-func (p *fixturePlugin) OnLoad(ctx context.Context, host *plugin.Host) error {
-	p.host = host
+// OnLoad 在反向就绪确认之后读取 SDK 自动绑定的 Host
+func (p *fixturePlugin) OnLoad(ctx context.Context) error {
+	host := p.Host
+	if host == nil {
+		return errors.New("Host was not injected before OnLoad")
+	}
 	if _, inherited := os.LookupEnv("GOLEM_TEST_HOST_SECRET"); inherited {
 		return errors.New("host environment leaked into plugin")
 	}
@@ -103,10 +108,11 @@ type lifecycleCredentialPlugin struct {
 }
 
 // OnLoad 复用基础加载校验，并补充自身配置快照的生命周期访问
-func (p *lifecycleCredentialPlugin) OnLoad(ctx context.Context, host *plugin.Host) error {
-	if err := p.fixturePlugin.OnLoad(ctx, host); err != nil {
+func (p *lifecycleCredentialPlugin) OnLoad(ctx context.Context) error {
+	if err := p.fixturePlugin.OnLoad(ctx); err != nil {
 		return err
 	}
+	host := p.Host
 	_, err := host.Config.Snapshot(ctx)
 	return err
 }
@@ -128,15 +134,101 @@ func (p *lifecycleCredentialPlugin) OnUnload(ctx context.Context) error {
 
 // lifecycleAccount 发起题目指定的配置和账号受保护反向读取
 func (p *lifecycleCredentialPlugin) lifecycleAccount(ctx context.Context) error {
-	if p.host == nil || p.host.Config == nil || p.host.Account == nil {
+	host := p.Host
+	if host == nil || host.Config == nil || host.Account == nil {
 		return errors.New("missing lifecycle host")
 	}
-	if _, err := p.host.Config.Snapshot(ctx); err != nil {
+	if _, err := host.Config.Snapshot(ctx); err != nil {
 		return err
 	}
-	_, err := p.host.Account.Current(ctx)
+	_, err := host.Account.Current(ctx)
 	return err
 }
+
+// automaticHostPlugin 不实现 Loader，验证其余生命周期仍能使用自动绑定的 Host
+type automaticHostPlugin struct {
+	plugin.Base
+
+	mode string // 当前进程的受控测试场景
+}
+
+// Descriptor 返回自动注入测试的固定声明
+func (*automaticHostPlugin) Descriptor() plugin.Descriptor {
+	return plugin.Descriptor{ID: "fixture", RequestedPermissions: []sdk.Permission{sdk.PermissionContactRead}}
+}
+
+// OnEnable 验证无 Loader 插件在启用阶段可读取 Host
+func (p *automaticHostPlugin) OnEnable(ctx context.Context) error {
+	host, err := p.lifecycleHost(ctx)
+	if err != nil {
+		return err
+	}
+	if p.mode == "disconnect-release" {
+		p.observeRelease(host, "host-released-disconnect")
+	}
+	return nil
+}
+
+// OnDisable 验证禁用会取消后台周期但保留 Host 引用
+func (p *automaticHostPlugin) OnDisable(ctx context.Context) error {
+	_, err := p.lifecycleHost(ctx)
+	return err
+}
+
+// OnUnload 验证卸载回调内仍可用，并异步观察返回后的连接关闭
+func (p *automaticHostPlugin) OnUnload(ctx context.Context) error {
+	host, err := p.lifecycleHost(ctx)
+	if err != nil {
+		return err
+	}
+	p.observeRelease(host, "host-released-unload")
+	return nil
+}
+
+// lifecycleHost 检查自动绑定的完整 Host 并执行一次受保护反向调用
+func (p *automaticHostPlugin) lifecycleHost(ctx context.Context) (*plugin.Host, error) {
+	host := p.Host
+	if host == nil || !hostPathValid(host) || host.Account == nil {
+		return nil, errors.New("automatic Host is unavailable")
+	}
+	if _, err := host.Account.Current(ctx); err != nil {
+		return nil, err
+	}
+	return host, nil
+}
+
+// observeRelease 在后台周期结束后确认稳定字段保留且旧句柄无法再调用宿主
+func (p *automaticHostPlugin) observeRelease(host *plugin.Host, name string) {
+	taskContext := host.TaskContext()
+	dataDir := host.DataDir
+	go func() {
+		<-taskContext.Done()
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(taskContext), 5*time.Second)
+		defer cancel()
+		ticker := time.NewTicker(time.Millisecond)
+		defer ticker.Stop()
+		for p.Host == host {
+			// 配置查询不计入账号回调数，只检查连接关闭后的明确不可用错误
+			if _, err := host.Config.Snapshot(ctx); ctx.Err() == nil && (hasCategory(err, sdk.CategoryUnavailable) || hasCategory(err, sdk.CategoryCanceled)) {
+				_ = os.WriteFile(filepath.Join(dataDir, name), []byte("released"), 0o600)
+				return
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+		}
+	}()
+}
+
+// preboundPlugin 模拟错误地把本地测试 Base 用于正式启动
+type preboundPlugin struct {
+	*plugin.Base
+}
+
+// Descriptor 返回重复绑定测试的固定声明
+func (*preboundPlugin) Descriptor() plugin.Descriptor { return plugin.Descriptor{ID: "fixture"} }
 
 // hostPathValid 校验初始化确实传入绝对插件数据目录和全部客户端
 func hostPathValid(host *plugin.Host) bool {
@@ -170,6 +262,14 @@ func TestPluginProcess(t *testing.T) {
 	}
 	if mode == "lifecycle-credentials" {
 		plugin.Serve(&lifecycleCredentialPlugin{fixturePlugin: fixturePlugin{mode: mode}})
+		return
+	}
+	if mode == "automatic-host" || mode == "disconnect-release" {
+		plugin.Serve(&automaticHostPlugin{mode: mode})
+		return
+	}
+	if mode == "prebound-base" {
+		plugin.Serve(&preboundPlugin{Base: plugin.NewBase(&plugin.Host{})})
 		return
 	}
 	plugin.Serve(&fixturePlugin{mode: mode})
@@ -215,6 +315,26 @@ func assertReaped(t *testing.T, command *exec.Cmd) {
 	t.Helper()
 	if command.Process == nil || command.ProcessState == nil {
 		t.Fatalf("plugin process was not reaped: process=%v state=%v", command.Process, command.ProcessState)
+	}
+}
+
+// waitForMarker 等待真实插件进程发出的文件系统确认，不用固定延迟猜测状态
+func waitForMarker(ctx context.Context, path string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		if _, err := os.Stat(path); err == nil {
+			return nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
 	}
 }
 
@@ -276,7 +396,7 @@ func TestStartCloseAndRepeat(t *testing.T) {
 
 // TestStartupFailuresCleanResources 验证各初始化阶段失败均回收实际进程
 func TestStartupFailuresCleanResources(t *testing.T) {
-	for _, scenario := range []string{"cookie-mismatch", "version-mismatch", "describe-failure", "identity-mismatch", "validation-failure", "validation-panic", "reverse-failure", "load-failure", "unrequested-permission", "missing-event-handler", "missing-command-handler", "missing-capability-handler"} {
+	for _, scenario := range []string{"cookie-mismatch", "version-mismatch", "describe-failure", "identity-mismatch", "validation-failure", "validation-panic", "reverse-failure", "load-failure", "unrequested-permission", "missing-event-handler", "missing-command-handler", "missing-capability-handler", "prebound-base"} {
 		t.Run(scenario, func(t *testing.T) {
 			options := fixtureOptions(t, scenario)
 			switch scenario {
@@ -304,6 +424,104 @@ func TestStartupFailuresCleanResources(t *testing.T) {
 			assertReaped(t, options.Command)
 		})
 	}
+}
+
+// TestAutomaticHostLifecycle 以真实无 Loader 插件验证注入、禁用保留和卸载后释放
+func TestAutomaticHostLifecycle(t *testing.T) {
+	options := fixtureOptions(t, "automatic-host")
+	account := options.Services.Host.Account.(*fixtureAccount)
+	client, err := Start(t.Context(), options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	if err := client.Enable(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.Disable(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.lifecycle(t.Context(), LifecycleUnload); err != nil {
+		t.Fatal(err)
+	}
+	if err := waitForMarker(t.Context(), filepath.Join(options.DataDir, "host-released-unload")); err != nil {
+		t.Fatal(err)
+	}
+	if account.calls.Load() != 3 {
+		t.Fatalf("automatic Host lifecycle calls differ: %d", account.calls.Load())
+	}
+	if err := client.Close(); err != nil {
+		t.Fatal(err)
+	}
+	assertReaped(t, options.Command)
+}
+
+// TestAutomaticHostInstanceIsolation 验证并存插件独立绑定，卸载其中一个不影响另一个
+func TestAutomaticHostInstanceIsolation(t *testing.T) {
+	firstOptions := fixtureOptions(t, "automatic-host")
+	secondOptions := fixtureOptions(t, "automatic-host")
+	first, err := Start(t.Context(), firstOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = first.Close() })
+	second, err := Start(t.Context(), secondOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = second.Close() })
+	firstAccount := firstOptions.Services.Host.Account.(*fixtureAccount)
+	secondAccount := secondOptions.Services.Host.Account.(*fixtureAccount)
+	if err := first.Enable(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if firstAccount.calls.Load() != 1 || secondAccount.calls.Load() != 0 {
+		t.Fatal("first plugin called another instance's Host")
+	}
+	if err := second.Enable(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := first.Disable(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := first.Unload(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := second.Disable(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if firstAccount.calls.Load() != 3 || secondAccount.calls.Load() != 2 {
+		t.Fatal("unloading one instance changed another instance's Host")
+	}
+	if err := second.Unload(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if secondAccount.calls.Load() != 3 {
+		t.Fatal("second plugin lost its own Host during unload")
+	}
+	assertReaped(t, firstOptions.Command)
+	assertReaped(t, secondOptions.Command)
+}
+
+// TestAutomaticHostDisconnectRelease 以真实反向连接断开验证 Base 引用和后台周期失效
+func TestAutomaticHostDisconnectRelease(t *testing.T) {
+	options := fixtureOptions(t, "disconnect-release")
+	client, err := Start(t.Context(), options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	if err := client.Enable(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	client.server.Stop()
+	if err := waitForMarker(t.Context(), filepath.Join(options.DataDir, "host-released-disconnect")); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.Close(); err != nil {
+		t.Fatal(err)
+	}
+	assertReaped(t, options.Command)
 }
 
 // TestStartupCancellation 等待 OnLoad 实际进入后取消父调用并确认清理
