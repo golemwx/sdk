@@ -12,6 +12,8 @@ import (
 	"github.com/hashicorp/go-hclog"
 	hplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -24,7 +26,7 @@ func Serve(implementation Plugin) {
 		Plugins: transport.PluginSet(func(broker *hplugin.GRPCBroker, server *grpc.Server) error {
 			state.broker = broker
 			wire.RegisterPluginControlServiceServer(server, state)
-			wire.RegisterPluginBusinessServiceServer(server, &wire.UnimplementedPluginBusinessServiceServer{})
+			wire.RegisterPluginBusinessServiceServer(server, &businessServer{state: state})
 			return nil
 		}),
 		GRPCServer: transport.Server,
@@ -32,52 +34,46 @@ func Serve(implementation Plugin) {
 	})
 }
 
-// controlServer 管理插件控制面，业务 handler 的额度和执行跟踪由后续 wrapper 接入
+// controlServer 管理插件控制面与实例执行记录
 type controlServer struct {
-	// UnimplementedPluginControlServiceServer 为尚未接入的方法返回明确的 Unimplemented
-	wire.UnimplementedPluginControlServiceServer
-	// implementation 插件作者提供的可选接口实现
-	implementation Plugin
-	// broker 当前插件实例的唯一反向 Broker
-	broker *hplugin.GRPCBroker
-	// mu 串行化初始化和生命周期状态变更
-	mu sync.Mutex
-	// describeOnce 确保插件固定声明只读取一次
-	describeOnce sync.Once
-	// descriptor 缓存的不可变传输声明
-	descriptor *wire.Descriptor
-	// describeError 描述读取或插件 panic 对应的脱敏错误
-	describeError error
-	// conn 初始化成功建立的唯一反向宿主连接
-	conn *grpc.ClientConn
-	// host 显式传给 OnLoad 的宿主客户端集合
-	host *Host
-	// controlToken 当前实例的控制凭据
-	controlToken string
-	// generation 当前插件实例代次
-	generation uint64
-	// loaded 插件是否已经完成加载
-	loaded bool
-	// enabled 插件是否已经启用
-	enabled bool
-	// unloaded 插件是否已卸载，禁止重用同一实例
-	unloaded bool
+	wire.UnimplementedPluginControlServiceServer // 为尚未接入的方法返回明确的 Unimplemented
+
+	implementation Plugin                        // 插件作者提供的可选接口实现
+	broker         *hplugin.GRPCBroker           // 当前插件实例的唯一反向 Broker
+	mu             sync.Mutex                    // 串行化初始化和生命周期状态变更
+	describeOnce   sync.Once                     // 确保插件固定声明只读取一次
+	descriptor     *wire.Descriptor              // 缓存的不可变传输声明
+	describeError  error                         // 描述读取或插件 panic 对应的脱敏错误
+	conn           *grpc.ClientConn              // 初始化成功建立的唯一反向宿主连接
+	host           *Host                         // 显式传给 OnLoad 的宿主客户端集合
+	controlToken   string                        // 当前实例的控制凭据
+	generation     uint64                        // 当前插件实例代次
+	loaded         bool                          // 插件是否已经完成加载
+	enabled        bool                          // 插件是否已经启用
+	unloaded       bool                          // 插件是否已卸载，禁止重用同一实例
+	executionMu    sync.Mutex                    // 保护业务准入和实际执行记录，不被生命周期用户代码持有
+	active         map[string]executionKind      // 用户代码尚未实际退出的 wrapper 执行
+	accepting      bool                          // 是否允许新的业务执行
+	admissionEpoch uint64                        // 防止排空期间迟到的 OnEnable 重新打开准入
+	controlContext context.Context               // 不继承单次业务取消的实例控制生命周期
+	controlCancel  context.CancelFunc            // 实例失效或卸载时取消独立控制生命周期
+	completion     wire.HostControlServiceClient // 唯一反向连接上的受控完成确认客户端
 }
 
 // protect 将插件 panic 转换成脱敏错误，避免破坏控制服务
-func protect(operation func() error) (err error) {
+func protect(operation string, handler func() error) (err error) {
 	defer func() {
 		if recover() != nil {
-			err = sdk.NewError(sdk.CategoryInternal, "plugin.control", "plugin handler panicked")
+			err = sdk.NewError(sdk.CategoryInternal, operation, "plugin handler panicked")
 		}
 	}()
-	return operation()
+	return handler()
 }
 
 // Describe 返回固定描述副本，避免后续调用修改缓存
 func (s *controlServer) Describe(ctx context.Context, _ *emptypb.Empty) (*wire.DescribeResponse, error) {
 	s.describeOnce.Do(func() {
-		s.describeError = protect(func() error {
+		s.describeError = protect("plugin.describe", func() error {
 			if s.implementation == nil {
 				return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.describe", "plugin is nil")
 			}
@@ -96,7 +92,7 @@ func (s *controlServer) Describe(ctx context.Context, _ *emptypb.Empty) (*wire.D
 func (s *controlServer) Initialize(ctx context.Context, request *wire.InitializeRequest) (*wire.OperationResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	err := protect(func() error {
+	err := protect("plugin.initialize", func() error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -105,6 +101,9 @@ func (s *controlServer) Initialize(ctx context.Context, request *wire.Initialize
 		}
 		if request.GetBrokerId() == 0 || request.GetControlToken() == "" || request.GetInstanceGeneration() == 0 || !filepath.IsAbs(request.GetDataDir()) {
 			return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.initialize", "invalid initialization context")
+		}
+		if err := s.validateHandlers(ctx); err != nil {
+			return err
 		}
 		conn, err := s.broker.DialWithOptions(request.BrokerId, transport.DialOptions()...)
 		if err != nil {
@@ -120,8 +119,16 @@ func (s *controlServer) Initialize(ctx context.Context, request *wire.Initialize
 		if err := transport.DecodeError(response.GetError(), err, "host.reverse_ready"); err != nil {
 			return err
 		}
+		s.executionMu.Lock()
 		s.host = newRemoteHost(conn, request.DataDir)
 		s.conn, s.controlToken, s.generation = conn, request.ControlToken, request.InstanceGeneration
+		// Initialize 没有用户 invocation，脱离该单次 RPC 仅用于实例控制及后台周期
+		s.controlContext, s.controlCancel = context.WithCancel(context.WithoutCancel(ctx))
+		s.host.startTasks(s.controlContext)
+		s.host.stopTasks()
+		s.completion = wire.NewHostControlServiceClient(conn)
+		s.executionMu.Unlock()
+		go s.watchConnection()
 		succeeded = true
 		return nil
 	})
@@ -129,16 +136,28 @@ func (s *controlServer) Initialize(ctx context.Context, request *wire.Initialize
 }
 
 // lifecycle 在初始化之后串行执行可选生命周期，并保持原调用上下文
-func (s *controlServer) lifecycle(ctx context.Context, method string) (*wire.OperationResponse, error) {
+func (s *controlServer) lifecycle(ctx context.Context, method, id string) (*wire.OperationResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	err := protect(func() error {
+	defer func() {
+		if method == "plugin.unload" && s.unloaded {
+			s.controlCancel()
+			_ = s.conn.Close()
+		}
+	}()
+	err := protect(method, func() error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		if s.conn == nil || s.unloaded {
 			return sdk.NewError(sdk.CategoryFailedPrecondition, method, "instance is not initialized")
 		}
+		if err := s.beginExecution(ctx, id, executionControl); err != nil {
+			return err
+		}
+		defer s.finishExecution(id)
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 		switch method {
 		case "plugin.load":
 			if s.loaded {
@@ -154,27 +173,58 @@ func (s *controlServer) lifecycle(ctx context.Context, method string) (*wire.Ope
 			if !s.loaded || s.enabled {
 				return sdk.NewError(sdk.CategoryFailedPrecondition, method, "instance cannot be enabled")
 			}
+			s.executionMu.Lock()
+			epoch := s.admissionEpoch
+			cancelTasks := s.host.startTasks(s.controlContext)
+			s.executionMu.Unlock()
+			succeeded := false
+			// 启用回调忽略取消时，也立即撤销尚未提交的后台周期
+			stopCancel := context.AfterFunc(ctx, func() {
+				s.executionMu.Lock()
+				defer s.executionMu.Unlock()
+				if !succeeded {
+					cancelTasks()
+				}
+			})
+			defer stopCancel()
+			defer func() {
+				if !succeeded {
+					cancelTasks()
+				}
+			}()
 			if handler, ok := s.implementation.(Enabler); ok {
 				if err := handler.OnEnable(ctx); err != nil {
 					return err
 				}
 			}
+			s.executionMu.Lock()
+			defer s.executionMu.Unlock()
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if s.admissionEpoch != epoch || s.controlContext.Err() != nil {
+				return sdk.NewError(sdk.CategoryFailedPrecondition, method, "enable was canceled or drained")
+			}
 			s.enabled = true
+			s.accepting = true
+			succeeded = true
 		case "plugin.disable":
 			if !s.enabled {
 				return sdk.NewError(sdk.CategoryFailedPrecondition, method, "instance is not enabled")
 			}
+			s.stopAdmission()
+			s.enabled = false
 			if handler, ok := s.implementation.(Disabler); ok {
 				if err := handler.OnDisable(ctx); err != nil {
 					return err
 				}
 			}
-			s.enabled = false
 		case "plugin.unload":
 			if !s.loaded || s.enabled {
 				return sdk.NewError(sdk.CategoryFailedPrecondition, method, "instance cannot be unloaded")
 			}
-			defer func() { s.unloaded = true; _ = s.conn.Close() }()
+			s.stopAdmission()
+			defer func() { s.unloaded = true }()
 			if handler, ok := s.implementation.(Unloader); ok {
 				return handler.OnUnload(ctx)
 			}
@@ -185,44 +235,89 @@ func (s *controlServer) lifecycle(ctx context.Context, method string) (*wire.Ope
 }
 
 // OnLoad 将显式 Host 交给实现了 Loader 的插件
-func (s *controlServer) OnLoad(ctx context.Context, _ *wire.LifecycleRequest) (*wire.OperationResponse, error) {
-	return s.lifecycle(ctx, "plugin.load")
+func (s *controlServer) OnLoad(ctx context.Context, request *wire.LifecycleRequest) (*wire.OperationResponse, error) {
+	return s.lifecycle(ctx, "plugin.load", request.GetInvocationId())
 }
 
 // OnEnable 调用可选启用接口
-func (s *controlServer) OnEnable(ctx context.Context, _ *wire.LifecycleRequest) (*wire.OperationResponse, error) {
-	return s.lifecycle(ctx, "plugin.enable")
+func (s *controlServer) OnEnable(ctx context.Context, request *wire.LifecycleRequest) (*wire.OperationResponse, error) {
+	return s.lifecycle(ctx, "plugin.enable", request.GetInvocationId())
 }
 
 // OnDisable 调用可选禁用接口
-func (s *controlServer) OnDisable(ctx context.Context, _ *wire.LifecycleRequest) (*wire.OperationResponse, error) {
-	return s.lifecycle(ctx, "plugin.disable")
+func (s *controlServer) OnDisable(ctx context.Context, request *wire.LifecycleRequest) (*wire.OperationResponse, error) {
+	return s.lifecycle(ctx, "plugin.disable", request.GetInvocationId())
 }
 
 // OnUnload 调用可选卸载接口并关闭反向连接
-func (s *controlServer) OnUnload(ctx context.Context, _ *wire.LifecycleRequest) (*wire.OperationResponse, error) {
-	return s.lifecycle(ctx, "plugin.unload")
+func (s *controlServer) OnUnload(ctx context.Context, request *wire.LifecycleRequest) (*wire.OperationResponse, error) {
+	return s.lifecycle(ctx, "plugin.unload", request.GetInvocationId())
 }
 
-// Drain 校验实例控制身份，实际执行跟踪接入前不返回空排空成功
+// Drain 原子关闭业务准入并查询真实执行记录，控制操作不等待用户 handler
 func (s *controlServer) Drain(ctx context.Context, request *wire.DrainRequest) (*wire.DrainResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	category := sdk.CategoryUnimplemented
-	if s.controlToken == "" || subtle.ConstantTimeCompare([]byte(request.GetControlToken()), []byte(s.controlToken)) != 1 || request.GetInstanceGeneration() != s.generation {
-		category = sdk.CategoryPermissionDenied
+	s.executionMu.Lock()
+	valid := s.controlToken != "" && subtle.ConstantTimeCompare([]byte(request.GetControlToken()), []byte(s.controlToken)) == 1 && request.GetInstanceGeneration() == s.generation
+	s.executionMu.Unlock()
+	if !valid {
+		return &wire.DrainResponse{Error: wire.ToWireError(sdk.NewError(sdk.CategoryPermissionDenied, "plugin.drain", "invalid instance control identity"))}, nil
 	}
-	return &wire.DrainResponse{Error: wire.ToWireError(sdk.NewError(category, "plugin.drain", "execution tracking is not available"))}, nil
+	if err := ctx.Err(); err != nil {
+		return &wire.DrainResponse{Error: transport.EncodeError(err, "plugin.drain")}, nil
+	}
+	s.stopAdmission()
+	return &wire.DrainResponse{ActiveInvocationIds: s.activeExecutions()}, nil
+}
+
+// validateHandlers 拒绝声明业务入口却没有实现对应接口的插件
+func (s *controlServer) validateHandlers(ctx context.Context) error {
+	response, _ := s.Describe(ctx, &emptypb.Empty{})
+	if err := transport.DecodeError(response.GetError(), nil, "plugin.describe"); err != nil {
+		return err
+	}
+	d := response.GetDescriptor_()
+	_, events := s.implementation.(EventHandler)
+	_, commands := s.implementation.(CommandHandler)
+	_, capabilities := s.implementation.(CapabilityHandler)
+	if (len(d.GetSubscriptions()) > 0 && !events) || (len(d.GetCommands()) > 0 && !commands) || (len(d.GetCapabilities()) > 0 && !capabilities) {
+		return sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.initialize", "declared business handler is missing")
+	}
+	return nil
+}
+
+// watchConnection 在宿主连接失效时撤销后台周期和后续业务准入
+func (s *controlServer) watchConnection() {
+	for {
+		state := s.conn.GetState()
+		if state == connectivity.Shutdown || state == connectivity.TransientFailure {
+			s.stopAdmission()
+			s.controlCancel()
+			return
+		}
+		if !s.conn.WaitForStateChange(s.controlContext, state) {
+			return
+		}
+	}
 }
 
 // ConfigDefaults 调用可选的业务默认配置接口
 func (s *controlServer) ConfigDefaults(ctx context.Context, _ *emptypb.Empty) (*wire.ConfigDefaultsResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	response := &wire.ConfigDefaultsResponse{}
-	err := protect(func() error {
+	err := protect("plugin.config_defaults", func() error {
 		handler, ok := s.implementation.(ConfigDefaulter)
 		if !ok {
 			return sdk.NewError(sdk.CategoryUnimplemented, "plugin.config_defaults", "configuration defaults are not implemented")
 		}
+		ids := metadata.ValueFromIncomingContext(ctx, transport.ControlInvocationHeader)
+		if len(ids) != 1 {
+			return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.config_defaults", "missing invocation ID")
+		}
+		if err := s.beginExecution(ctx, ids[0], executionControl); err != nil {
+			return err
+		}
+		defer s.finishExecution(ids[0])
 		data := handler.ConfigDefaults()
 		if data != nil {
 			response.Data = &wire.BytesValue{Value: append([]byte{}, data...)}
@@ -235,21 +330,41 @@ func (s *controlServer) ConfigDefaults(ctx context.Context, _ *emptypb.Empty) (*
 
 // ConfigValidate 调用插件纯校验接口，保留候选值存在性
 func (s *controlServer) ConfigValidate(ctx context.Context, request *wire.ConfigCandidateRequest) (*wire.OperationResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	handler, ok := s.implementation.(ConfigValidator)
 	if !ok {
 		return &wire.OperationResponse{Error: wire.ToWireError(sdk.NewError(sdk.CategoryUnimplemented, "plugin.config_validate", "configuration validation is not implemented"))}, nil
 	}
-	err := protect(func() error { return handler.ConfigValidate(ctx, configBytes(request.GetCandidate())) })
+	err := protect("plugin.config_validate", func() error {
+		if err := s.beginExecution(ctx, request.GetInvocationId(), executionControl); err != nil {
+			return err
+		}
+		defer s.finishExecution(request.InvocationId)
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		return handler.ConfigValidate(ctx, configBytes(request.GetCandidate()))
+	})
 	return &wire.OperationResponse{Error: transport.EncodeError(err, "plugin.config_validate")}, nil
 }
 
 // ConfigApply 调用插件原子配置应用接口
 func (s *controlServer) ConfigApply(ctx context.Context, request *wire.ConfigCandidateRequest) (*wire.OperationResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	handler, ok := s.implementation.(ConfigApplier)
 	if !ok {
 		return &wire.OperationResponse{Error: wire.ToWireError(sdk.NewError(sdk.CategoryUnimplemented, "plugin.config_apply", "configuration application is not implemented"))}, nil
 	}
-	err := protect(func() error { return handler.ConfigApply(ctx, configBytes(request.GetCandidate())) })
+	err := protect("plugin.config_apply", func() error {
+		if err := s.beginExecution(ctx, request.GetInvocationId(), executionControl); err != nil {
+			return err
+		}
+		defer s.finishExecution(request.InvocationId)
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		return handler.ConfigApply(ctx, configBytes(request.GetCandidate()))
+	})
 	return &wire.OperationResponse{Error: transport.EncodeError(err, "plugin.config_apply")}, nil
 }
 

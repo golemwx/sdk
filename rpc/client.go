@@ -18,51 +18,34 @@ import (
 	"github.com/hashicorp/go-hclog"
 	hplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // ClientOptions 启动单个插件实例所需的显式输入
 type ClientOptions struct {
-	// Command 尚未启动的插件命令，Env 仅填写明确允许的环境变量
-	Command *exec.Cmd
-	// ExpectedID 由宿主根据插件文件名确定的预期固定标识
-	ExpectedID string
-	// DataDir 插件自身数据目录，必须为绝对路径
-	DataDir string
-	// GrantedPermissions 宿主明确授予的权限，必须属于插件请求的权限
-	GrantedPermissions []sdk.Permission
-	// Config 插件初始化时的业务配置快照
-	Config *config.ConfigSnapshot
-	// InstanceGeneration 当前实例代次，必须非零
-	InstanceGeneration uint64
-	// AccountEpoch 当前账号运行代次
-	AccountEpoch uint64
-	// Services 已绑定当前实例的宿主实现和授权策略
-	Services HostServices
-	// Validate 在反向服务启动之前执行宿主声明与策略校验
-	Validate func(context.Context, plugin.Descriptor) error
-	// StartTimeout 整个握手至 OnLoad 的最大时长，零值使用 10 秒
-	StartTimeout time.Duration
-	// Logger 接收 go-plugin 受控日志，未提供时丢弃
-	Logger hclog.Logger
+	Command            *exec.Cmd                                      // 尚未启动的插件命令，Env 仅填写明确允许的环境变量
+	ExpectedID         string                                         // 由宿主根据插件文件名确定的预期固定标识
+	DataDir            string                                         // 插件自身数据目录，必须为绝对路径
+	GrantedPermissions []sdk.Permission                               // 宿主明确授予的权限，必须属于插件请求的权限
+	Config             *config.ConfigSnapshot                         // 插件初始化时的业务配置快照
+	InstanceGeneration uint64                                         // 当前实例代次，必须非零
+	AccountEpoch       uint64                                         // 当前账号运行代次
+	Services           HostServices                                   // 已绑定当前实例的宿主实现和授权策略
+	Validate           func(context.Context, plugin.Descriptor) error // 在反向服务启动之前执行宿主声明与策略校验
+	StartTimeout       time.Duration                                  // 整个握手至 OnLoad 的最大时长，零值使用 10 秒
+	Logger             hclog.Logger                                   // 接收 go-plugin 受控日志，未提供时丢弃
 }
 
 // Client 拥有一个插件子进程及其唯一的反向服务，必须显式 Close
 type Client struct {
-	// process go-plugin 子进程及正向连接的所有者
-	process *hplugin.Client
-	// endpoint 插件控制面和实例 Broker
-	endpoint *transport.Endpoint
-	// descriptor 已通过宿主校验的固定声明
-	descriptor plugin.Descriptor
-	// control 当前实例的反向就绪确认状态
-	control *hostControl
-	// server 唯一反向 gRPC 服务
-	server *grpc.Server
-	// serverDone 反向 Broker 服务实际退出信号，启动失败时也会关闭
-	serverDone chan struct{}
-	// closeOnce 保证重复 Close 只清理一次
-	closeOnce sync.Once
+	process    *hplugin.Client     // go-plugin 子进程及正向连接的所有者
+	endpoint   *transport.Endpoint // 插件控制面和实例 Broker
+	descriptor plugin.Descriptor   // 已通过宿主校验的固定声明
+	control    *hostControl        // 当前实例的反向就绪确认状态
+	server     *grpc.Server        // 唯一反向 gRPC 服务
+	serverDone chan struct{}       // 反向 Broker 服务实际退出信号，启动失败时也会关闭
+	closeOnce  sync.Once           // 保证重复 Close 只清理一次
 }
 
 // Start 严格按握手、描述校验、反向服务、初始化、就绪确认、OnLoad 启动实例
@@ -105,7 +88,7 @@ func Start(ctx context.Context, options ClientOptions) (_ *Client, err error) {
 	go func() {
 		protocol, connectErr := client.process.Client()
 		if connectErr == nil {
-			var value interface{}
+			var value any
 			value, connectErr = protocol.Dispense(PluginKey)
 			if connectErr == nil {
 				var ok bool
@@ -148,14 +131,14 @@ func Start(ctx context.Context, options ClientOptions) (_ *Client, err error) {
 	if _, err := rand.Read(secret[:]); err != nil {
 		return nil, err
 	}
-	client.control = &hostControl{token: hex.EncodeToString(secret[:]), ready: make(chan struct{}), validate: options.Services.ReverseReady}
+	client.control = &hostControl{token: hex.EncodeToString(secret[:]), ready: make(chan struct{}), validate: options.Services.ReverseReady, generation: options.InstanceGeneration, completed: options.Services.ExecutionCompleted}
 	client.serverDone = make(chan struct{})
 	serverReady := make(chan struct{})
 	brokerID := client.endpoint.Broker.NextId()
 	go func() {
 		defer close(client.serverDone)
 		client.endpoint.Broker.AcceptAndServe(brokerID, func(secure []grpc.ServerOption) *grpc.Server {
-			client.server = transport.Server(append(secure, grpc.UnaryInterceptor(hostInterceptor(options.Services))))
+			client.server = transport.Server(append(secure, grpc.UnaryInterceptor(hostInterceptor(options.Services, client.control))))
 			registerHost(client.server, options.Services, client.control)
 			close(serverReady)
 			return client.server
@@ -232,9 +215,12 @@ func (c *Client) Descriptor() plugin.Descriptor {
 func (c *Client) lifecycle(ctx context.Context, method string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	request := &wire.LifecycleRequest{}
+	id, err := newInvocationID()
+	if err != nil {
+		return err
+	}
+	request := &wire.LifecycleRequest{InvocationId: id}
 	var response *wire.OperationResponse
-	var err error
 	switch method {
 	case "load":
 		response, err = c.endpoint.Control.OnLoad(ctx, request)
@@ -280,6 +266,13 @@ func (c *Client) Exited() bool { return c.process.Exited() }
 
 // ConfigDefaults 读取插件业务默认配置并保留显式空字节
 func (c *Client) ConfigDefaults(ctx context.Context) ([]byte, error) {
+	id, err := newInvocationID()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	ctx = metadata.AppendToOutgoingContext(ctx, transport.ControlInvocationHeader, id)
 	response, err := c.endpoint.Control.ConfigDefaults(ctx, &emptypb.Empty{})
 	if err := transport.DecodeError(response.GetError(), err, "plugin.config_defaults"); err != nil {
 		return nil, err
@@ -292,7 +285,13 @@ func (c *Client) ConfigDefaults(ctx context.Context) ([]byte, error) {
 
 // ConfigValidate 仅校验候选配置，不改变生效配置
 func (c *Client) ConfigValidate(ctx context.Context, data []byte) error {
-	request := &wire.ConfigCandidateRequest{}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	id, err := newInvocationID()
+	if err != nil {
+		return err
+	}
+	request := &wire.ConfigCandidateRequest{InvocationId: id}
 	if data != nil {
 		request.Candidate = &wire.BytesValue{Value: data}
 	}
@@ -302,7 +301,13 @@ func (c *Client) ConfigValidate(ctx context.Context, data []byte) error {
 
 // ConfigApply 原子应用插件业务候选配置
 func (c *Client) ConfigApply(ctx context.Context, data []byte) error {
-	request := &wire.ConfigCandidateRequest{}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	id, err := newInvocationID()
+	if err != nil {
+		return err
+	}
+	request := &wire.ConfigCandidateRequest{InvocationId: id}
 	if data != nil {
 		request.Candidate = &wire.BytesValue{Value: data}
 	}

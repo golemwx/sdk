@@ -212,366 +212,241 @@ enum ApplyStatus {
 
 // StringList 保留缺失与显式空列表区别的字符串集合
 message StringList {
-  // values 显式存在的字符串集合，允许空列表
-  repeated string values = 1;
+  repeated string values = 1; // 显式存在的字符串集合，允许空列表
 }
 
 // BytesValue 保留缺失与显式空字节区别的字节载荷
 message BytesValue {
-  // value 显式存在的字节载荷，允许零长度字节
-  bytes value = 1;
+  bytes value = 1; // 显式存在的字节载荷，允许零长度字节
 }
 
 // Error 跨进程业务错误
 message Error {
-  // category 机器判断的错误类别，不通过匹配 Reason 判断
-  Category category = 1;
-  // operation 发生错误的业务操作名
-  string operation = 2;
-  // invocation_id 关联执行的唯一标识
-  string invocation_id = 3;
-  // outcome 目标写入副作用结果，只读操作使用 NotApplicable
-  WriteOutcome outcome = 4;
-  // reason 供人阅读的脱敏错误说明，不用于机器分支判断
-  string reason = 5;
-  // retry_after 建议重试等待时长，不构成自动重试写操作的授权
-  google.protobuf.Duration retry_after = 6;
+  Category category = 1; // 机器判断的错误类别，不通过匹配 Reason 判断
+  string operation = 2; // 发生错误的业务操作名
+  string invocation_id = 3; // 关联执行的唯一标识
+  WriteOutcome outcome = 4; // 目标写入副作用结果，只读操作使用 NotApplicable
+  string reason = 5; // 供人阅读的脱敏错误说明，不用于机器分支判断
+  google.protobuf.Duration retry_after = 6; // 建议重试等待时长，不构成自动重试写操作的授权
 }
 
 // PageRequest 有界分页请求
 message PageRequest {
-  // limit 每页条数，0 使用默认 100，最大 1000，负数无效
-  int32 limit = 1;
-  // cursor 不透明分页游标，空字符串从头开始，续页时原样回传
-  string cursor = 2;
+  int32 limit = 1; // 每页条数，0 使用默认 100，最大 1000，负数无效
+  string cursor = 2; // 不透明分页游标，空字符串从头开始，续页时原样回传
 }
 
 // Account 当前账号业务快照
 message Account {
-  // username 微信 username，不另建用户标识
-  string username = 1;
-  // nickname 昵称，缺失与显式空字符串可区分
-  optional string nickname = 2;
-  // online 账号当前是否在线
-  bool online = 3;
-  // status 账号业务状态
-  AccountStatus status = 4;
-  // updated_at 资料快照更新时间，必填并按 UTC 传递
-  google.protobuf.Timestamp updated_at = 5;
+  string username = 1; // 微信 username，不另建用户标识
+  optional string nickname = 2; // 昵称，缺失与显式空字符串可区分
+  bool online = 3; // 账号当前是否在线
+  AccountStatus status = 4; // 账号业务状态
+  google.protobuf.Timestamp updated_at = 5; // 资料快照更新时间，必填并按 UTC 传递
 }
 
 // Conversation 账号内的业务会话
 message Conversation {
-  // account_username 所属账号的微信 username
-  string account_username = 1;
-  // kind 业务种类，未知枚举归一为对应零值
-  ConversationKind kind = 2;
-  // id 私聊对端或群的微信 username，不能使用群成员 ID 代替群会话
-  string id = 3;
+  string account_username = 1; // 所属账号的微信 username
+  ConversationKind kind = 2; // 业务种类，未知枚举归一为对应零值
+  string id = 3; // 私聊对端或群的微信 username，不能使用群成员 ID 代替群会话
 }
 
 // Actor 实际发言者
 message Actor {
-  // username 微信 username，不另建用户标识
-  string username = 1;
-  // display_name 展示名称，缺失与显式空字符串可区分
-  optional string display_name = 2;
-  // resolution 实际发言者解析状态
-  ActorResolution resolution = 3;
+  string username = 1; // 微信 username，不另建用户标识
+  optional string display_name = 2; // 展示名称，缺失与显式空字符串可区分
+  ActorResolution resolution = 3; // 实际发言者解析状态
 }
 
 // Contact 联系人业务快照
 message Contact {
-  // username 微信 username，不另建用户标识
-  string username = 1;
-  // kind 业务种类，未知枚举归一为对应零值
-  ContactKind kind = 2;
-  // nickname 昵称，缺失与显式空字符串可区分
-  optional string nickname = 3;
-  // remark 备注，缺失与显式空字符串可区分
-  optional string remark = 4;
-  // avatar_url 头像地址，缺失与显式空字符串可区分
-  optional string avatar_url = 5;
-  // alias 微信号别名，缺失与显式空字符串可区分
-  optional string alias = 6;
-  // updated_at 资料快照更新时间，必填并按 UTC 传递
-  google.protobuf.Timestamp updated_at = 7;
-  // completeness 对象或查询范围的资料完整性，与分页是否结束无关
-  Completeness completeness = 8;
+  string username = 1; // 微信 username，不另建用户标识
+  ContactKind kind = 2; // 业务种类，未知枚举归一为对应零值
+  optional string nickname = 3; // 昵称，缺失与显式空字符串可区分
+  optional string remark = 4; // 备注，缺失与显式空字符串可区分
+  optional string avatar_url = 5; // 头像地址，缺失与显式空字符串可区分
+  optional string alias = 6; // 微信号别名，缺失与显式空字符串可区分
+  google.protobuf.Timestamp updated_at = 7; // 资料快照更新时间，必填并按 UTC 传递
+  Completeness completeness = 8; // 对象或查询范围的资料完整性，与分页是否结束无关
 }
 
 // Room 群业务快照
 message Room {
-  // username 微信 username，不另建用户标识
-  string username = 1;
-  // name 群名称，缺失与显式空字符串可区分
-  optional string name = 2;
-  // remark 备注，缺失与显式空字符串可区分
-  optional string remark = 3;
-  // owner_username 群主的微信 username，未知时缺失
-  optional string owner_username = 4;
-  // announcement 群公告，缺失与显式空字符串可区分
-  optional string announcement = 5;
-  // announcement_version 修改群公告时原样回传的并发前置版本，未知时缺失
-  optional int32 announcement_version = 6;
-  // member_count 群成员数量，未知时缺失，显式 0 与缺失可区分
-  optional int32 member_count = 7;
-  // updated_at 资料快照更新时间，必填并按 UTC 传递
-  google.protobuf.Timestamp updated_at = 8;
-  // completeness 对象或查询范围的资料完整性，与分页是否结束无关
-  Completeness completeness = 9;
+  string username = 1; // 微信 username，不另建用户标识
+  optional string name = 2; // 群名称，缺失与显式空字符串可区分
+  optional string remark = 3; // 备注，缺失与显式空字符串可区分
+  optional string owner_username = 4; // 群主的微信 username，未知时缺失
+  optional string announcement = 5; // 群公告，缺失与显式空字符串可区分
+  optional int32 announcement_version = 6; // 修改群公告时原样回传的并发前置版本，未知时缺失
+  optional int32 member_count = 7; // 群成员数量，未知时缺失，显式 0 与缺失可区分
+  google.protobuf.Timestamp updated_at = 8; // 资料快照更新时间，必填并按 UTC 传递
+  Completeness completeness = 9; // 对象或查询范围的资料完整性，与分页是否结束无关
 }
 
 // Member 群成员业务快照
 message Member {
-  // room_username 群的微信 username
-  string room_username = 1;
-  // user_username 群成员的微信 username
-  string user_username = 2;
-  // display_name 展示名称，缺失与显式空字符串可区分
-  optional string display_name = 3;
-  // nickname 昵称，缺失与显式空字符串可区分
-  optional string nickname = 4;
-  // role 已确认的群成员角色，未知角色不得用于授予管理权限
-  MemberRole role = 5;
-  // joined_at 入群时间，未知时缺失，有值时按 UTC 传递
-  google.protobuf.Timestamp joined_at = 6;
-  // completeness 对象或查询范围的资料完整性，与分页是否结束无关
-  Completeness completeness = 7;
+  string room_username = 1; // 群的微信 username
+  string user_username = 2; // 群成员的微信 username
+  optional string display_name = 3; // 展示名称，缺失与显式空字符串可区分
+  optional string nickname = 4; // 昵称，缺失与显式空字符串可区分
+  MemberRole role = 5; // 已确认的群成员角色，未知角色不得用于授予管理权限
+  google.protobuf.Timestamp joined_at = 6; // 入群时间，未知时缺失，有值时按 UTC 传递
+  Completeness completeness = 7; // 对象或查询范围的资料完整性，与分页是否结束无关
 }
 
 // Quote 引用消息摘要
 message Quote {
-  // message_id 微信消息 ID，以字符串原样保存，避免大整数精度丢失
-  string message_id = 1;
-  // actor_username 实际发言者的微信 username
-  string actor_username = 2;
-  // digest 引用消息的展示摘要
-  string digest = 3;
+  string message_id = 1; // 微信消息 ID，以字符串原样保存，避免大整数精度丢失
+  string actor_username = 2; // 实际发言者的微信 username
+  string digest = 3; // 引用消息的展示摘要
 }
 
 // Message 归一化业务消息
 message Message {
-  // id 微信消息 ID，以字符串原样保存，避免大整数精度丢失
-  string id = 1;
-  // conversation 所属或目标业务会话，群内所有成员共用整群会话
-  Conversation conversation = 2;
-  // actor 实际发言者，无法确定或没有发言者时为空
-  Actor actor = 3;
-  // actor_resolution 实际发言者解析结果，解析失败时不以群身份代替
-  ActorResolution actor_resolution = 4;
-  // direction 消息的入站或出站方向
-  Direction direction = 5;
-  // kind 业务种类，未知枚举归一为对应零值
-  MessageKind kind = 6;
-  // created_at 消息创建时间，必填并按 UTC 传递
-  google.protobuf.Timestamp created_at = 7;
-  // text 文本内容，缺失与显式空字符串可区分
-  optional string text = 8;
-  // mentions 被提及者的微信 username 列表，缺失与显式空集合可区分
-  StringList mentions = 9;
-  // quote 引用消息摘要，缺失时为空
-  Quote quote = 10;
-  // media 宿主管理的媒体引用
-  MediaRef media = 11;
+  string id = 1; // 微信消息 ID，以字符串原样保存，避免大整数精度丢失
+  Conversation conversation = 2; // 所属或目标业务会话，群内所有成员共用整群会话
+  Actor actor = 3; // 实际发言者，无法确定或没有发言者时为空
+  ActorResolution actor_resolution = 4; // 实际发言者解析结果，解析失败时不以群身份代替
+  Direction direction = 5; // 消息的入站或出站方向
+  MessageKind kind = 6; // 业务种类，未知枚举归一为对应零值
+  google.protobuf.Timestamp created_at = 7; // 消息创建时间，必填并按 UTC 传递
+  optional string text = 8; // 文本内容，缺失与显式空字符串可区分
+  StringList mentions = 9; // 被提及者的微信 username 列表，缺失与显式空集合可区分
+  Quote quote = 10; // 引用消息摘要，缺失时为空
+  MediaRef media = 11; // 宿主管理的媒体引用
 }
 
 // SendReceipt 消息发送结果
 message SendReceipt {
-  // message_id 微信消息 ID，以字符串原样保存，避免大整数精度丢失
-  string message_id = 1;
-  // conversation 所属或目标业务会话，群内所有成员共用整群会话
-  Conversation conversation = 2;
-  // sent_at 消息发送时间，必填并按 UTC 传递
-  google.protobuf.Timestamp sent_at = 3;
-  // outcome 目标写入副作用结果，只读操作使用 NotApplicable
-  WriteOutcome outcome = 4;
-  // revoke_ref 由宿主签发的撤回引用，无法提供时为空
-  RevokeRef revoke_ref = 5;
+  string message_id = 1; // 微信消息 ID，以字符串原样保存，避免大整数精度丢失
+  Conversation conversation = 2; // 所属或目标业务会话，群内所有成员共用整群会话
+  google.protobuf.Timestamp sent_at = 3; // 消息发送时间，必填并按 UTC 传递
+  WriteOutcome outcome = 4; // 目标写入副作用结果，只读操作使用 NotApplicable
+  RevokeRef revoke_ref = 5; // 由宿主签发的撤回引用，无法提供时为空
 }
 
 // Change 归一化资料变更
 message Change {
-  // domain 资料变更所属业务域
-  ChangeDomain domain = 1;
-  // action 资料创建、更新或删除动作
-  ChangeAction action = 2;
-  // subject_id 本项操作或资料变更的目标业务标识
-  string subject_id = 3;
-  // parent_id 父级业务标识，群成员变更时为群 username
-  optional string parent_id = 4;
-  // changed_fields 实际变更的 SDK 字段路径，更新时非空，缺失与显式空集合可区分
-  StringList changed_fields = 5;
-  // contact 变更或查询对应的联系人业务快照
-  Contact contact = 6;
-  // room 变更或查询对应的群业务快照
-  Room room = 7;
-  // member 变更或查询对应的群成员业务快照
-  Member member = 8;
-  // account 变更或查询对应的当前账号业务快照
-  Account account = 9;
+  ChangeDomain domain = 1; // 资料变更所属业务域
+  ChangeAction action = 2; // 资料创建、更新或删除动作
+  string subject_id = 3; // 本项操作或资料变更的目标业务标识
+  optional string parent_id = 4; // 父级业务标识，群成员变更时为群 username
+  StringList changed_fields = 5; // 实际变更的 SDK 字段路径，更新时非空，缺失与显式空集合可区分
+  Contact contact = 6; // 变更或查询对应的联系人业务快照
+  Room room = 7; // 变更或查询对应的群业务快照
+  Member member = 8; // 变更或查询对应的群成员业务快照
+  Account account = 9; // 变更或查询对应的当前账号业务快照
 }
 
 // Lease 联系人或整群的会话租约
 message Lease {
-  // id 由宿主签发的会话租约标识
-  string id = 1;
-  // conversation 所属或目标业务会话，群内所有成员共用整群会话
-  Conversation conversation = 2;
-  // topics 租约覆盖的事件主题，作用于联系人或整个群
-  repeated string topics = 3;
-  // expires_at 会话租约到期时间，到期后不再持有会话
-  google.protobuf.Timestamp expires_at = 4;
+  string id = 1; // 由宿主签发的会话租约标识
+  Conversation conversation = 2; // 所属或目标业务会话，群内所有成员共用整群会话
+  repeated string topics = 3; // 租约覆盖的事件主题，作用于联系人或整个群
+  google.protobuf.Timestamp expires_at = 4; // 会话租约到期时间，到期后不再持有会话
 }
 
 // Event 投递给插件的不可变事件
 message Event {
-  // topic 订阅或投递的事件主题
-  string topic = 1;
-  // account_username 所属账号的微信 username
-  string account_username = 2;
-  // message 关联的归一化业务消息
-  Message message = 3;
-  // change 关联的资料变更，非资料变更事件时为空
-  Change change = 4;
-  // lease 关联的会话租约
-  Lease lease = 5;
-  // occurred_at 事件发生时间，必填并按 UTC 传递
-  google.protobuf.Timestamp occurred_at = 6;
+  string topic = 1; // 订阅或投递的事件主题
+  string account_username = 2; // 所属账号的微信 username
+  Message message = 3; // 关联的归一化业务消息
+  Change change = 4; // 关联的资料变更，非资料变更事件时为空
+  Lease lease = 5; // 关联的会话租约
+  google.protobuf.Timestamp occurred_at = 6; // 事件发生时间，必填并按 UTC 传递
 }
 
 // EventResult 事件消费结果
 message EventResult {
-  // consumed 普通响应链是否已消费事件，观察者结果不影响路由
-  bool consumed = 1;
+  bool consumed = 1; // 普通响应链是否已消费事件，观察者结果不影响路由
 }
 
 // Command 已完成词法、权限与参数校验的命令
 message Command {
-  // path 由各级命令名称组成的路径
-  repeated string path = 1;
-  // args 已完成校验的命名参数值
-  map<string, string> args = 2;
-  // positional 按输入顺序保留的位置参数
-  repeated string positional = 3;
-  // actor 实际发言者，无法确定或没有发言者时为空
-  Actor actor = 4;
-  // message 关联的归一化业务消息
-  Message message = 5;
-  // raw 原始命令文本
-  string raw = 6;
+  repeated string path = 1; // 由各级命令名称组成的路径
+  map<string, string> args = 2; // 已完成校验的命名参数值
+  repeated string positional = 3; // 按输入顺序保留的位置参数
+  Actor actor = 4; // 实际发言者，无法确定或没有发言者时为空
+  Message message = 5; // 关联的归一化业务消息
+  string raw = 6; // 原始命令文本
 }
 
 // CommandResult 命令执行结果
 message CommandResult {
-  // replied 命令处理函数是否已经自行回复
-  bool replied = 1;
-  // text 文本内容，缺失与显式空字符串可区分
-  optional string text = 2;
-  // media 宿主管理的媒体引用
-  MediaRef media = 3;
+  bool replied = 1; // 命令处理函数是否已经自行回复
+  optional string text = 2; // 文本内容，缺失与显式空字符串可区分
+  MediaRef media = 3; // 宿主管理的媒体引用
 }
 
 // CallRequest 按能力名发起的跨插件调用请求
 message CallRequest {
-  // capability_name 目标能力名，由宿主选择提供者，不指定插件 ID
-  string capability_name = 1;
-  // content_type 载荷内容类型
-  string content_type = 2;
-  // payload 内联业务载荷，缺失与显式空字节可区分
-  BytesValue payload = 3;
-  // actor 实际发言者，无法确定或没有发言者时为空
-  Actor actor = 4;
-  // conversation 所属或目标业务会话，群内所有成员共用整群会话
-  Conversation conversation = 5;
+  string capability_name = 1; // 目标能力名，由宿主选择提供者，不指定插件 ID
+  string content_type = 2; // 载荷内容类型
+  BytesValue payload = 3; // 内联业务载荷，缺失与显式空字节可区分
+  Actor actor = 4; // 实际发言者，无法确定或没有发言者时为空
+  Conversation conversation = 5; // 所属或目标业务会话，群内所有成员共用整群会话
 }
 
 // CallResult 跨插件能力调用结果
 message CallResult {
-  // content_type 载荷内容类型
-  string content_type = 1;
-  // payload 内联结果载荷，与 media 互斥，缺失与显式空字节可区分
-  BytesValue payload = 2;
-  // media 宿主管理的结果媒体引用，与 payload 互斥
-  MediaRef media = 3;
+  string content_type = 1; // 载荷内容类型
+  BytesValue payload = 2; // 内联结果载荷，与 media 互斥，缺失与显式空字节可区分
+  MediaRef media = 3; // 宿主管理的结果媒体引用，与 payload 互斥
 }
 
 // ConfigSnapshot 插件业务配置快照
 message ConfigSnapshot {
-  // revision 已保存配置的修订号，不能据此认定配置已生效
-  uint64 revision = 1;
-  // active_revision 当前已生效配置的修订号
-  uint64 active_revision = 2;
-  // data 插件自身业务配置字节，缺失与显式空字节可区分
-  BytesValue data = 3;
-  // apply_status 已保存配置的应用状态
-  ApplyStatus apply_status = 4;
+  uint64 revision = 1; // 已保存配置的修订号，不能据此认定配置已生效
+  uint64 active_revision = 2; // 当前已生效配置的修订号
+  BytesValue data = 3; // 插件自身业务配置字节，缺失与显式空字节可区分
+  ApplyStatus apply_status = 4; // 已保存配置的应用状态
 }
 
 // ConfigSaveResult 配置保存接受结果，不代表已经应用
 message ConfigSaveResult {
-  // revision 已保存配置的修订号，不能据此认定配置已生效
-  uint64 revision = 1;
+  uint64 revision = 1; // 已保存配置的修订号，不能据此认定配置已生效
 }
 
 // ContactPage 联系人分页结果
 message ContactPage {
-  // items 当前页联系人，成功的空结果使用显式空集合
-  repeated Contact items = 1;
-  // next_cursor 下一页不透明游标，空字符串说明没有更多结果
-  string next_cursor = 2;
-  // total 当前授权范围的总条数，-1 代表未知
-  int64 total = 3;
-  // completeness 对象或查询范围的资料完整性，与分页是否结束无关
-  Completeness completeness = 4;
+  repeated Contact items = 1; // 当前页联系人，成功的空结果使用显式空集合
+  string next_cursor = 2; // 下一页不透明游标，空字符串说明没有更多结果
+  int64 total = 3; // 当前授权范围的总条数，-1 代表未知
+  Completeness completeness = 4; // 对象或查询范围的资料完整性，与分页是否结束无关
 }
 
 // MemberPage 群成员分页结果
 message MemberPage {
-  // items 当前页群成员，成功的空结果使用显式空集合
-  repeated Member items = 1;
-  // next_cursor 下一页不透明游标，空字符串说明没有更多结果
-  string next_cursor = 2;
-  // total 当前授权范围的总条数，-1 代表未知
-  int64 total = 3;
-  // completeness 对象或查询范围的资料完整性，与分页是否结束无关
-  Completeness completeness = 4;
+  repeated Member items = 1; // 当前页群成员，成功的空结果使用显式空集合
+  string next_cursor = 2; // 下一页不透明游标，空字符串说明没有更多结果
+  int64 total = 3; // 当前授权范围的总条数，-1 代表未知
+  Completeness completeness = 4; // 对象或查询范围的资料完整性，与分页是否结束无关
 }
 
 // ContactBatchItem 单个联系人刷新结果
 message ContactBatchItem {
-  // subject_id 本项操作或资料变更的目标业务标识
-  string subject_id = 1;
-  // value 单项业务值，仅在 Error 为空时读取
-  Contact value = 2;
-  // outcome 目标写入副作用结果，只读操作使用 NotApplicable
-  WriteOutcome outcome = 3;
-  // error 业务错误，成功时为空；部分成功仍保留逐项结果
-  Error error = 4;
+  string subject_id = 1; // 本项操作或资料变更的目标业务标识
+  Contact value = 2; // 单项业务值，仅在 Error 为空时读取
+  WriteOutcome outcome = 3; // 目标写入副作用结果，只读操作使用 NotApplicable
+  Error error = 4; // 业务错误，成功时为空；部分成功仍保留逐项结果
 }
 
 // ContactBatchResult 按输入顺序保留逐项状态的联系人批量结果
 message ContactBatchResult {
-  // items 按输入顺序保留的逐项联系人刷新结果
-  repeated ContactBatchItem items = 1;
+  repeated ContactBatchItem items = 1; // 按输入顺序保留的逐项联系人刷新结果
 }
 
 // RefreshStageResult 单个上游只读刷新阶段的结果
 message RefreshStageResult {
-  // name 上游只读刷新阶段名称
-  string name = 1;
-  // outcome 目标写入副作用结果，只读操作使用 NotApplicable
-  WriteOutcome outcome = 2;
-  // error 业务错误，成功时为空；部分成功仍保留逐项结果
-  Error error = 3;
+  string name = 1; // 上游只读刷新阶段名称
+  WriteOutcome outcome = 2; // 目标写入副作用结果，只读操作使用 NotApplicable
+  Error error = 3; // 业务错误，成功时为空；部分成功仍保留逐项结果
 }
 
 // ChatroomRefreshResult 群资料及成员的分阶段刷新结果
 message ChatroomRefreshResult {
-  // room 变更或查询对应的群业务快照
-  Room room = 1;
-  // members 群成员分页结果
-  MemberPage members = 2;
-  // stages 各上游只读刷新阶段的独立结果
-  repeated RefreshStageResult stages = 3;
+  Room room = 1; // 变更或查询对应的群业务快照
+  MemberPage members = 2; // 群成员分页结果
+  repeated RefreshStageResult stages = 3; // 各上游只读刷新阶段的独立结果
 }

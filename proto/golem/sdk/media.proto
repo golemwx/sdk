@@ -43,36 +43,26 @@ enum VoiceEncoding {
 
 // MediaRef 宿主管理的媒体引用，不包含私有协议材料
 message MediaRef {
-  // token 绑定账号、插件实例和资源范围的不透明媒体引用凭据
-  string token = 1;
-  // kind 业务种类，未知枚举归一为对应零值
-  MediaKind kind = 2;
-  // file_name 展示用文件名及扩展名，不得用于拼接宿主路径
-  string file_name = 3;
-  // size_bytes 媒体字节数，-1 代表未知
-  int64 size_bytes = 4;
-  // expires_at 媒体引用到期时间，失效后使用返回 FailedPrecondition
-  google.protobuf.Timestamp expires_at = 5;
+  string token = 1; // 绑定账号、插件实例和资源范围的不透明媒体引用凭据
+  MediaKind kind = 2; // 业务种类，未知枚举归一为对应零值
+  string file_name = 3; // 展示用文件名及扩展名，不得用于拼接宿主路径
+  int64 size_bytes = 4; // 媒体字节数，-1 代表未知
+  google.protobuf.Timestamp expires_at = 5; // 媒体引用到期时间，失效后使用返回 FailedPrecondition
 }
 
 // RevokeRef 宿主管理的消息撤回引用
 message RevokeRef {
-  // token 绑定账号、插件实例和目标消息的不透明撤回引用凭据
-  string token = 1;
-  // expires_at 撤回引用到期时间，失效后使用返回 FailedPrecondition
-  google.protobuf.Timestamp expires_at = 2;
+  string token = 1; // 绑定账号、插件实例和目标消息的不透明撤回引用凭据
+  google.protobuf.Timestamp expires_at = 2; // 撤回引用到期时间，失效后使用返回 FailedPrecondition
 }
 
 // VoiceOptions 业务音频参数
 message VoiceOptions {
-  // duration 音频时长，必须为正，精确到毫秒，毫秒数不得超过 int32 上限
-  google.protobuf.Duration duration = 1;
-  // encoding 公共音频编码格式
-  VoiceEncoding encoding = 2;
+  google.protobuf.Duration duration = 1; // 音频时长，必须为正，精确到毫秒，毫秒数不得超过 int32 上限
+  VoiceEncoding encoding = 2; // 公共音频编码格式
 }
 
 // MediaChunk 媒体下载流的单个字节分块
 message MediaChunk {
-  // data 媒体下载字节分块，单块不超过 MaxMediaChunkSize
-  bytes data = 1;
+  bytes data = 1; // 媒体下载字节分块，单块不超过 MaxMediaChunkSize
 }

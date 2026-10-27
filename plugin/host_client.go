@@ -33,19 +33,18 @@ func newRemoteHost(conn *grpc.ClientConn, dataDir string) *Host {
 
 // remoteMessages 复用反向连接的消息客户端
 type remoteMessages struct {
-	// client 消息服务传输入口
-	client wire.HostMessagesServiceClient
+	client wire.HostMessagesServiceClient // 消息服务传输入口
 }
 
 // SendText 保留调用上下文并发送文本
 func (c *remoteMessages) SendText(ctx context.Context, conversation sdk.Conversation, text string, mentions []string) (*message.SendReceipt, error) {
-	response, err := c.client.SendText(ctx, &wire.SendTextRequest{Conversation: wire.ToWireConversation(conversation), Text: text, Mentions: mentions})
+	response, err := c.client.SendText(ctx, &wire.SendTextRequest{Invocation: transport.InvocationFromContext(ctx), Conversation: wire.ToWireConversation(conversation), Text: text, Mentions: mentions})
 	return receiptResult(response, err, "messages.send_text")
 }
 
 // Reply 保留调用上下文并发送引用回复
 func (c *remoteMessages) Reply(ctx context.Context, conversation sdk.Conversation, quote message.Quote, text string) (*message.SendReceipt, error) {
-	response, err := c.client.Reply(ctx, &wire.ReplyRequest{Conversation: wire.ToWireConversation(conversation), Quote: &wire.Quote{MessageId: quote.MessageID, ActorUsername: quote.ActorUsername, Digest: quote.Digest}, Text: text})
+	response, err := c.client.Reply(ctx, &wire.ReplyRequest{Invocation: transport.InvocationFromContext(ctx), Conversation: wire.ToWireConversation(conversation), Quote: &wire.Quote{MessageId: quote.MessageID, ActorUsername: quote.ActorUsername, Digest: quote.Digest}, Text: text})
 	return receiptResult(response, err, "messages.reply")
 }
 
@@ -64,7 +63,7 @@ func (c *remoteMessages) Revoke(ctx context.Context, ref sdk.RevokeRef) error {
 	if err != nil {
 		return err
 	}
-	response, err := c.client.Revoke(ctx, &wire.RevokeRequest{Ref: value})
+	response, err := c.client.Revoke(ctx, &wire.RevokeRequest{Invocation: transport.InvocationFromContext(ctx), Ref: value})
 	return transport.DecodeError(response.GetError(), err, "messages.revoke")
 }
 
@@ -80,13 +79,12 @@ func (c *remoteMessages) Download(ctx context.Context, media sdk.MediaRef) (io.R
 
 // remoteContacts 复用反向连接的联系人客户端
 type remoteContacts struct {
-	// client 联系人传输入口
-	client wire.HostContactsServiceClient
+	client wire.HostContactsServiceClient // 联系人传输入口
 }
 
 // Get 查询指定本地联系人
 func (c *remoteContacts) Get(ctx context.Context, username string) (*contact.Contact, error) {
-	response, err := c.client.Get(ctx, &wire.ContactGetRequest{Username: username})
+	response, err := c.client.Get(ctx, &wire.ContactGetRequest{Invocation: transport.InvocationFromContext(ctx), Username: username})
 	if err := transport.ResultError(response.GetContact() != nil, response.GetError(), err, "contacts.get"); err != nil {
 		return nil, err
 	}
@@ -99,7 +97,7 @@ func (c *remoteContacts) Find(ctx context.Context, query string, page sdk.PageRe
 	if err != nil {
 		return nil, err
 	}
-	response, err := c.client.Find(ctx, &wire.ContactFindRequest{Query: query, Page: value})
+	response, err := c.client.Find(ctx, &wire.ContactFindRequest{Invocation: transport.InvocationFromContext(ctx), Query: query, Page: value})
 	result, decodeErr := wire.FromWireContactPage(response.GetPage())
 	return result, firstError(transport.ResultError(response.GetPage() != nil, response.GetError(), err, "contacts.find"), decodeErr)
 }
@@ -110,27 +108,26 @@ func (c *remoteContacts) List(ctx context.Context, page sdk.PageRequest) (*sdk.P
 	if err != nil {
 		return nil, err
 	}
-	response, err := c.client.List(ctx, &wire.ContactListRequest{Page: value})
+	response, err := c.client.List(ctx, &wire.ContactListRequest{Invocation: transport.InvocationFromContext(ctx), Page: value})
 	result, decodeErr := wire.FromWireContactPage(response.GetPage())
 	return result, firstError(transport.ResultError(response.GetPage() != nil, response.GetError(), err, "contacts.list"), decodeErr)
 }
 
 // Refresh 保留部分成功时的逐项结果及整体错误
 func (c *remoteContacts) Refresh(ctx context.Context, usernames []string) (*sdk.BatchResult[contact.Contact], error) {
-	response, err := c.client.Refresh(ctx, &wire.ContactRefreshRequest{Usernames: usernames})
+	response, err := c.client.Refresh(ctx, &wire.ContactRefreshRequest{Invocation: transport.InvocationFromContext(ctx), Usernames: usernames})
 	result, decodeErr := wire.FromWireContactBatchResult(response.GetResult())
 	return result, firstError(transport.ResultError(response.GetResult() != nil, response.GetError(), err, "contacts.refresh"), decodeErr)
 }
 
 // remoteChatrooms 复用反向连接的群客户端
 type remoteChatrooms struct {
-	// client 群服务传输入口
-	client wire.HostChatroomsServiceClient
+	client wire.HostChatroomsServiceClient // 群服务传输入口
 }
 
 // Get 查询本地群资料
 func (c *remoteChatrooms) Get(ctx context.Context, username string) (*chatroom.Room, error) {
-	response, err := c.client.Get(ctx, &wire.ChatroomGetRequest{RoomUsername: username})
+	response, err := c.client.Get(ctx, &wire.ChatroomGetRequest{Invocation: transport.InvocationFromContext(ctx), RoomUsername: username})
 	if err := transport.ResultError(response.GetRoom() != nil, response.GetError(), err, "chatrooms.get"); err != nil {
 		return nil, err
 	}
@@ -143,14 +140,14 @@ func (c *remoteChatrooms) Members(ctx context.Context, username string, page sdk
 	if err != nil {
 		return nil, err
 	}
-	response, err := c.client.Members(ctx, &wire.ChatroomMembersRequest{RoomUsername: username, Page: value})
+	response, err := c.client.Members(ctx, &wire.ChatroomMembersRequest{Invocation: transport.InvocationFromContext(ctx), RoomUsername: username, Page: value})
 	result, decodeErr := wire.FromWireMemberPage(response.GetPage())
 	return result, firstError(transport.ResultError(response.GetPage() != nil, response.GetError(), err, "chatrooms.members"), decodeErr)
 }
 
 // Member 查询指定群成员
 func (c *remoteChatrooms) Member(ctx context.Context, room, user string) (*chatroom.Member, error) {
-	response, err := c.client.Member(ctx, &wire.ChatroomMemberRequest{RoomUsername: room, UserUsername: user})
+	response, err := c.client.Member(ctx, &wire.ChatroomMemberRequest{Invocation: transport.InvocationFromContext(ctx), RoomUsername: room, UserUsername: user})
 	if err := transport.ResultError(response.GetMember() != nil, response.GetError(), err, "chatrooms.member"); err != nil {
 		return nil, err
 	}
@@ -159,20 +156,19 @@ func (c *remoteChatrooms) Member(ctx context.Context, room, user string) (*chatr
 
 // Refresh 保留分阶段刷新结果及整体错误
 func (c *remoteChatrooms) Refresh(ctx context.Context, username string) (*chatroom.ChatroomRefreshResult, error) {
-	response, err := c.client.Refresh(ctx, &wire.ChatroomRefreshRequest{RoomUsername: username})
+	response, err := c.client.Refresh(ctx, &wire.ChatroomRefreshRequest{Invocation: transport.InvocationFromContext(ctx), RoomUsername: username})
 	result, decodeErr := wire.FromWireChatroomRefreshResult(response.GetResult())
 	return result, firstError(transport.ResultError(response.GetResult() != nil, response.GetError(), err, "chatrooms.refresh"), decodeErr)
 }
 
 // remoteSessions 复用反向连接的会话租约客户端
 type remoteSessions struct {
-	// client 会话租约传输入口
-	client wire.HostSessionsServiceClient
+	client wire.HostSessionsServiceClient // 会话租约传输入口
 }
 
 // Acquire 为联系人或整群申请租约
 func (c *remoteSessions) Acquire(ctx context.Context, conversation sdk.Conversation, topics []string) (*session.Lease, error) {
-	response, err := c.client.Acquire(ctx, &wire.SessionAcquireRequest{Conversation: wire.ToWireConversation(conversation), Topics: topics})
+	response, err := c.client.Acquire(ctx, &wire.SessionAcquireRequest{Invocation: transport.InvocationFromContext(ctx), Conversation: wire.ToWireConversation(conversation), Topics: topics})
 	if err := transport.ResultError(response.GetLease() != nil, response.GetError(), err, "sessions.acquire"); err != nil {
 		return nil, err
 	}
@@ -181,7 +177,7 @@ func (c *remoteSessions) Acquire(ctx context.Context, conversation sdk.Conversat
 
 // Renew 续期当前实例持有的租约
 func (c *remoteSessions) Renew(ctx context.Context, id string, ttl time.Duration) (*session.Lease, error) {
-	response, err := c.client.Renew(ctx, &wire.SessionRenewRequest{LeaseId: id, Ttl: durationpb.New(ttl)})
+	response, err := c.client.Renew(ctx, &wire.SessionRenewRequest{Invocation: transport.InvocationFromContext(ctx), LeaseId: id, Ttl: durationpb.New(ttl)})
 	if err := transport.ResultError(response.GetLease() != nil, response.GetError(), err, "sessions.renew"); err != nil {
 		return nil, err
 	}
@@ -190,19 +186,18 @@ func (c *remoteSessions) Renew(ctx context.Context, id string, ttl time.Duration
 
 // Release 释放当前实例持有的租约
 func (c *remoteSessions) Release(ctx context.Context, id string) error {
-	response, err := c.client.Release(ctx, &wire.SessionReleaseRequest{LeaseId: id})
+	response, err := c.client.Release(ctx, &wire.SessionReleaseRequest{Invocation: transport.InvocationFromContext(ctx), LeaseId: id})
 	return transport.DecodeError(response.GetError(), err, "sessions.release")
 }
 
 // remoteCaller 复用反向连接的能力调用客户端
 type remoteCaller struct {
-	// client 能力调用传输入口
-	client wire.HostCallerServiceClient
+	client wire.HostCallerServiceClient // 能力调用传输入口
 }
 
 // Call 按能力名调用，不接受插件目标身份
 func (c *remoteCaller) Call(ctx context.Context, request capability.CallRequest) (*capability.CallResult, error) {
-	response, err := c.client.Call(ctx, &wire.HostCallRequest{Request: wire.ToWireCallRequest(request)})
+	response, err := c.client.Call(ctx, &wire.HostCallRequest{Invocation: transport.InvocationFromContext(ctx), Request: wire.ToWireCallRequest(request)})
 	result, decodeErr := wire.FromWireCallResult(response.GetResult())
 	if response.GetResult() == nil || decodeErr != nil {
 		return nil, firstError(transport.ResultError(false, response.GetError(), err, "caller.call"), decodeErr)
@@ -212,13 +207,12 @@ func (c *remoteCaller) Call(ctx context.Context, request capability.CallRequest)
 
 // remoteConfig 复用反向连接的自身配置客户端
 type remoteConfig struct {
-	// client 自身配置传输入口
-	client wire.HostConfigServiceClient
+	client wire.HostConfigServiceClient // 自身配置传输入口
 }
 
 // Snapshot 读取插件自身业务配置快照
 func (c *remoteConfig) Snapshot(ctx context.Context) (*config.ConfigSnapshot, error) {
-	response, err := c.client.Snapshot(ctx, &wire.ConfigSnapshotRequest{})
+	response, err := c.client.Snapshot(ctx, &wire.ConfigSnapshotRequest{Invocation: transport.InvocationFromContext(ctx)})
 	if err := transport.ResultError(response.GetSnapshot() != nil, response.GetError(), err, "config.snapshot"); err != nil {
 		return nil, err
 	}
@@ -227,7 +221,7 @@ func (c *remoteConfig) Snapshot(ctx context.Context) (*config.ConfigSnapshot, er
 
 // Save 以预期修订号保存业务配置
 func (c *remoteConfig) Save(ctx context.Context, revision uint64, data []byte) (*config.ConfigSaveResult, error) {
-	request := &wire.ConfigSaveRequest{ExpectedRevision: revision}
+	request := &wire.ConfigSaveRequest{Invocation: transport.InvocationFromContext(ctx), ExpectedRevision: revision}
 	if data != nil {
 		request.Data = &wire.BytesValue{Value: data}
 	}
@@ -240,13 +234,12 @@ func (c *remoteConfig) Save(ctx context.Context, revision uint64, data []byte) (
 
 // remoteAccount 复用反向连接的账号客户端
 type remoteAccount struct {
-	// client 当前账号传输入口
-	client wire.HostAccountServiceClient
+	client wire.HostAccountServiceClient // 当前账号传输入口
 }
 
 // Current 读取当前账号业务快照
 func (c *remoteAccount) Current(ctx context.Context) (*sdk.Account, error) {
-	response, err := c.client.Current(ctx, &wire.AccountCurrentRequest{})
+	response, err := c.client.Current(ctx, &wire.AccountCurrentRequest{Invocation: transport.InvocationFromContext(ctx)})
 	if err := transport.ResultError(response.GetAccount() != nil, response.GetError(), err, "account.current"); err != nil {
 		return nil, err
 	}

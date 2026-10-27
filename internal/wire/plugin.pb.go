@@ -142,13 +142,10 @@ func (ArgType) EnumDescriptor() ([]byte, []int) {
 
 // Subscription 事件订阅声明
 type Subscription struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// topic 订阅或投递的事件主题
-	Topic string `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
-	// mode 事件订阅模式，区分普通响应与观察
-	Mode SubscribeMode `protobuf:"varint,2,opt,name=mode,proto3,enum=golem.sdk.SubscribeMode" json:"mode,omitempty"`
-	// priority 订阅优先级，数值越小越优先，同值按插件 ID 稳定排序
-	Priority      int32 `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Topic         string                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`                             // 订阅或投递的事件主题
+	Mode          SubscribeMode          `protobuf:"varint,2,opt,name=mode,proto3,enum=golem.sdk.SubscribeMode" json:"mode,omitempty"` // 事件订阅模式，区分普通响应与观察
+	Priority      int32                  `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`                      // 订阅优先级，数值越小越优先，同值按插件 ID 稳定排序
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -206,23 +203,15 @@ func (x *Subscription) GetPriority() int32 {
 
 // ArgSpec 命令参数声明
 type ArgSpec struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// name 命名参数名称
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// type 命令参数类型
-	Type ArgType `protobuf:"varint,2,opt,name=type,proto3,enum=golem.sdk.ArgType" json:"type,omitempty"`
-	// required 参数是否必须提供
-	Required bool `protobuf:"varint,3,opt,name=required,proto3" json:"required,omitempty"`
-	// default 参数缺失时使用的默认值
-	Default string `protobuf:"bytes,4,opt,name=default,proto3" json:"default,omitempty"`
-	// enum_values 枚举参数允许的候选值
-	EnumValues []string `protobuf:"bytes,5,rep,name=enum_values,json=enumValues,proto3" json:"enum_values,omitempty"`
-	// min 参数最小值，缺失时不设置下界
-	Min *float64 `protobuf:"fixed64,6,opt,name=min,proto3,oneof" json:"min,omitempty"`
-	// max 参数最大值，缺失时不设置上界
-	Max *float64 `protobuf:"fixed64,7,opt,name=max,proto3,oneof" json:"max,omitempty"`
-	// help 面向用户的帮助说明
-	Help          string `protobuf:"bytes,8,opt,name=help,proto3" json:"help,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                               // 命名参数名称
+	Type          ArgType                `protobuf:"varint,2,opt,name=type,proto3,enum=golem.sdk.ArgType" json:"type,omitempty"`       // 命令参数类型
+	Required      bool                   `protobuf:"varint,3,opt,name=required,proto3" json:"required,omitempty"`                      // 参数是否必须提供
+	Default       string                 `protobuf:"bytes,4,opt,name=default,proto3" json:"default,omitempty"`                         // 参数缺失时使用的默认值
+	EnumValues    []string               `protobuf:"bytes,5,rep,name=enum_values,json=enumValues,proto3" json:"enum_values,omitempty"` // 枚举参数允许的候选值
+	Min           *float64               `protobuf:"fixed64,6,opt,name=min,proto3,oneof" json:"min,omitempty"`                         // 参数最小值，缺失时不设置下界
+	Max           *float64               `protobuf:"fixed64,7,opt,name=max,proto3,oneof" json:"max,omitempty"`                         // 参数最大值，缺失时不设置上界
+	Help          string                 `protobuf:"bytes,8,opt,name=help,proto3" json:"help,omitempty"`                               // 面向用户的帮助说明
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -315,15 +304,11 @@ func (x *ArgSpec) GetHelp() string {
 
 // CommandSpec 命令声明
 type CommandSpec struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// path 由各级命令名称组成的路径
-	Path []string `protobuf:"bytes,1,rep,name=path,proto3" json:"path,omitempty"`
-	// args 显式命令参数声明，不通过反射推断
-	Args []*ArgSpec `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
-	// permission 执行命令所需权限
-	Permission string `protobuf:"bytes,3,opt,name=permission,proto3" json:"permission,omitempty"`
-	// help 面向用户的帮助说明
-	Help          string `protobuf:"bytes,4,opt,name=help,proto3" json:"help,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Path          []string               `protobuf:"bytes,1,rep,name=path,proto3" json:"path,omitempty"`             // 由各级命令名称组成的路径
+	Args          []*ArgSpec             `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`             // 显式命令参数声明，不通过反射推断
+	Permission    string                 `protobuf:"bytes,3,opt,name=permission,proto3" json:"permission,omitempty"` // 执行命令所需权限
+	Help          string                 `protobuf:"bytes,4,opt,name=help,proto3" json:"help,omitempty"`             // 面向用户的帮助说明
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -388,17 +373,12 @@ func (x *CommandSpec) GetHelp() string {
 
 // CapabilitySpec 插件公开能力声明
 type CapabilitySpec struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// name 公开能力名，调用方只按此名称发起调用
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// input_type 能力输入内容类型
-	InputType string `protobuf:"bytes,2,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
-	// output_type 能力输出内容类型
-	OutputType string `protobuf:"bytes,3,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
-	// description 面向使用者的业务说明
-	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
-	// max_inline_size 能力内联结果字节上限，0 使用默认 256 KiB，不得大于 256 KiB
-	MaxInlineSize int32 `protobuf:"varint,5,opt,name=max_inline_size,json=maxInlineSize,proto3" json:"max_inline_size,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                                           // 公开能力名，调用方只按此名称发起调用
+	InputType     string                 `protobuf:"bytes,2,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`                // 能力输入内容类型
+	OutputType    string                 `protobuf:"bytes,3,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`             // 能力输出内容类型
+	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`                             // 面向使用者的业务说明
+	MaxInlineSize int32                  `protobuf:"varint,5,opt,name=max_inline_size,json=maxInlineSize,proto3" json:"max_inline_size,omitempty"` // 能力内联结果字节上限，0 使用默认 256 KiB，不得大于 256 KiB
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -470,29 +450,19 @@ func (x *CapabilitySpec) GetMaxInlineSize() int32 {
 
 // Descriptor 插件固定声明
 type Descriptor struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id 插件固定唯一标识
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// name 插件展示名称
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// description 面向使用者的业务说明
-	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	// author 插件作者
-	Author string `protobuf:"bytes,4,opt,name=author,proto3" json:"author,omitempty"`
-	// version 插件展示版本，不参与握手、加载判断或能力路由
-	Version string `protobuf:"bytes,5,opt,name=version,proto3" json:"version,omitempty"`
-	// requested_permissions 插件请求的权限，最终授权以宿主决定为准
-	RequestedPermissions []string `protobuf:"bytes,6,rep,name=requested_permissions,json=requestedPermissions,proto3" json:"requested_permissions,omitempty"`
-	// subscriptions 插件声明的事件订阅
-	Subscriptions []*Subscription `protobuf:"bytes,7,rep,name=subscriptions,proto3" json:"subscriptions,omitempty"`
-	// commands 插件声明的命令集合
-	Commands []*CommandSpec `protobuf:"bytes,8,rep,name=commands,proto3" json:"commands,omitempty"`
-	// capabilities 插件公开提供的能力声明
-	Capabilities []*CapabilitySpec `protobuf:"bytes,9,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
-	// uses_capabilities 插件声明需要调用的能力名
-	UsesCapabilities []string `protobuf:"bytes,10,rep,name=uses_capabilities,json=usesCapabilities,proto3" json:"uses_capabilities,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Id                   string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                                                 // 插件固定唯一标识
+	Name                 string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`                                                             // 插件展示名称
+	Description          string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`                                               // 面向使用者的业务说明
+	Author               string                 `protobuf:"bytes,4,opt,name=author,proto3" json:"author,omitempty"`                                                         // 插件作者
+	Version              string                 `protobuf:"bytes,5,opt,name=version,proto3" json:"version,omitempty"`                                                       // 插件展示版本，不参与握手、加载判断或能力路由
+	RequestedPermissions []string               `protobuf:"bytes,6,rep,name=requested_permissions,json=requestedPermissions,proto3" json:"requested_permissions,omitempty"` // 插件请求的权限，最终授权以宿主决定为准
+	Subscriptions        []*Subscription        `protobuf:"bytes,7,rep,name=subscriptions,proto3" json:"subscriptions,omitempty"`                                           // 插件声明的事件订阅
+	Commands             []*CommandSpec         `protobuf:"bytes,8,rep,name=commands,proto3" json:"commands,omitempty"`                                                     // 插件声明的命令集合
+	Capabilities         []*CapabilitySpec      `protobuf:"bytes,9,rep,name=capabilities,proto3" json:"capabilities,omitempty"`                                             // 插件公开提供的能力声明
+	UsesCapabilities     []string               `protobuf:"bytes,10,rep,name=uses_capabilities,json=usesCapabilities,proto3" json:"uses_capabilities,omitempty"`            // 插件声明需要调用的能力名
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Descriptor) Reset() {
@@ -597,11 +567,9 @@ func (x *Descriptor) GetUsesCapabilities() []string {
 
 // DescribeResponse 插件描述查询响应
 type DescribeResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// descriptor 插件固定声明
-	Descriptor_ *Descriptor `protobuf:"bytes,1,opt,name=descriptor,proto3" json:"descriptor,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Descriptor_   *Descriptor            `protobuf:"bytes,1,opt,name=descriptor,proto3" json:"descriptor,omitempty"` // 插件固定声明
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`           // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -652,23 +620,16 @@ func (x *DescribeResponse) GetError() *Error {
 
 // InitializeRequest 插件实例初始化请求
 type InitializeRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// broker_id 用于建立反向宿主连接的 broker 标识
-	BrokerId uint32 `protobuf:"varint,1,opt,name=broker_id,json=brokerId,proto3" json:"broker_id,omitempty"`
-	// granted_permissions 宿主实际授予当前插件实例的权限
-	GrantedPermissions []string `protobuf:"bytes,2,rep,name=granted_permissions,json=grantedPermissions,proto3" json:"granted_permissions,omitempty"`
-	// config 插件初始化时的自身业务配置快照
-	Config *ConfigSnapshot `protobuf:"bytes,3,opt,name=config,proto3" json:"config,omitempty"`
-	// data_dir 宿主分配的插件数据目录
-	DataDir string `protobuf:"bytes,4,opt,name=data_dir,json=dataDir,proto3" json:"data_dir,omitempty"`
-	// control_token 绑定插件实例的控制通道凭据，不作为业务参数暴露
-	ControlToken string `protobuf:"bytes,5,opt,name=control_token,json=controlToken,proto3" json:"control_token,omitempty"`
-	// instance_generation 插件实例代次，用于拒绝旧实例请求
-	InstanceGeneration uint64 `protobuf:"varint,6,opt,name=instance_generation,json=instanceGeneration,proto3" json:"instance_generation,omitempty"`
-	// account_epoch 账号运行代次，用于隔离账号切换前的请求
-	AccountEpoch  uint64 `protobuf:"varint,7,opt,name=account_epoch,json=accountEpoch,proto3" json:"account_epoch,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	BrokerId           uint32                 `protobuf:"varint,1,opt,name=broker_id,json=brokerId,proto3" json:"broker_id,omitempty"`                               // 用于建立反向宿主连接的 broker 标识
+	GrantedPermissions []string               `protobuf:"bytes,2,rep,name=granted_permissions,json=grantedPermissions,proto3" json:"granted_permissions,omitempty"`  // 宿主实际授予当前插件实例的权限
+	Config             *ConfigSnapshot        `protobuf:"bytes,3,opt,name=config,proto3" json:"config,omitempty"`                                                    // 插件初始化时的自身业务配置快照
+	DataDir            string                 `protobuf:"bytes,4,opt,name=data_dir,json=dataDir,proto3" json:"data_dir,omitempty"`                                   // 宿主分配的插件数据目录
+	ControlToken       string                 `protobuf:"bytes,5,opt,name=control_token,json=controlToken,proto3" json:"control_token,omitempty"`                    // 绑定插件实例的控制通道凭据，不作为业务参数暴露
+	InstanceGeneration uint64                 `protobuf:"varint,6,opt,name=instance_generation,json=instanceGeneration,proto3" json:"instance_generation,omitempty"` // 插件实例代次，用于拒绝旧实例请求
+	AccountEpoch       uint64                 `protobuf:"varint,7,opt,name=account_epoch,json=accountEpoch,proto3" json:"account_epoch,omitempty"`                   // 账号运行代次，用于隔离账号切换前的请求
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *InitializeRequest) Reset() {
@@ -752,9 +713,8 @@ func (x *InitializeRequest) GetAccountEpoch() uint64 {
 
 // OperationResponse 仅携带业务错误的通用操作响应
 type OperationResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Error         *Error                 `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"` // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -798,9 +758,8 @@ func (x *OperationResponse) GetError() *Error {
 
 // LifecycleRequest 插件生命周期调用请求
 type LifecycleRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation_id 关联执行的唯一标识
-	InvocationId  string `protobuf:"bytes,1,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	InvocationId  string                 `protobuf:"bytes,1,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"` // 关联执行的唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -844,11 +803,9 @@ func (x *LifecycleRequest) GetInvocationId() string {
 
 // DrainRequest 停止新准入并查询在途执行的排空请求
 type DrainRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// control_token 绑定插件实例的控制通道凭据，不作为业务参数暴露
-	ControlToken string `protobuf:"bytes,1,opt,name=control_token,json=controlToken,proto3" json:"control_token,omitempty"`
-	// instance_generation 插件实例代次，用于拒绝旧实例请求
-	InstanceGeneration uint64 `protobuf:"varint,2,opt,name=instance_generation,json=instanceGeneration,proto3" json:"instance_generation,omitempty"`
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	ControlToken       string                 `protobuf:"bytes,1,opt,name=control_token,json=controlToken,proto3" json:"control_token,omitempty"`                    // 绑定插件实例的控制通道凭据，不作为业务参数暴露
+	InstanceGeneration uint64                 `protobuf:"varint,2,opt,name=instance_generation,json=instanceGeneration,proto3" json:"instance_generation,omitempty"` // 插件实例代次，用于拒绝旧实例请求
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -899,13 +856,11 @@ func (x *DrainRequest) GetInstanceGeneration() uint64 {
 
 // DrainResponse 插件执行排空响应
 type DrainResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// active_invocation_ids 处理函数尚未实际结束的执行标识集合
-	ActiveInvocationIds []string `protobuf:"bytes,1,rep,name=active_invocation_ids,json=activeInvocationIds,proto3" json:"active_invocation_ids,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	ActiveInvocationIds []string               `protobuf:"bytes,1,rep,name=active_invocation_ids,json=activeInvocationIds,proto3" json:"active_invocation_ids,omitempty"` // 处理函数尚未实际结束的执行标识集合
+	Error               *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`                                                          // 业务错误，成功时为空；部分成功仍保留逐项结果
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *DrainResponse) Reset() {
@@ -954,11 +909,9 @@ func (x *DrainResponse) GetError() *Error {
 
 // ConfigCandidateRequest 配置校验或应用的候选内容
 type ConfigCandidateRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// candidate 待校验或应用的业务配置，包装保留缺失与显式空的区别
-	Candidate *BytesValue `protobuf:"bytes,1,opt,name=candidate,proto3" json:"candidate,omitempty"`
-	// invocation_id 本次配置校验或应用执行的唯一标识
-	InvocationId  string `protobuf:"bytes,2,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Candidate     *BytesValue            `protobuf:"bytes,1,opt,name=candidate,proto3" json:"candidate,omitempty"`                           // 待校验或应用的业务配置，包装保留缺失与显式空的区别
+	InvocationId  string                 `protobuf:"bytes,2,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"` // 本次配置校验或应用执行的唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1009,11 +962,9 @@ func (x *ConfigCandidateRequest) GetInvocationId() string {
 
 // ConfigDefaultsResponse 插件默认配置响应
 type ConfigDefaultsResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// data 插件自身业务配置字节，缺失与显式空字节可区分
-	Data *BytesValue `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Data          *BytesValue            `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`   // 插件自身业务配置字节，缺失与显式空字节可区分
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"` // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1064,15 +1015,12 @@ func (x *ConfigDefaultsResponse) GetError() *Error {
 
 // EventRequest 带执行身份的事件处理请求
 type EventRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation_id 关联执行的唯一标识
-	InvocationId string `protobuf:"bytes,1,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`
-	// invocation_token 宿主为本次执行签发的凭据
-	InvocationToken string `protobuf:"bytes,2,opt,name=invocation_token,json=invocationToken,proto3" json:"invocation_token,omitempty"`
-	// event 待处理的归一化事件
-	Event         *Event `protobuf:"bytes,3,opt,name=event,proto3" json:"event,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	InvocationId    string                 `protobuf:"bytes,1,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`          // 关联执行的唯一标识
+	InvocationToken string                 `protobuf:"bytes,2,opt,name=invocation_token,json=invocationToken,proto3" json:"invocation_token,omitempty"` // 宿主为本次执行签发的凭据
+	Event           *Event                 `protobuf:"bytes,3,opt,name=event,proto3" json:"event,omitempty"`                                            // 待处理的归一化事件
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *EventRequest) Reset() {
@@ -1128,11 +1076,9 @@ func (x *EventRequest) GetEvent() *Event {
 
 // EventResponse 事件处理响应
 type EventResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// result 业务处理结果，失败时结合 error 判断
-	Result *EventResult `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Result        *EventResult           `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"` // 业务处理结果，失败时结合 error 判断
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1183,15 +1129,12 @@ func (x *EventResponse) GetError() *Error {
 
 // CommandRequest 带执行身份的命令处理请求
 type CommandRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation_id 关联执行的唯一标识
-	InvocationId string `protobuf:"bytes,1,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`
-	// invocation_token 宿主为本次执行签发的凭据
-	InvocationToken string `protobuf:"bytes,2,opt,name=invocation_token,json=invocationToken,proto3" json:"invocation_token,omitempty"`
-	// command 待处理的已校验命令
-	Command       *Command `protobuf:"bytes,3,opt,name=command,proto3" json:"command,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	InvocationId    string                 `protobuf:"bytes,1,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`          // 关联执行的唯一标识
+	InvocationToken string                 `protobuf:"bytes,2,opt,name=invocation_token,json=invocationToken,proto3" json:"invocation_token,omitempty"` // 宿主为本次执行签发的凭据
+	Command         *Command               `protobuf:"bytes,3,opt,name=command,proto3" json:"command,omitempty"`                                        // 待处理的已校验命令
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CommandRequest) Reset() {
@@ -1247,11 +1190,9 @@ func (x *CommandRequest) GetCommand() *Command {
 
 // CommandResponse 命令处理响应
 type CommandResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// result 业务处理结果，失败时结合 error 判断
-	Result *CommandResult `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Result        *CommandResult         `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"` // 业务处理结果，失败时结合 error 判断
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1302,15 +1243,12 @@ func (x *CommandResponse) GetError() *Error {
 
 // CapabilityRequest 带执行身份的能力处理请求
 type CapabilityRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation_id 关联执行的唯一标识
-	InvocationId string `protobuf:"bytes,1,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`
-	// invocation_token 宿主为本次执行签发的凭据
-	InvocationToken string `protobuf:"bytes,2,opt,name=invocation_token,json=invocationToken,proto3" json:"invocation_token,omitempty"`
-	// request 待处理的按能力名调用请求
-	Request       *CallRequest `protobuf:"bytes,3,opt,name=request,proto3" json:"request,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	InvocationId    string                 `protobuf:"bytes,1,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`          // 关联执行的唯一标识
+	InvocationToken string                 `protobuf:"bytes,2,opt,name=invocation_token,json=invocationToken,proto3" json:"invocation_token,omitempty"` // 宿主为本次执行签发的凭据
+	Request         *CallRequest           `protobuf:"bytes,3,opt,name=request,proto3" json:"request,omitempty"`                                        // 待处理的按能力名调用请求
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CapabilityRequest) Reset() {
@@ -1366,11 +1304,9 @@ func (x *CapabilityRequest) GetRequest() *CallRequest {
 
 // CapabilityResponse 能力处理响应
 type CapabilityResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// result 业务处理结果，失败时结合 error 判断
-	Result *CallResult `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Result        *CallResult            `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"` // 业务处理结果，失败时结合 error 判断
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

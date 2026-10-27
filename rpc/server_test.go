@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golemwx/sdk"
+	"github.com/golemwx/sdk/internal/transport"
 	"github.com/golemwx/sdk/internal/wire"
 	"github.com/golemwx/sdk/session"
 	"google.golang.org/grpc"
@@ -22,7 +24,7 @@ func TestAuthorizationPreservesParentContext(t *testing.T) {
 	deadline, _ := parent.Deadline()
 	interceptor := hostInterceptor(HostServices{Authorize: func(ctx context.Context, _ Invocation, _ string) (context.Context, error) {
 		return context.WithValue(context.WithoutCancel(ctx), authorizationContextKey{}, "bound"), nil
-	}})
+	}}, nil)
 	entered := make(chan struct{})
 	finished := make(chan error, 1)
 	go func() {
@@ -48,12 +50,74 @@ func TestAuthorizationPreservesParentContext(t *testing.T) {
 	}
 }
 
+// TestAuthorizationRejectsExpiredBoundContext 验证授权上下文已失效时不进入宿主业务
+func TestAuthorizationRejectsExpiredBoundContext(t *testing.T) {
+	for _, expired := range []bool{false, true} {
+		interceptor := hostInterceptor(HostServices{Authorize: func(ctx context.Context, _ Invocation, _ string) (context.Context, error) {
+			if expired {
+				bound, cancel := context.WithDeadline(ctx, time.Unix(1, 0))
+				t.Cleanup(cancel)
+				return bound, nil
+			}
+			bound, cancel := context.WithCancel(ctx)
+			cancel()
+			return bound, nil
+		}}, nil)
+		called := false
+		_, err := interceptor(t.Context(), &wire.AccountCurrentRequest{}, &grpc.UnaryServerInfo{FullMethod: wire.HostAccountService_Current_FullMethodName}, func(context.Context, any) (any, error) {
+			called = true
+			return nil, nil
+		})
+		category := sdk.CategoryCanceled
+		if expired {
+			category = sdk.CategoryDeadlineExceeded
+		}
+		if called || !hasCategory(transport.DecodeError(nil, err, "fixture.authorize"), category) {
+			t.Fatalf("expired authorization reached host business: %v", err)
+		}
+	}
+}
+
+// TestInvocationAuthorityRevocation 验证超时取消与正常返回只撤销权限，不触发真实执行完成
+func TestInvocationAuthorityRevocation(t *testing.T) {
+	control := &hostControl{}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	invocation := Invocation{ID: "issued", Token: "host-token"}
+	revoke, err := control.bindInvocation(ctx, invocation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer revoke()
+	if _, err := control.invocationContext(Invocation{ID: "issued", Token: "forged"}); !hasCategory(err, sdk.CategoryPermissionDenied) {
+		t.Fatal("forged token accepted")
+	}
+	if _, err := control.bindInvocation(ctx, invocation); !hasCategory(err, sdk.CategoryAlreadyExists) {
+		t.Fatal("duplicate live invocation accepted")
+	}
+	if _, err := control.invocationContext(invocation); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	if _, err := control.invocationContext(invocation); !hasCategory(err, sdk.CategoryPermissionDenied) {
+		t.Fatal("canceled invocation retained authority")
+	}
+	invocation = Invocation{ID: "returned", Token: "host-token"}
+	revokeReturned, err := control.bindInvocation(t.Context(), invocation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	revokeReturned()
+	if _, err := control.invocationContext(invocation); !hasCategory(err, sdk.CategoryPermissionDenied) {
+		t.Fatal("returned invocation retained authority")
+	}
+}
+
 // renewalFixture 观察非法时长是否进入宿主业务
 type renewalFixture struct {
-	// fixtureSessions 复用人工租约的其他方法
-	fixtureSessions
-	// calls 已进入续期业务的次数
-	calls int
+	fixtureSessions // 复用人工租约的其他方法
+
+	calls int // 已进入续期业务的次数
 }
 
 // Renew 登记真实业务进入次数

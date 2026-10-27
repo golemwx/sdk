@@ -47,5 +47,6 @@ go test ./...
 调用命令的 `Env` 只提供明确允许的变量，不会自动继承宿主环境。
 
 详细用法、资源所有权和阶段边界见 [插件通信](docs/插件通信.md)。
-T08 的业务 handler、invocation 透传、启用周期 context 和实际执行跟踪尚未接入；
-业务处理、Drain 和执行完成确认明确返回 Unimplemented，媒体流在 T26 接入。
+T08 已接入事件、命令与能力 handler、invocation 自动透传、启用周期 `TaskContext`、
+实际执行额度、`Drain` 和独立完成确认。业务 RPC 返回会撤销调用权限，handler 忽略取消时
+仍占用实际执行额度。媒体流在 T26 接入。

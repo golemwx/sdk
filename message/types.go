@@ -59,76 +59,49 @@ const (
 
 // Quote 引用摘要
 type Quote struct {
-	// MessageID 微信消息 ID，以字符串原样保存，避免大整数精度丢失
-	MessageID string
-	// ActorUsername 实际发言者的微信 username
-	ActorUsername string
-	// Digest 引用消息的展示摘要
-	Digest string
+	MessageID     string // 微信消息 ID，以字符串原样保存，避免大整数精度丢失
+	ActorUsername string // 实际发言者的微信 username
+	Digest        string // 引用消息的展示摘要
 }
 
 // Message 归一化业务消息
 type Message struct {
-	// ID 微信消息 ID，以字符串原样保存，避免大整数精度丢失
-	ID string
-	// Conversation 所属或目标业务会话，群内所有成员共用整群会话
-	Conversation sdk.Conversation
-	// Actor 实际发言者，无法确定或没有发言者时为空
-	Actor *sdk.Actor
-	// ActorResolution 实际发言者解析结果，解析失败时不以群身份代替
-	ActorResolution sdk.ActorResolution
-	// Direction 消息的入站或出站方向
-	Direction Direction
-	// Kind 业务种类，未知枚举归一为对应零值
-	Kind MessageKind
-	// CreatedAt 消息创建时间，必填并按 UTC 传递
-	CreatedAt time.Time
-	// Text 文本内容，缺失与显式空字符串可区分
-	Text *string
-	// Mentions 被提及者的微信 username 列表，缺失与显式空集合可区分
-	Mentions []string
-	// Quote 引用消息摘要，缺失时为空
-	Quote *Quote
-	// Media 宿主管理的媒体引用
-	Media *sdk.MediaRef
+	ID              string              // 微信消息 ID，以字符串原样保存，避免大整数精度丢失
+	Conversation    sdk.Conversation    // 所属或目标业务会话，群内所有成员共用整群会话
+	Actor           *sdk.Actor          // 实际发言者，无法确定或没有发言者时为空
+	ActorResolution sdk.ActorResolution // 实际发言者解析结果，解析失败时不以群身份代替
+	Direction       Direction           // 消息的入站或出站方向
+	Kind            MessageKind         // 业务种类，未知枚举归一为对应零值
+	CreatedAt       time.Time           // 消息创建时间，必填并按 UTC 传递
+	Text            *string             // 文本内容，缺失与显式空字符串可区分
+	Mentions        []string            // 被提及者的微信 username 列表，缺失与显式空集合可区分
+	Quote           *Quote              // 引用消息摘要，缺失时为空
+	Media           *sdk.MediaRef       // 宿主管理的媒体引用
 }
 
 // SendReceipt 消息发送结果
 type SendReceipt struct {
-	// MessageID 微信消息 ID，以字符串原样保存，避免大整数精度丢失
-	MessageID string
-	// Conversation 所属或目标业务会话，群内所有成员共用整群会话
-	Conversation sdk.Conversation
-	// SentAt 消息发送时间，必填并按 UTC 传递
-	SentAt time.Time
-	// Outcome 目标写入副作用结果，只读操作使用 NotApplicable
-	Outcome sdk.WriteOutcome
-	// RevokeRef 由宿主签发的撤回引用，无法提供时为空
-	RevokeRef *sdk.RevokeRef
+	MessageID    string           // 微信消息 ID，以字符串原样保存，避免大整数精度丢失
+	Conversation sdk.Conversation // 所属或目标业务会话，群内所有成员共用整群会话
+	SentAt       time.Time        // 消息发送时间，必填并按 UTC 传递
+	Outcome      sdk.WriteOutcome // 目标写入副作用结果，只读操作使用 NotApplicable
+	RevokeRef    *sdk.RevokeRef   // 由宿主签发的撤回引用，无法提供时为空
 }
 
 // MediaUpload 插件提供的媒体字节与元数据
 type MediaUpload struct {
-	// Kind 业务种类，未知枚举归一为对应零值
-	Kind sdk.MediaKind
-	// FileName 展示用文件名及扩展名，不得用于拼接宿主路径
-	FileName string
-	// Size 待上传媒体字节数，-1 代表未知
-	Size int64
-	// Reader 由插件打开并负责关闭的媒体字节流，与 Ref 必须二选一
-	Reader io.Reader
-	// Ref 复用的宿主管理媒体引用，与 Reader 必须二选一，Kind 须与引用一致
-	Ref *sdk.MediaRef
-	// Voice 语音时长与编码参数，Kind 为 Voice 时必填
-	Voice *VoiceOptions
+	Kind     sdk.MediaKind // 业务种类，未知枚举归一为对应零值
+	FileName string        // 展示用文件名及扩展名，不得用于拼接宿主路径
+	Size     int64         // 待上传媒体字节数，-1 代表未知
+	Reader   io.Reader     // 由插件打开并负责关闭的媒体字节流，与 Ref 必须二选一
+	Ref      *sdk.MediaRef // 复用的宿主管理媒体引用，与 Reader 必须二选一，Kind 须与引用一致
+	Voice    *VoiceOptions // 语音时长与编码参数，Kind 为 Voice 时必填
 }
 
 // VoiceOptions 业务音频参数
 type VoiceOptions struct {
-	// Duration 音频时长，必须为正，精确到毫秒，毫秒数不得超过 int32 上限
-	Duration time.Duration
-	// Encoding 公共音频编码格式
-	Encoding VoiceEncoding
+	Duration time.Duration // 音频时长，必须为正，精确到毫秒，毫秒数不得超过 int32 上限
+	Encoding VoiceEncoding // 公共音频编码格式
 }
 
 // VoiceEncoding 公共音频格式

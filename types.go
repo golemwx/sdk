@@ -32,22 +32,16 @@ const (
 
 // PageRequest 有界分页请求
 type PageRequest struct {
-	// Limit 每页条数，0 使用默认 100，最大 1000，负数无效
-	Limit int
-	// Cursor 不透明分页游标，空字符串从头开始，续页时原样回传
-	Cursor string
+	Limit  int    // 每页条数，0 使用默认 100，最大 1000，负数无效
+	Cursor string // 不透明分页游标，空字符串从头开始，续页时原样回传
 }
 
 // Page 有界分页结果
 type Page[T any] struct {
-	// Items 当前页业务对象，成功的空结果使用非 nil 空切片
-	Items []T
-	// NextCursor 下一页不透明游标，空字符串说明没有更多结果
-	NextCursor string
-	// Total 当前授权范围的总条数，-1 代表未知
-	Total int64
-	// Completeness 对象或查询范围的资料完整性，与分页是否结束无关
-	Completeness Completeness
+	Items        []T          // 当前页业务对象，成功的空结果使用非 nil 空切片
+	NextCursor   string       // 下一页不透明游标，空字符串说明没有更多结果
+	Total        int64        // 当前授权范围的总条数，-1 代表未知
+	Completeness Completeness // 对象或查询范围的资料完整性，与分页是否结束无关
 }
 
 // NormalizePageRequest 校验并规范分页大小
@@ -67,20 +61,15 @@ func NormalizePageRequest(operation string, page PageRequest) (PageRequest, erro
 
 // BatchResult 批量操作结果
 type BatchResult[T any] struct {
-	// Items 按输入顺序保留的逐项结果
-	Items []BatchItem[T]
+	Items []BatchItem[T] // 按输入顺序保留的逐项结果
 }
 
 // BatchItem 单项结果
 type BatchItem[T any] struct {
-	// SubjectID 本项操作或资料变更的目标业务标识
-	SubjectID string
-	// Value 单项业务值，仅在 Error 为空时读取
-	Value T
-	// Outcome 目标写入副作用结果，只读操作使用 NotApplicable
-	Outcome WriteOutcome
-	// Error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error *Error
+	SubjectID string       // 本项操作或资料变更的目标业务标识
+	Value     T            // 单项业务值，仅在 Error 为空时读取
+	Outcome   WriteOutcome // 目标写入副作用结果，只读操作使用 NotApplicable
+	Error     *Error       // 业务错误，成功时为空；部分成功仍保留逐项结果
 }
 
 // AccountStatus 账号业务状态
@@ -101,16 +90,11 @@ const (
 
 // Account 当前账号业务快照
 type Account struct {
-	// Username 微信 username，不另建用户标识
-	Username string
-	// Nickname 昵称，缺失与显式空字符串可区分
-	Nickname *string
-	// Online 账号当前是否在线
-	Online bool
-	// Status 账号业务状态
-	Status AccountStatus
-	// UpdatedAt 资料快照更新时间，必填并按 UTC 传递
-	UpdatedAt time.Time
+	Username  string        // 微信 username，不另建用户标识
+	Nickname  *string       // 昵称，缺失与显式空字符串可区分
+	Online    bool          // 账号当前是否在线
+	Status    AccountStatus // 账号业务状态
+	UpdatedAt time.Time     // 资料快照更新时间，必填并按 UTC 传递
 }
 
 // ConversationKind 会话种类
@@ -127,12 +111,9 @@ const (
 
 // Conversation 账号内的业务会话
 type Conversation struct {
-	// AccountUsername 所属账号的微信 username
-	AccountUsername string
-	// Kind 业务种类，未知枚举归一为对应零值
-	Kind ConversationKind
-	// ID 私聊对端或群的微信 username，不能使用群成员 ID 代替群会话
-	ID string
+	AccountUsername string           // 所属账号的微信 username
+	Kind            ConversationKind // 业务种类，未知枚举归一为对应零值
+	ID              string           // 私聊对端或群的微信 username，不能使用群成员 ID 代替群会话
 }
 
 // ActorResolution 实际发言者解析结果
@@ -155,12 +136,9 @@ const (
 
 // Actor 实际发言者
 type Actor struct {
-	// Username 微信 username，不另建用户标识
-	Username string
-	// DisplayName 展示名称，缺失与显式空字符串可区分
-	DisplayName *string
-	// Resolution 实际发言者解析状态
-	Resolution ActorResolution
+	Username    string          // 微信 username，不另建用户标识
+	DisplayName *string         // 展示名称，缺失与显式空字符串可区分
+	Resolution  ActorResolution // 实际发言者解析状态
 }
 
 // MediaKind 媒体种类
@@ -185,24 +163,17 @@ const (
 
 // MediaRef 宿主管理的媒体引用
 type MediaRef struct {
-	// Token 绑定账号、插件实例和资源范围的不透明媒体引用凭据
-	Token string
-	// Kind 业务种类，未知枚举归一为对应零值
-	Kind MediaKind
-	// FileName 展示用文件名及扩展名，不得用于拼接宿主路径
-	FileName string
-	// SizeBytes 媒体字节数，-1 代表未知
-	SizeBytes int64
-	// ExpiresAt 媒体引用到期时间，失效后使用返回 FailedPrecondition
-	ExpiresAt time.Time
+	Token     string    // 绑定账号、插件实例和资源范围的不透明媒体引用凭据
+	Kind      MediaKind // 业务种类，未知枚举归一为对应零值
+	FileName  string    // 展示用文件名及扩展名，不得用于拼接宿主路径
+	SizeBytes int64     // 媒体字节数，-1 代表未知
+	ExpiresAt time.Time // 媒体引用到期时间，失效后使用返回 FailedPrecondition
 }
 
 // RevokeRef 宿主管理的撤回引用
 type RevokeRef struct {
-	// Token 绑定账号、插件实例和目标消息的不透明撤回引用凭据
-	Token string
-	// ExpiresAt 撤回引用到期时间，失效后使用返回 FailedPrecondition
-	ExpiresAt time.Time
+	Token     string    // 绑定账号、插件实例和目标消息的不透明撤回引用凭据
+	ExpiresAt time.Time // 撤回引用到期时间，失效后使用返回 FailedPrecondition
 }
 
 // Permission 插件权限标识

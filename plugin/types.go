@@ -3,6 +3,7 @@ package plugin
 
 import (
 	"context"
+	"sync"
 
 	"github.com/golemwx/sdk"
 	"github.com/golemwx/sdk/capability"
@@ -95,26 +96,19 @@ type AccountClient interface {
 
 // Host 宿主能力集合
 type Host struct {
-	// Messages 宿主消息发送、回复、撤回及媒体下载客户端
-	Messages MessagesClient
-	// Contacts 宿主联系人查询与显式刷新客户端
-	Contacts ContactsClient
-	// Chatrooms 宿主群资料及成员查询与显式刷新客户端
-	Chatrooms ChatroomsClient
-	// Sessions 宿主联系人及整群会话租约客户端
-	Sessions SessionsClient
-	// Caller 宿主按能力名路由的跨插件调用客户端
-	Caller CallerClient
-	// Config 宿主提供的插件自身业务配置客户端
-	Config ConfigClient
-	// Account 宿主当前账号业务快照客户端
-	Account AccountClient
+	Messages  MessagesClient  // 宿主消息发送、回复、撤回及媒体下载客户端
+	Contacts  ContactsClient  // 宿主联系人查询与显式刷新客户端
+	Chatrooms ChatroomsClient // 宿主群资料及成员查询与显式刷新客户端
+	Sessions  SessionsClient  // 宿主联系人及整群会话租约客户端
+	Caller    CallerClient    // 宿主按能力名路由的跨插件调用客户端
+	Config    ConfigClient    // 宿主提供的插件自身业务配置客户端
+	Account   AccountClient   // 宿主当前账号业务快照客户端
 
-	// DataDir 宿主分配的插件数据目录
-	DataDir string
+	DataDir string // 宿主分配的插件数据目录
 
-	// taskContext 与插件当前启用周期绑定的后台任务上下文
-	taskContext context.Context
+	taskContext context.Context    // 与插件当前启用周期绑定的后台任务上下文
+	taskMu      sync.RWMutex       // 保护启用周期上下文的并发读取与替换
+	taskCancel  context.CancelFunc // 结束当前启用周期
 }
 
 // NewHost 创建显式宿主能力集合
@@ -138,7 +132,32 @@ func (h *Host) TaskContext() context.Context {
 		return nil
 	}
 
+	h.taskMu.RLock()
+	defer h.taskMu.RUnlock()
 	return h.taskContext
+}
+
+// startTasks 创建不携带用户身份的新启用周期，返回仅取消本轮的句柄
+func (h *Host) startTasks(parent context.Context) context.CancelFunc {
+	h.taskMu.Lock()
+	defer h.taskMu.Unlock()
+	if h.taskCancel != nil {
+		h.taskCancel()
+	}
+	h.taskContext, h.taskCancel = context.WithCancel(parent)
+	return h.taskCancel
+}
+
+// stopTasks 立即撤销后台周期，保留已取消的上下文供插件观察
+func (h *Host) stopTasks() {
+	if h == nil {
+		return
+	}
+	h.taskMu.Lock()
+	defer h.taskMu.Unlock()
+	if h.taskCancel != nil {
+		h.taskCancel()
+	}
 }
 
 // Plugin 插件基础契约

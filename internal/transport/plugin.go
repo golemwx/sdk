@@ -20,22 +20,22 @@ const (
 	PluginKey = "golem"
 	// MaxMessageSize 单次一元 RPC 的消息字节上限
 	MaxMessageSize = 4 << 20
+	// MaxInlinePayloadSize 普通能力内联请求及结果的字节上限
+	MaxInlinePayloadSize = 256 << 10
 )
 
 // Endpoint 宿主到插件的控制连接和共享反向 Broker
 type Endpoint struct {
-	// Control 插件控制 RPC 客户端
-	Control wire.PluginControlServiceClient
-	// Broker 当前实例唯一的反向服务 Broker
-	Broker *hplugin.GRPCBroker
+	Control  wire.PluginControlServiceClient  // 插件控制 RPC 客户端
+	Business wire.PluginBusinessServiceClient // 插件事件、命令和被调用能力入口
+	Broker   *hplugin.GRPCBroker              // 当前实例唯一的反向服务 Broker
 }
 
 // Adapter 将内部服务接入固定的 go-plugin 插件集合
 type Adapter struct {
-	// NetRPCUnsupportedPlugin 禁用 net/rpc 通信
-	hplugin.NetRPCUnsupportedPlugin
-	// Register 插件侧注册函数，宿主侧为空
-	Register func(*hplugin.GRPCBroker, *grpc.Server) error
+	hplugin.NetRPCUnsupportedPlugin // 禁用 net/rpc 通信
+
+	Register func(*hplugin.GRPCBroker, *grpc.Server) error // 插件侧注册函数，宿主侧为空
 }
 
 // Handshake 返回独立副本，防止调用方修改共享的配对配置
@@ -54,8 +54,8 @@ func (a *Adapter) GRPCServer(broker *hplugin.GRPCBroker, server *grpc.Server) er
 }
 
 // GRPCClient 构造宿主控制入口，所有 Host 服务共用 Broker
-func (a *Adapter) GRPCClient(_ context.Context, broker *hplugin.GRPCBroker, conn *grpc.ClientConn) (interface{}, error) {
-	return &Endpoint{Control: wire.NewPluginControlServiceClient(conn), Broker: broker}, nil
+func (a *Adapter) GRPCClient(_ context.Context, broker *hplugin.GRPCBroker, conn *grpc.ClientConn) (any, error) {
+	return &Endpoint{Control: wire.NewPluginControlServiceClient(conn), Business: wire.NewPluginBusinessServiceClient(conn), Broker: broker}, nil
 }
 
 // Server 保留调用方传入的 TLS 选项并施加消息大小限制

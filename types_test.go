@@ -9,14 +9,10 @@ import (
 // TestNormalizePageRequest 验证分页默认值、上限和非法负数
 func TestNormalizePageRequest(t *testing.T) {
 	tests := []struct {
-		// name 子测试名称
-		name string
-		// input 输入的分页条数
-		input int
-		// want 规范化后的预期分页条数
-		want int
-		// wantErr 是否预期拒绝输入
-		wantErr bool
+		name    string // 子测试名称
+		input   int    // 输入的分页条数
+		want    int    // 规范化后的预期分页条数
+		wantErr bool   // 是否预期拒绝输入
 	}{
 		{name: "default", input: 0, want: 100},
 		{name: "ordinary", input: 20, want: 20},

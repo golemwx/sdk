@@ -13,8 +13,7 @@ import (
 
 // lifecycleFixture 观察取消后的排队控制操作是否仍进入用户代码
 type lifecycleFixture struct {
-	// enabled 已实际进入的启用调用数
-	enabled atomic.Int32
+	enabled atomic.Int32 // 已实际进入的启用调用数
 }
 
 // Descriptor 提供测试固定声明

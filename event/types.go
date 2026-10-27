@@ -25,12 +25,9 @@ const (
 
 // Subscription 事件订阅声明
 type Subscription struct {
-	// Topic 订阅或投递的事件主题
-	Topic string
-	// Mode 事件订阅模式，区分普通响应与观察
-	Mode SubscribeMode
-	// Priority 订阅优先级，数值越小越优先，同值按插件 ID 稳定排序
-	Priority int
+	Topic    string        // 订阅或投递的事件主题
+	Mode     SubscribeMode // 事件订阅模式，区分普通响应与观察
+	Priority int           // 订阅优先级，数值越小越优先，同值按插件 ID 稳定排序
 }
 
 // ChangeDomain 变更域
@@ -65,44 +62,28 @@ const (
 
 // Change 归一化资料变更
 type Change struct {
-	// Domain 资料变更所属业务域
-	Domain ChangeDomain
-	// Action 资料创建、更新或删除动作
-	Action ChangeAction
-	// SubjectID 本项操作或资料变更的目标业务标识
-	SubjectID string
-	// ParentID 父级业务标识，群成员变更时为群 username
-	ParentID *string
-	// ChangedFields 实际变更的 SDK 字段路径，更新时非空，缺失与显式空集合可区分
-	ChangedFields []string
-	// Contact 变更或查询对应的联系人业务快照
-	Contact *contact.Contact
-	// Room 变更或查询对应的群业务快照
-	Room *chatroom.Room
-	// Member 变更或查询对应的群成员业务快照
-	Member *chatroom.Member
-	// Account 变更或查询对应的当前账号业务快照
-	Account *sdk.Account
+	Domain        ChangeDomain     // 资料变更所属业务域
+	Action        ChangeAction     // 资料创建、更新或删除动作
+	SubjectID     string           // 本项操作或资料变更的目标业务标识
+	ParentID      *string          // 父级业务标识，群成员变更时为群 username
+	ChangedFields []string         // 实际变更的 SDK 字段路径，更新时非空，缺失与显式空集合可区分
+	Contact       *contact.Contact // 变更或查询对应的联系人业务快照
+	Room          *chatroom.Room   // 变更或查询对应的群业务快照
+	Member        *chatroom.Member // 变更或查询对应的群成员业务快照
+	Account       *sdk.Account     // 变更或查询对应的当前账号业务快照
 }
 
 // Event 投递给插件的不可变事件
 type Event struct {
-	// Topic 订阅或投递的事件主题
-	Topic string
-	// AccountUsername 所属账号的微信 username
-	AccountUsername string
-	// Message 关联的归一化业务消息
-	Message *message.Message
-	// Change 关联的资料变更，非资料变更事件时为空
-	Change *Change
-	// Lease 关联的会话租约
-	Lease *session.Lease
-	// OccurredAt 事件发生时间，必填并按 UTC 传递
-	OccurredAt time.Time
+	Topic           string           // 订阅或投递的事件主题
+	AccountUsername string           // 所属账号的微信 username
+	Message         *message.Message // 关联的归一化业务消息
+	Change          *Change          // 关联的资料变更，非资料变更事件时为空
+	Lease           *session.Lease   // 关联的会话租约
+	OccurredAt      time.Time        // 事件发生时间，必填并按 UTC 传递
 }
 
 // EventResult 事件消费结果
 type EventResult struct {
-	// Consumed 普通响应链是否已消费事件，观察者结果不影响路由
-	Consumed bool
+	Consumed bool // 普通响应链是否已消费事件，观察者结果不影响路由
 }

@@ -10,24 +10,14 @@ import (
 
 // Descriptor 插件固定声明
 type Descriptor struct {
-	// ID 插件固定唯一标识
-	ID string
-	// Name 插件展示名称
-	Name string
-	// Description 面向使用者的业务说明
-	Description string
-	// Author 插件作者
-	Author string
-	// Version 插件展示版本，不参与握手、加载判断或能力路由
-	Version string
-	// RequestedPermissions 插件请求的权限，最终授权以宿主决定为准
-	RequestedPermissions []sdk.Permission
-	// Subscriptions 插件声明的事件订阅
-	Subscriptions []event.Subscription
-	// Commands 插件声明的命令集合
-	Commands []command.CommandSpec
-	// Capabilities 插件公开提供的能力声明
-	Capabilities []capability.CapabilitySpec
-	// UsesCapabilities 插件声明需要调用的能力名
-	UsesCapabilities []string
+	ID                   string                      // 插件固定唯一标识
+	Name                 string                      // 插件展示名称
+	Description          string                      // 面向使用者的业务说明
+	Author               string                      // 插件作者
+	Version              string                      // 插件展示版本，不参与握手、加载判断或能力路由
+	RequestedPermissions []sdk.Permission            // 插件请求的权限，最终授权以宿主决定为准
+	Subscriptions        []event.Subscription        // 插件声明的事件订阅
+	Commands             []command.CommandSpec       // 插件声明的命令集合
+	Capabilities         []capability.CapabilitySpec // 插件公开提供的能力声明
+	UsesCapabilities     []string                    // 插件声明需要调用的能力名
 }

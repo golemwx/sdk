@@ -260,8 +260,8 @@ func TestHostUnaryContracts(t *testing.T) {
 		t.Fatal(err)
 	}
 	response, err := client.endpoint.Control.Drain(t.Context(), &wire.DrainRequest{ControlToken: client.control.token, InstanceGeneration: 1})
-	if err != nil || response.GetError().GetCategory() != wire.Category_CATEGORY_UNIMPLEMENTED {
-		t.Fatal("unfinished execution tracking returned success")
+	if err != nil || response.GetError() != nil || len(response.GetActiveInvocationIds()) != 0 {
+		t.Fatalf("idle instance failed to drain: %v %v", response, err)
 	}
 }
 

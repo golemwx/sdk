@@ -19,20 +19,15 @@ const (
 
 // ConfigSnapshot 插件业务配置快照
 type ConfigSnapshot struct {
-	// Revision 已保存配置的修订号，不能据此认定配置已生效
-	Revision uint64
-	// ActiveRevision 当前已生效配置的修订号
-	ActiveRevision uint64
-	// Data 插件自身业务配置字节，缺失与显式空字节可区分
-	Data []byte
-	// ApplyStatus 已保存配置的应用状态
-	ApplyStatus ApplyStatus
+	Revision       uint64      // 已保存配置的修订号，不能据此认定配置已生效
+	ActiveRevision uint64      // 当前已生效配置的修订号
+	Data           []byte      // 插件自身业务配置字节，缺失与显式空字节可区分
+	ApplyStatus    ApplyStatus // 已保存配置的应用状态
 }
 
 // ConfigSaveResult 配置保存接受结果
 type ConfigSaveResult struct {
-	// Revision 已保存配置的修订号，不能据此认定配置已生效
-	Revision uint64
+	Revision uint64 // 已保存配置的修订号，不能据此认定配置已生效
 }
 
 // ConfigClient 宿主配置能力

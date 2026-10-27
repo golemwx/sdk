@@ -858,9 +858,8 @@ func (ApplyStatus) EnumDescriptor() ([]byte, []int) {
 
 // StringList 保留缺失与显式空列表区别的字符串集合
 type StringList struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// values 显式存在的字符串集合，允许空列表
-	Values        []string `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Values        []string               `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"` // 显式存在的字符串集合，允许空列表
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -904,9 +903,8 @@ func (x *StringList) GetValues() []string {
 
 // BytesValue 保留缺失与显式空字节区别的字节载荷
 type BytesValue struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// value 显式存在的字节载荷，允许零长度字节
-	Value         []byte `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         []byte                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"` // 显式存在的字节载荷，允许零长度字节
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -950,19 +948,13 @@ func (x *BytesValue) GetValue() []byte {
 
 // Error 跨进程业务错误
 type Error struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// category 机器判断的错误类别，不通过匹配 Reason 判断
-	Category Category `protobuf:"varint,1,opt,name=category,proto3,enum=golem.sdk.Category" json:"category,omitempty"`
-	// operation 发生错误的业务操作名
-	Operation string `protobuf:"bytes,2,opt,name=operation,proto3" json:"operation,omitempty"`
-	// invocation_id 关联执行的唯一标识
-	InvocationId string `protobuf:"bytes,3,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`
-	// outcome 目标写入副作用结果，只读操作使用 NotApplicable
-	Outcome WriteOutcome `protobuf:"varint,4,opt,name=outcome,proto3,enum=golem.sdk.WriteOutcome" json:"outcome,omitempty"`
-	// reason 供人阅读的脱敏错误说明，不用于机器分支判断
-	Reason string `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
-	// retry_after 建议重试等待时长，不构成自动重试写操作的授权
-	RetryAfter    *durationpb.Duration `protobuf:"bytes,6,opt,name=retry_after,json=retryAfter,proto3" json:"retry_after,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Category      Category               `protobuf:"varint,1,opt,name=category,proto3,enum=golem.sdk.Category" json:"category,omitempty"`    // 机器判断的错误类别，不通过匹配 Reason 判断
+	Operation     string                 `protobuf:"bytes,2,opt,name=operation,proto3" json:"operation,omitempty"`                           // 发生错误的业务操作名
+	InvocationId  string                 `protobuf:"bytes,3,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"` // 关联执行的唯一标识
+	Outcome       WriteOutcome           `protobuf:"varint,4,opt,name=outcome,proto3,enum=golem.sdk.WriteOutcome" json:"outcome,omitempty"`  // 目标写入副作用结果，只读操作使用 NotApplicable
+	Reason        string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`                                 // 供人阅读的脱敏错误说明，不用于机器分支判断
+	RetryAfter    *durationpb.Duration   `protobuf:"bytes,6,opt,name=retry_after,json=retryAfter,proto3" json:"retry_after,omitempty"`       // 建议重试等待时长，不构成自动重试写操作的授权
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1041,11 +1033,9 @@ func (x *Error) GetRetryAfter() *durationpb.Duration {
 
 // PageRequest 有界分页请求
 type PageRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// limit 每页条数，0 使用默认 100，最大 1000，负数无效
-	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
-	// cursor 不透明分页游标，空字符串从头开始，续页时原样回传
-	Cursor        string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`  // 每页条数，0 使用默认 100，最大 1000，负数无效
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"` // 不透明分页游标，空字符串从头开始，续页时原样回传
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1096,17 +1086,12 @@ func (x *PageRequest) GetCursor() string {
 
 // Account 当前账号业务快照
 type Account struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// username 微信 username，不另建用户标识
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	// nickname 昵称，缺失与显式空字符串可区分
-	Nickname *string `protobuf:"bytes,2,opt,name=nickname,proto3,oneof" json:"nickname,omitempty"`
-	// online 账号当前是否在线
-	Online bool `protobuf:"varint,3,opt,name=online,proto3" json:"online,omitempty"`
-	// status 账号业务状态
-	Status AccountStatus `protobuf:"varint,4,opt,name=status,proto3,enum=golem.sdk.AccountStatus" json:"status,omitempty"`
-	// updated_at 资料快照更新时间，必填并按 UTC 传递
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`                           // 微信 username，不另建用户标识
+	Nickname      *string                `protobuf:"bytes,2,opt,name=nickname,proto3,oneof" json:"nickname,omitempty"`                     // 昵称，缺失与显式空字符串可区分
+	Online        bool                   `protobuf:"varint,3,opt,name=online,proto3" json:"online,omitempty"`                              // 账号当前是否在线
+	Status        AccountStatus          `protobuf:"varint,4,opt,name=status,proto3,enum=golem.sdk.AccountStatus" json:"status,omitempty"` // 账号业务状态
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`        // 资料快照更新时间，必填并按 UTC 传递
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1178,15 +1163,12 @@ func (x *Account) GetUpdatedAt() *timestamppb.Timestamp {
 
 // Conversation 账号内的业务会话
 type Conversation struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// account_username 所属账号的微信 username
-	AccountUsername string `protobuf:"bytes,1,opt,name=account_username,json=accountUsername,proto3" json:"account_username,omitempty"`
-	// kind 业务种类，未知枚举归一为对应零值
-	Kind ConversationKind `protobuf:"varint,2,opt,name=kind,proto3,enum=golem.sdk.ConversationKind" json:"kind,omitempty"`
-	// id 私聊对端或群的微信 username，不能使用群成员 ID 代替群会话
-	Id            string `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	AccountUsername string                 `protobuf:"bytes,1,opt,name=account_username,json=accountUsername,proto3" json:"account_username,omitempty"` // 所属账号的微信 username
+	Kind            ConversationKind       `protobuf:"varint,2,opt,name=kind,proto3,enum=golem.sdk.ConversationKind" json:"kind,omitempty"`             // 业务种类，未知枚举归一为对应零值
+	Id              string                 `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`                                                  // 私聊对端或群的微信 username，不能使用群成员 ID 代替群会话
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Conversation) Reset() {
@@ -1242,13 +1224,10 @@ func (x *Conversation) GetId() string {
 
 // Actor 实际发言者
 type Actor struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// username 微信 username，不另建用户标识
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	// display_name 展示名称，缺失与显式空字符串可区分
-	DisplayName *string `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3,oneof" json:"display_name,omitempty"`
-	// resolution 实际发言者解析状态
-	Resolution    ActorResolution `protobuf:"varint,3,opt,name=resolution,proto3,enum=golem.sdk.ActorResolution" json:"resolution,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`                                     // 微信 username，不另建用户标识
+	DisplayName   *string                `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3,oneof" json:"display_name,omitempty"`      // 展示名称，缺失与显式空字符串可区分
+	Resolution    ActorResolution        `protobuf:"varint,3,opt,name=resolution,proto3,enum=golem.sdk.ActorResolution" json:"resolution,omitempty"` // 实际发言者解析状态
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1306,23 +1285,15 @@ func (x *Actor) GetResolution() ActorResolution {
 
 // Contact 联系人业务快照
 type Contact struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// username 微信 username，不另建用户标识
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	// kind 业务种类，未知枚举归一为对应零值
-	Kind ContactKind `protobuf:"varint,2,opt,name=kind,proto3,enum=golem.sdk.ContactKind" json:"kind,omitempty"`
-	// nickname 昵称，缺失与显式空字符串可区分
-	Nickname *string `protobuf:"bytes,3,opt,name=nickname,proto3,oneof" json:"nickname,omitempty"`
-	// remark 备注，缺失与显式空字符串可区分
-	Remark *string `protobuf:"bytes,4,opt,name=remark,proto3,oneof" json:"remark,omitempty"`
-	// avatar_url 头像地址，缺失与显式空字符串可区分
-	AvatarUrl *string `protobuf:"bytes,5,opt,name=avatar_url,json=avatarUrl,proto3,oneof" json:"avatar_url,omitempty"`
-	// alias 微信号别名，缺失与显式空字符串可区分
-	Alias *string `protobuf:"bytes,6,opt,name=alias,proto3,oneof" json:"alias,omitempty"`
-	// updated_at 资料快照更新时间，必填并按 UTC 传递
-	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	// completeness 对象或查询范围的资料完整性，与分页是否结束无关
-	Completeness  Completeness `protobuf:"varint,8,opt,name=completeness,proto3,enum=golem.sdk.Completeness" json:"completeness,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`                                      // 微信 username，不另建用户标识
+	Kind          ContactKind            `protobuf:"varint,2,opt,name=kind,proto3,enum=golem.sdk.ContactKind" json:"kind,omitempty"`                  // 业务种类，未知枚举归一为对应零值
+	Nickname      *string                `protobuf:"bytes,3,opt,name=nickname,proto3,oneof" json:"nickname,omitempty"`                                // 昵称，缺失与显式空字符串可区分
+	Remark        *string                `protobuf:"bytes,4,opt,name=remark,proto3,oneof" json:"remark,omitempty"`                                    // 备注，缺失与显式空字符串可区分
+	AvatarUrl     *string                `protobuf:"bytes,5,opt,name=avatar_url,json=avatarUrl,proto3,oneof" json:"avatar_url,omitempty"`             // 头像地址，缺失与显式空字符串可区分
+	Alias         *string                `protobuf:"bytes,6,opt,name=alias,proto3,oneof" json:"alias,omitempty"`                                      // 微信号别名，缺失与显式空字符串可区分
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`                   // 资料快照更新时间，必填并按 UTC 传递
+	Completeness  Completeness           `protobuf:"varint,8,opt,name=completeness,proto3,enum=golem.sdk.Completeness" json:"completeness,omitempty"` // 对象或查询范围的资料完整性，与分页是否结束无关
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1415,27 +1386,18 @@ func (x *Contact) GetCompleteness() Completeness {
 
 // Room 群业务快照
 type Room struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// username 微信 username，不另建用户标识
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	// name 群名称，缺失与显式空字符串可区分
-	Name *string `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	// remark 备注，缺失与显式空字符串可区分
-	Remark *string `protobuf:"bytes,3,opt,name=remark,proto3,oneof" json:"remark,omitempty"`
-	// owner_username 群主的微信 username，未知时缺失
-	OwnerUsername *string `protobuf:"bytes,4,opt,name=owner_username,json=ownerUsername,proto3,oneof" json:"owner_username,omitempty"`
-	// announcement 群公告，缺失与显式空字符串可区分
-	Announcement *string `protobuf:"bytes,5,opt,name=announcement,proto3,oneof" json:"announcement,omitempty"`
-	// announcement_version 修改群公告时原样回传的并发前置版本，未知时缺失
-	AnnouncementVersion *int32 `protobuf:"varint,6,opt,name=announcement_version,json=announcementVersion,proto3,oneof" json:"announcement_version,omitempty"`
-	// member_count 群成员数量，未知时缺失，显式 0 与缺失可区分
-	MemberCount *int32 `protobuf:"varint,7,opt,name=member_count,json=memberCount,proto3,oneof" json:"member_count,omitempty"`
-	// updated_at 资料快照更新时间，必填并按 UTC 传递
-	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	// completeness 对象或查询范围的资料完整性，与分页是否结束无关
-	Completeness  Completeness `protobuf:"varint,9,opt,name=completeness,proto3,enum=golem.sdk.Completeness" json:"completeness,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Username            string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`                                                         // 微信 username，不另建用户标识
+	Name                *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`                                                           // 群名称，缺失与显式空字符串可区分
+	Remark              *string                `protobuf:"bytes,3,opt,name=remark,proto3,oneof" json:"remark,omitempty"`                                                       // 备注，缺失与显式空字符串可区分
+	OwnerUsername       *string                `protobuf:"bytes,4,opt,name=owner_username,json=ownerUsername,proto3,oneof" json:"owner_username,omitempty"`                    // 群主的微信 username，未知时缺失
+	Announcement        *string                `protobuf:"bytes,5,opt,name=announcement,proto3,oneof" json:"announcement,omitempty"`                                           // 群公告，缺失与显式空字符串可区分
+	AnnouncementVersion *int32                 `protobuf:"varint,6,opt,name=announcement_version,json=announcementVersion,proto3,oneof" json:"announcement_version,omitempty"` // 修改群公告时原样回传的并发前置版本，未知时缺失
+	MemberCount         *int32                 `protobuf:"varint,7,opt,name=member_count,json=memberCount,proto3,oneof" json:"member_count,omitempty"`                         // 群成员数量，未知时缺失，显式 0 与缺失可区分
+	UpdatedAt           *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`                                      // 资料快照更新时间，必填并按 UTC 传递
+	Completeness        Completeness           `protobuf:"varint,9,opt,name=completeness,proto3,enum=golem.sdk.Completeness" json:"completeness,omitempty"`                    // 对象或查询范围的资料完整性，与分页是否结束无关
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Room) Reset() {
@@ -1533,21 +1495,14 @@ func (x *Room) GetCompleteness() Completeness {
 
 // Member 群成员业务快照
 type Member struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// room_username 群的微信 username
-	RoomUsername string `protobuf:"bytes,1,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"`
-	// user_username 群成员的微信 username
-	UserUsername string `protobuf:"bytes,2,opt,name=user_username,json=userUsername,proto3" json:"user_username,omitempty"`
-	// display_name 展示名称，缺失与显式空字符串可区分
-	DisplayName *string `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3,oneof" json:"display_name,omitempty"`
-	// nickname 昵称，缺失与显式空字符串可区分
-	Nickname *string `protobuf:"bytes,4,opt,name=nickname,proto3,oneof" json:"nickname,omitempty"`
-	// role 已确认的群成员角色，未知角色不得用于授予管理权限
-	Role MemberRole `protobuf:"varint,5,opt,name=role,proto3,enum=golem.sdk.MemberRole" json:"role,omitempty"`
-	// joined_at 入群时间，未知时缺失，有值时按 UTC 传递
-	JoinedAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
-	// completeness 对象或查询范围的资料完整性，与分页是否结束无关
-	Completeness  Completeness `protobuf:"varint,7,opt,name=completeness,proto3,enum=golem.sdk.Completeness" json:"completeness,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoomUsername  string                 `protobuf:"bytes,1,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"`          // 群的微信 username
+	UserUsername  string                 `protobuf:"bytes,2,opt,name=user_username,json=userUsername,proto3" json:"user_username,omitempty"`          // 群成员的微信 username
+	DisplayName   *string                `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3,oneof" json:"display_name,omitempty"`       // 展示名称，缺失与显式空字符串可区分
+	Nickname      *string                `protobuf:"bytes,4,opt,name=nickname,proto3,oneof" json:"nickname,omitempty"`                                // 昵称，缺失与显式空字符串可区分
+	Role          MemberRole             `protobuf:"varint,5,opt,name=role,proto3,enum=golem.sdk.MemberRole" json:"role,omitempty"`                   // 已确认的群成员角色，未知角色不得用于授予管理权限
+	JoinedAt      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`                      // 入群时间，未知时缺失，有值时按 UTC 传递
+	Completeness  Completeness           `protobuf:"varint,7,opt,name=completeness,proto3,enum=golem.sdk.Completeness" json:"completeness,omitempty"` // 对象或查询范围的资料完整性，与分页是否结束无关
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1633,13 +1588,10 @@ func (x *Member) GetCompleteness() Completeness {
 
 // Quote 引用消息摘要
 type Quote struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// message_id 微信消息 ID，以字符串原样保存，避免大整数精度丢失
-	MessageId string `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
-	// actor_username 实际发言者的微信 username
-	ActorUsername string `protobuf:"bytes,2,opt,name=actor_username,json=actorUsername,proto3" json:"actor_username,omitempty"`
-	// digest 引用消息的展示摘要
-	Digest        string `protobuf:"bytes,3,opt,name=digest,proto3" json:"digest,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MessageId     string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`             // 微信消息 ID，以字符串原样保存，避免大整数精度丢失
+	ActorUsername string                 `protobuf:"bytes,2,opt,name=actor_username,json=actorUsername,proto3" json:"actor_username,omitempty"` // 实际发言者的微信 username
+	Digest        string                 `protobuf:"bytes,3,opt,name=digest,proto3" json:"digest,omitempty"`                                    // 引用消息的展示摘要
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1697,31 +1649,20 @@ func (x *Quote) GetDigest() string {
 
 // Message 归一化业务消息
 type Message struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id 微信消息 ID，以字符串原样保存，避免大整数精度丢失
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// conversation 所属或目标业务会话，群内所有成员共用整群会话
-	Conversation *Conversation `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`
-	// actor 实际发言者，无法确定或没有发言者时为空
-	Actor *Actor `protobuf:"bytes,3,opt,name=actor,proto3" json:"actor,omitempty"`
-	// actor_resolution 实际发言者解析结果，解析失败时不以群身份代替
-	ActorResolution ActorResolution `protobuf:"varint,4,opt,name=actor_resolution,json=actorResolution,proto3,enum=golem.sdk.ActorResolution" json:"actor_resolution,omitempty"`
-	// direction 消息的入站或出站方向
-	Direction Direction `protobuf:"varint,5,opt,name=direction,proto3,enum=golem.sdk.Direction" json:"direction,omitempty"`
-	// kind 业务种类，未知枚举归一为对应零值
-	Kind MessageKind `protobuf:"varint,6,opt,name=kind,proto3,enum=golem.sdk.MessageKind" json:"kind,omitempty"`
-	// created_at 消息创建时间，必填并按 UTC 传递
-	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	// text 文本内容，缺失与显式空字符串可区分
-	Text *string `protobuf:"bytes,8,opt,name=text,proto3,oneof" json:"text,omitempty"`
-	// mentions 被提及者的微信 username 列表，缺失与显式空集合可区分
-	Mentions *StringList `protobuf:"bytes,9,opt,name=mentions,proto3" json:"mentions,omitempty"`
-	// quote 引用消息摘要，缺失时为空
-	Quote *Quote `protobuf:"bytes,10,opt,name=quote,proto3" json:"quote,omitempty"`
-	// media 宿主管理的媒体引用
-	Media         *MediaRef `protobuf:"bytes,11,opt,name=media,proto3" json:"media,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                                                                  // 微信消息 ID，以字符串原样保存，避免大整数精度丢失
+	Conversation    *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`                                                              // 所属或目标业务会话，群内所有成员共用整群会话
+	Actor           *Actor                 `protobuf:"bytes,3,opt,name=actor,proto3" json:"actor,omitempty"`                                                                            // 实际发言者，无法确定或没有发言者时为空
+	ActorResolution ActorResolution        `protobuf:"varint,4,opt,name=actor_resolution,json=actorResolution,proto3,enum=golem.sdk.ActorResolution" json:"actor_resolution,omitempty"` // 实际发言者解析结果，解析失败时不以群身份代替
+	Direction       Direction              `protobuf:"varint,5,opt,name=direction,proto3,enum=golem.sdk.Direction" json:"direction,omitempty"`                                          // 消息的入站或出站方向
+	Kind            MessageKind            `protobuf:"varint,6,opt,name=kind,proto3,enum=golem.sdk.MessageKind" json:"kind,omitempty"`                                                  // 业务种类，未知枚举归一为对应零值
+	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`                                                   // 消息创建时间，必填并按 UTC 传递
+	Text            *string                `protobuf:"bytes,8,opt,name=text,proto3,oneof" json:"text,omitempty"`                                                                        // 文本内容，缺失与显式空字符串可区分
+	Mentions        *StringList            `protobuf:"bytes,9,opt,name=mentions,proto3" json:"mentions,omitempty"`                                                                      // 被提及者的微信 username 列表，缺失与显式空集合可区分
+	Quote           *Quote                 `protobuf:"bytes,10,opt,name=quote,proto3" json:"quote,omitempty"`                                                                           // 引用消息摘要，缺失时为空
+	Media           *MediaRef              `protobuf:"bytes,11,opt,name=media,proto3" json:"media,omitempty"`                                                                           // 宿主管理的媒体引用
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Message) Reset() {
@@ -1833,17 +1774,12 @@ func (x *Message) GetMedia() *MediaRef {
 
 // SendReceipt 消息发送结果
 type SendReceipt struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// message_id 微信消息 ID，以字符串原样保存，避免大整数精度丢失
-	MessageId string `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
-	// conversation 所属或目标业务会话，群内所有成员共用整群会话
-	Conversation *Conversation `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`
-	// sent_at 消息发送时间，必填并按 UTC 传递
-	SentAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"`
-	// outcome 目标写入副作用结果，只读操作使用 NotApplicable
-	Outcome WriteOutcome `protobuf:"varint,4,opt,name=outcome,proto3,enum=golem.sdk.WriteOutcome" json:"outcome,omitempty"`
-	// revoke_ref 由宿主签发的撤回引用，无法提供时为空
-	RevokeRef     *RevokeRef `protobuf:"bytes,5,opt,name=revoke_ref,json=revokeRef,proto3" json:"revoke_ref,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MessageId     string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`         // 微信消息 ID，以字符串原样保存，避免大整数精度丢失
+	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`                    // 所属或目标业务会话，群内所有成员共用整群会话
+	SentAt        *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"`                  // 消息发送时间，必填并按 UTC 传递
+	Outcome       WriteOutcome           `protobuf:"varint,4,opt,name=outcome,proto3,enum=golem.sdk.WriteOutcome" json:"outcome,omitempty"` // 目标写入副作用结果，只读操作使用 NotApplicable
+	RevokeRef     *RevokeRef             `protobuf:"bytes,5,opt,name=revoke_ref,json=revokeRef,proto3" json:"revoke_ref,omitempty"`         // 由宿主签发的撤回引用，无法提供时为空
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1915,25 +1851,16 @@ func (x *SendReceipt) GetRevokeRef() *RevokeRef {
 
 // Change 归一化资料变更
 type Change struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// domain 资料变更所属业务域
-	Domain ChangeDomain `protobuf:"varint,1,opt,name=domain,proto3,enum=golem.sdk.ChangeDomain" json:"domain,omitempty"`
-	// action 资料创建、更新或删除动作
-	Action ChangeAction `protobuf:"varint,2,opt,name=action,proto3,enum=golem.sdk.ChangeAction" json:"action,omitempty"`
-	// subject_id 本项操作或资料变更的目标业务标识
-	SubjectId string `protobuf:"bytes,3,opt,name=subject_id,json=subjectId,proto3" json:"subject_id,omitempty"`
-	// parent_id 父级业务标识，群成员变更时为群 username
-	ParentId *string `protobuf:"bytes,4,opt,name=parent_id,json=parentId,proto3,oneof" json:"parent_id,omitempty"`
-	// changed_fields 实际变更的 SDK 字段路径，更新时非空，缺失与显式空集合可区分
-	ChangedFields *StringList `protobuf:"bytes,5,opt,name=changed_fields,json=changedFields,proto3" json:"changed_fields,omitempty"`
-	// contact 变更或查询对应的联系人业务快照
-	Contact *Contact `protobuf:"bytes,6,opt,name=contact,proto3" json:"contact,omitempty"`
-	// room 变更或查询对应的群业务快照
-	Room *Room `protobuf:"bytes,7,opt,name=room,proto3" json:"room,omitempty"`
-	// member 变更或查询对应的群成员业务快照
-	Member *Member `protobuf:"bytes,8,opt,name=member,proto3" json:"member,omitempty"`
-	// account 变更或查询对应的当前账号业务快照
-	Account       *Account `protobuf:"bytes,9,opt,name=account,proto3" json:"account,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Domain        ChangeDomain           `protobuf:"varint,1,opt,name=domain,proto3,enum=golem.sdk.ChangeDomain" json:"domain,omitempty"`       // 资料变更所属业务域
+	Action        ChangeAction           `protobuf:"varint,2,opt,name=action,proto3,enum=golem.sdk.ChangeAction" json:"action,omitempty"`       // 资料创建、更新或删除动作
+	SubjectId     string                 `protobuf:"bytes,3,opt,name=subject_id,json=subjectId,proto3" json:"subject_id,omitempty"`             // 本项操作或资料变更的目标业务标识
+	ParentId      *string                `protobuf:"bytes,4,opt,name=parent_id,json=parentId,proto3,oneof" json:"parent_id,omitempty"`          // 父级业务标识，群成员变更时为群 username
+	ChangedFields *StringList            `protobuf:"bytes,5,opt,name=changed_fields,json=changedFields,proto3" json:"changed_fields,omitempty"` // 实际变更的 SDK 字段路径，更新时非空，缺失与显式空集合可区分
+	Contact       *Contact               `protobuf:"bytes,6,opt,name=contact,proto3" json:"contact,omitempty"`                                  // 变更或查询对应的联系人业务快照
+	Room          *Room                  `protobuf:"bytes,7,opt,name=room,proto3" json:"room,omitempty"`                                        // 变更或查询对应的群业务快照
+	Member        *Member                `protobuf:"bytes,8,opt,name=member,proto3" json:"member,omitempty"`                                    // 变更或查询对应的群成员业务快照
+	Account       *Account               `protobuf:"bytes,9,opt,name=account,proto3" json:"account,omitempty"`                                  // 变更或查询对应的当前账号业务快照
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2033,15 +1960,11 @@ func (x *Change) GetAccount() *Account {
 
 // Lease 联系人或整群的会话租约
 type Lease struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id 由宿主签发的会话租约标识
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// conversation 所属或目标业务会话，群内所有成员共用整群会话
-	Conversation *Conversation `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`
-	// topics 租约覆盖的事件主题，作用于联系人或整个群
-	Topics []string `protobuf:"bytes,3,rep,name=topics,proto3" json:"topics,omitempty"`
-	// expires_at 会话租约到期时间，到期后不再持有会话
-	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                // 由宿主签发的会话租约标识
+	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`            // 所属或目标业务会话，群内所有成员共用整群会话
+	Topics        []string               `protobuf:"bytes,3,rep,name=topics,proto3" json:"topics,omitempty"`                        // 租约覆盖的事件主题，作用于联系人或整个群
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"` // 会话租约到期时间，到期后不再持有会话
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2106,21 +2029,15 @@ func (x *Lease) GetExpiresAt() *timestamppb.Timestamp {
 
 // Event 投递给插件的不可变事件
 type Event struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// topic 订阅或投递的事件主题
-	Topic string `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
-	// account_username 所属账号的微信 username
-	AccountUsername string `protobuf:"bytes,2,opt,name=account_username,json=accountUsername,proto3" json:"account_username,omitempty"`
-	// message 关联的归一化业务消息
-	Message *Message `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	// change 关联的资料变更，非资料变更事件时为空
-	Change *Change `protobuf:"bytes,4,opt,name=change,proto3" json:"change,omitempty"`
-	// lease 关联的会话租约
-	Lease *Lease `protobuf:"bytes,5,opt,name=lease,proto3" json:"lease,omitempty"`
-	// occurred_at 事件发生时间，必填并按 UTC 传递
-	OccurredAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Topic           string                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`                                            // 订阅或投递的事件主题
+	AccountUsername string                 `protobuf:"bytes,2,opt,name=account_username,json=accountUsername,proto3" json:"account_username,omitempty"` // 所属账号的微信 username
+	Message         *Message               `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`                                        // 关联的归一化业务消息
+	Change          *Change                `protobuf:"bytes,4,opt,name=change,proto3" json:"change,omitempty"`                                          // 关联的资料变更，非资料变更事件时为空
+	Lease           *Lease                 `protobuf:"bytes,5,opt,name=lease,proto3" json:"lease,omitempty"`                                            // 关联的会话租约
+	OccurredAt      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`                // 事件发生时间，必填并按 UTC 传递
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Event) Reset() {
@@ -2197,9 +2114,8 @@ func (x *Event) GetOccurredAt() *timestamppb.Timestamp {
 
 // EventResult 事件消费结果
 type EventResult struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// consumed 普通响应链是否已消费事件，观察者结果不影响路由
-	Consumed      bool `protobuf:"varint,1,opt,name=consumed,proto3" json:"consumed,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Consumed      bool                   `protobuf:"varint,1,opt,name=consumed,proto3" json:"consumed,omitempty"` // 普通响应链是否已消费事件，观察者结果不影响路由
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2243,19 +2159,13 @@ func (x *EventResult) GetConsumed() bool {
 
 // Command 已完成词法、权限与参数校验的命令
 type Command struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// path 由各级命令名称组成的路径
-	Path []string `protobuf:"bytes,1,rep,name=path,proto3" json:"path,omitempty"`
-	// args 已完成校验的命名参数值
-	Args map[string]string `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// positional 按输入顺序保留的位置参数
-	Positional []string `protobuf:"bytes,3,rep,name=positional,proto3" json:"positional,omitempty"`
-	// actor 实际发言者，无法确定或没有发言者时为空
-	Actor *Actor `protobuf:"bytes,4,opt,name=actor,proto3" json:"actor,omitempty"`
-	// message 关联的归一化业务消息
-	Message *Message `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
-	// raw 原始命令文本
-	Raw           string `protobuf:"bytes,6,opt,name=raw,proto3" json:"raw,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Path          []string               `protobuf:"bytes,1,rep,name=path,proto3" json:"path,omitempty"`                                                                           // 由各级命令名称组成的路径
+	Args          map[string]string      `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // 已完成校验的命名参数值
+	Positional    []string               `protobuf:"bytes,3,rep,name=positional,proto3" json:"positional,omitempty"`                                                               // 按输入顺序保留的位置参数
+	Actor         *Actor                 `protobuf:"bytes,4,opt,name=actor,proto3" json:"actor,omitempty"`                                                                         // 实际发言者，无法确定或没有发言者时为空
+	Message       *Message               `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`                                                                     // 关联的归一化业务消息
+	Raw           string                 `protobuf:"bytes,6,opt,name=raw,proto3" json:"raw,omitempty"`                                                                             // 原始命令文本
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2334,13 +2244,10 @@ func (x *Command) GetRaw() string {
 
 // CommandResult 命令执行结果
 type CommandResult struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// replied 命令处理函数是否已经自行回复
-	Replied bool `protobuf:"varint,1,opt,name=replied,proto3" json:"replied,omitempty"`
-	// text 文本内容，缺失与显式空字符串可区分
-	Text *string `protobuf:"bytes,2,opt,name=text,proto3,oneof" json:"text,omitempty"`
-	// media 宿主管理的媒体引用
-	Media         *MediaRef `protobuf:"bytes,3,opt,name=media,proto3" json:"media,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Replied       bool                   `protobuf:"varint,1,opt,name=replied,proto3" json:"replied,omitempty"` // 命令处理函数是否已经自行回复
+	Text          *string                `protobuf:"bytes,2,opt,name=text,proto3,oneof" json:"text,omitempty"`  // 文本内容，缺失与显式空字符串可区分
+	Media         *MediaRef              `protobuf:"bytes,3,opt,name=media,proto3" json:"media,omitempty"`      // 宿主管理的媒体引用
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2398,19 +2305,14 @@ func (x *CommandResult) GetMedia() *MediaRef {
 
 // CallRequest 按能力名发起的跨插件调用请求
 type CallRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// capability_name 目标能力名，由宿主选择提供者，不指定插件 ID
-	CapabilityName string `protobuf:"bytes,1,opt,name=capability_name,json=capabilityName,proto3" json:"capability_name,omitempty"`
-	// content_type 载荷内容类型
-	ContentType string `protobuf:"bytes,2,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
-	// payload 内联业务载荷，缺失与显式空字节可区分
-	Payload *BytesValue `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
-	// actor 实际发言者，无法确定或没有发言者时为空
-	Actor *Actor `protobuf:"bytes,4,opt,name=actor,proto3" json:"actor,omitempty"`
-	// conversation 所属或目标业务会话，群内所有成员共用整群会话
-	Conversation  *Conversation `protobuf:"bytes,5,opt,name=conversation,proto3" json:"conversation,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	CapabilityName string                 `protobuf:"bytes,1,opt,name=capability_name,json=capabilityName,proto3" json:"capability_name,omitempty"` // 目标能力名，由宿主选择提供者，不指定插件 ID
+	ContentType    string                 `protobuf:"bytes,2,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`          // 载荷内容类型
+	Payload        *BytesValue            `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`                                     // 内联业务载荷，缺失与显式空字节可区分
+	Actor          *Actor                 `protobuf:"bytes,4,opt,name=actor,proto3" json:"actor,omitempty"`                                         // 实际发言者，无法确定或没有发言者时为空
+	Conversation   *Conversation          `protobuf:"bytes,5,opt,name=conversation,proto3" json:"conversation,omitempty"`                           // 所属或目标业务会话，群内所有成员共用整群会话
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CallRequest) Reset() {
@@ -2480,13 +2382,10 @@ func (x *CallRequest) GetConversation() *Conversation {
 
 // CallResult 跨插件能力调用结果
 type CallResult struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// content_type 载荷内容类型
-	ContentType string `protobuf:"bytes,1,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
-	// payload 内联结果载荷，与 media 互斥，缺失与显式空字节可区分
-	Payload *BytesValue `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
-	// media 宿主管理的结果媒体引用，与 payload 互斥
-	Media         *MediaRef `protobuf:"bytes,3,opt,name=media,proto3" json:"media,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ContentType   string                 `protobuf:"bytes,1,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"` // 载荷内容类型
+	Payload       *BytesValue            `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`                            // 内联结果载荷，与 media 互斥，缺失与显式空字节可区分
+	Media         *MediaRef              `protobuf:"bytes,3,opt,name=media,proto3" json:"media,omitempty"`                                // 宿主管理的结果媒体引用，与 payload 互斥
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2544,17 +2443,13 @@ func (x *CallResult) GetMedia() *MediaRef {
 
 // ConfigSnapshot 插件业务配置快照
 type ConfigSnapshot struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// revision 已保存配置的修订号，不能据此认定配置已生效
-	Revision uint64 `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
-	// active_revision 当前已生效配置的修订号
-	ActiveRevision uint64 `protobuf:"varint,2,opt,name=active_revision,json=activeRevision,proto3" json:"active_revision,omitempty"`
-	// data 插件自身业务配置字节，缺失与显式空字节可区分
-	Data *BytesValue `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
-	// apply_status 已保存配置的应用状态
-	ApplyStatus   ApplyStatus `protobuf:"varint,4,opt,name=apply_status,json=applyStatus,proto3,enum=golem.sdk.ApplyStatus" json:"apply_status,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Revision       uint64                 `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`                                                     // 已保存配置的修订号，不能据此认定配置已生效
+	ActiveRevision uint64                 `protobuf:"varint,2,opt,name=active_revision,json=activeRevision,proto3" json:"active_revision,omitempty"`                   // 当前已生效配置的修订号
+	Data           *BytesValue            `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`                                                              // 插件自身业务配置字节，缺失与显式空字节可区分
+	ApplyStatus    ApplyStatus            `protobuf:"varint,4,opt,name=apply_status,json=applyStatus,proto3,enum=golem.sdk.ApplyStatus" json:"apply_status,omitempty"` // 已保存配置的应用状态
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ConfigSnapshot) Reset() {
@@ -2617,9 +2512,8 @@ func (x *ConfigSnapshot) GetApplyStatus() ApplyStatus {
 
 // ConfigSaveResult 配置保存接受结果，不代表已经应用
 type ConfigSaveResult struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// revision 已保存配置的修订号，不能据此认定配置已生效
-	Revision      uint64 `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Revision      uint64                 `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"` // 已保存配置的修订号，不能据此认定配置已生效
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2663,15 +2557,11 @@ func (x *ConfigSaveResult) GetRevision() uint64 {
 
 // ContactPage 联系人分页结果
 type ContactPage struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// items 当前页联系人，成功的空结果使用显式空集合
-	Items []*Contact `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	// next_cursor 下一页不透明游标，空字符串说明没有更多结果
-	NextCursor string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
-	// total 当前授权范围的总条数，-1 代表未知
-	Total int64 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
-	// completeness 对象或查询范围的资料完整性，与分页是否结束无关
-	Completeness  Completeness `protobuf:"varint,4,opt,name=completeness,proto3,enum=golem.sdk.Completeness" json:"completeness,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*Contact             `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`                                            // 当前页联系人，成功的空结果使用显式空集合
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`                // 下一页不透明游标，空字符串说明没有更多结果
+	Total         int64                  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`                                           // 当前授权范围的总条数，-1 代表未知
+	Completeness  Completeness           `protobuf:"varint,4,opt,name=completeness,proto3,enum=golem.sdk.Completeness" json:"completeness,omitempty"` // 对象或查询范围的资料完整性，与分页是否结束无关
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2736,15 +2626,11 @@ func (x *ContactPage) GetCompleteness() Completeness {
 
 // MemberPage 群成员分页结果
 type MemberPage struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// items 当前页群成员，成功的空结果使用显式空集合
-	Items []*Member `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	// next_cursor 下一页不透明游标，空字符串说明没有更多结果
-	NextCursor string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
-	// total 当前授权范围的总条数，-1 代表未知
-	Total int64 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
-	// completeness 对象或查询范围的资料完整性，与分页是否结束无关
-	Completeness  Completeness `protobuf:"varint,4,opt,name=completeness,proto3,enum=golem.sdk.Completeness" json:"completeness,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*Member              `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`                                            // 当前页群成员，成功的空结果使用显式空集合
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`                // 下一页不透明游标，空字符串说明没有更多结果
+	Total         int64                  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`                                           // 当前授权范围的总条数，-1 代表未知
+	Completeness  Completeness           `protobuf:"varint,4,opt,name=completeness,proto3,enum=golem.sdk.Completeness" json:"completeness,omitempty"` // 对象或查询范围的资料完整性，与分页是否结束无关
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2809,15 +2695,11 @@ func (x *MemberPage) GetCompleteness() Completeness {
 
 // ContactBatchItem 单个联系人刷新结果
 type ContactBatchItem struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// subject_id 本项操作或资料变更的目标业务标识
-	SubjectId string `protobuf:"bytes,1,opt,name=subject_id,json=subjectId,proto3" json:"subject_id,omitempty"`
-	// value 单项业务值，仅在 Error 为空时读取
-	Value *Contact `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	// outcome 目标写入副作用结果，只读操作使用 NotApplicable
-	Outcome WriteOutcome `protobuf:"varint,3,opt,name=outcome,proto3,enum=golem.sdk.WriteOutcome" json:"outcome,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SubjectId     string                 `protobuf:"bytes,1,opt,name=subject_id,json=subjectId,proto3" json:"subject_id,omitempty"`         // 本项操作或资料变更的目标业务标识
+	Value         *Contact               `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`                                  // 单项业务值，仅在 Error 为空时读取
+	Outcome       WriteOutcome           `protobuf:"varint,3,opt,name=outcome,proto3,enum=golem.sdk.WriteOutcome" json:"outcome,omitempty"` // 目标写入副作用结果，只读操作使用 NotApplicable
+	Error         *Error                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`                                  // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2882,9 +2764,8 @@ func (x *ContactBatchItem) GetError() *Error {
 
 // ContactBatchResult 按输入顺序保留逐项状态的联系人批量结果
 type ContactBatchResult struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// items 按输入顺序保留的逐项联系人刷新结果
-	Items         []*ContactBatchItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*ContactBatchItem    `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"` // 按输入顺序保留的逐项联系人刷新结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2928,13 +2809,10 @@ func (x *ContactBatchResult) GetItems() []*ContactBatchItem {
 
 // RefreshStageResult 单个上游只读刷新阶段的结果
 type RefreshStageResult struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// name 上游只读刷新阶段名称
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// outcome 目标写入副作用结果，只读操作使用 NotApplicable
-	Outcome WriteOutcome `protobuf:"varint,2,opt,name=outcome,proto3,enum=golem.sdk.WriteOutcome" json:"outcome,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                                    // 上游只读刷新阶段名称
+	Outcome       WriteOutcome           `protobuf:"varint,2,opt,name=outcome,proto3,enum=golem.sdk.WriteOutcome" json:"outcome,omitempty"` // 目标写入副作用结果，只读操作使用 NotApplicable
+	Error         *Error                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`                                  // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2992,13 +2870,10 @@ func (x *RefreshStageResult) GetError() *Error {
 
 // ChatroomRefreshResult 群资料及成员的分阶段刷新结果
 type ChatroomRefreshResult struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// room 变更或查询对应的群业务快照
-	Room *Room `protobuf:"bytes,1,opt,name=room,proto3" json:"room,omitempty"`
-	// members 群成员分页结果
-	Members *MemberPage `protobuf:"bytes,2,opt,name=members,proto3" json:"members,omitempty"`
-	// stages 各上游只读刷新阶段的独立结果
-	Stages        []*RefreshStageResult `protobuf:"bytes,3,rep,name=stages,proto3" json:"stages,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Room          *Room                  `protobuf:"bytes,1,opt,name=room,proto3" json:"room,omitempty"`       // 变更或查询对应的群业务快照
+	Members       *MemberPage            `protobuf:"bytes,2,opt,name=members,proto3" json:"members,omitempty"` // 群成员分页结果
+	Stages        []*RefreshStageResult  `protobuf:"bytes,3,rep,name=stages,proto3" json:"stages,omitempty"`   // 各上游只读刷新阶段的独立结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

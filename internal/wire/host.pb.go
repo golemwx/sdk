@@ -24,11 +24,9 @@ const (
 
 // Invocation 宿主反向调用的执行身份凭据
 type Invocation struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id 关联执行的唯一标识
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// token 绑定当前执行身份的宿主签发凭据
-	Token         string `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`       // 关联执行的唯一标识
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"` // 绑定当前执行身份的宿主签发凭据
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -79,15 +77,11 @@ func (x *Invocation) GetToken() string {
 
 // SendTextRequest 文本消息发送请求
 type SendTextRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// conversation 所属或目标业务会话，群内所有成员共用整群会话
-	Conversation *Conversation `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`
-	// text 待发送的文本内容
-	Text string `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
-	// mentions 被提及者的微信 username 列表
-	Mentions      []string `protobuf:"bytes,4,rep,name=mentions,proto3" json:"mentions,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`     // 本次反向调用绑定的执行身份凭据
+	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"` // 所属或目标业务会话，群内所有成员共用整群会话
+	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`                 // 待发送的文本内容
+	Mentions      []string               `protobuf:"bytes,4,rep,name=mentions,proto3" json:"mentions,omitempty"`         // 被提及者的微信 username 列表
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -152,15 +146,11 @@ func (x *SendTextRequest) GetMentions() []string {
 
 // ReplyRequest 引用回复请求
 type ReplyRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// conversation 所属或目标业务会话，群内所有成员共用整群会话
-	Conversation *Conversation `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`
-	// quote 引用消息摘要，缺失时为空
-	Quote *Quote `protobuf:"bytes,3,opt,name=quote,proto3" json:"quote,omitempty"`
-	// text 引用回复的文本内容
-	Text          string `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`     // 本次反向调用绑定的执行身份凭据
+	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"` // 所属或目标业务会话，群内所有成员共用整群会话
+	Quote         *Quote                 `protobuf:"bytes,3,opt,name=quote,proto3" json:"quote,omitempty"`               // 引用消息摘要，缺失时为空
+	Text          string                 `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`                 // 引用回复的文本内容
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -225,11 +215,9 @@ func (x *ReplyRequest) GetText() string {
 
 // SendReceiptResponse 消息发送回执响应
 type SendReceiptResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// receipt 消息发送回执，写结果未知时不得据此认定成功
-	Receipt *SendReceipt `protobuf:"bytes,1,opt,name=receipt,proto3" json:"receipt,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Receipt       *SendReceipt           `protobuf:"bytes,1,opt,name=receipt,proto3" json:"receipt,omitempty"` // 消息发送回执，写结果未知时不得据此认定成功
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`     // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -280,11 +268,9 @@ func (x *SendReceiptResponse) GetError() *Error {
 
 // RevokeRequest 消息撤回请求
 type RevokeRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// ref 待撤回消息的宿主签发引用
-	Ref           *RevokeRef `protobuf:"bytes,2,opt,name=ref,proto3" json:"ref,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
+	Ref           *RevokeRef             `protobuf:"bytes,2,opt,name=ref,proto3" json:"ref,omitempty"`               // 待撤回消息的宿主签发引用
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -335,21 +321,14 @@ func (x *RevokeRequest) GetRef() *RevokeRef {
 
 // SendMediaMetadata 媒体上传流首包的调用身份和业务元数据
 type SendMediaMetadata struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// conversation 所属或目标业务会话，群内所有成员共用整群会话
-	Conversation *Conversation `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`
-	// kind 业务种类，未知枚举归一为对应零值
-	Kind MediaKind `protobuf:"varint,3,opt,name=kind,proto3,enum=golem.sdk.MediaKind" json:"kind,omitempty"`
-	// file_name 展示用文件名及扩展名，不得用于拼接宿主路径
-	FileName string `protobuf:"bytes,4,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
-	// size 待上传媒体字节数，-1 代表未知
-	Size int64 `protobuf:"varint,5,opt,name=size,proto3" json:"size,omitempty"`
-	// ref 复用的宿主管理媒体引用，不传插件本地路径
-	Ref *MediaRef `protobuf:"bytes,6,opt,name=ref,proto3" json:"ref,omitempty"`
-	// voice 语音时长与编码参数，非语音媒体时为空
-	Voice         *VoiceOptions `protobuf:"bytes,7,opt,name=voice,proto3" json:"voice,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`               // 本次反向调用绑定的执行身份凭据
+	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`           // 所属或目标业务会话，群内所有成员共用整群会话
+	Kind          MediaKind              `protobuf:"varint,3,opt,name=kind,proto3,enum=golem.sdk.MediaKind" json:"kind,omitempty"` // 业务种类，未知枚举归一为对应零值
+	FileName      string                 `protobuf:"bytes,4,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`   // 展示用文件名及扩展名，不得用于拼接宿主路径
+	Size          int64                  `protobuf:"varint,5,opt,name=size,proto3" json:"size,omitempty"`                          // 待上传媒体字节数，-1 代表未知
+	Ref           *MediaRef              `protobuf:"bytes,6,opt,name=ref,proto3" json:"ref,omitempty"`                             // 复用的宿主管理媒体引用，不传插件本地路径
+	Voice         *VoiceOptions          `protobuf:"bytes,7,opt,name=voice,proto3" json:"voice,omitempty"`                         // 语音时长与编码参数，非语音媒体时为空
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -507,13 +486,11 @@ type isSendMediaRequest_Value interface {
 }
 
 type SendMediaRequest_Metadata struct {
-	// metadata 上传流首包元数据，必须先于字节分块发送
-	Metadata *SendMediaMetadata `protobuf:"bytes,1,opt,name=metadata,proto3,oneof"`
+	Metadata *SendMediaMetadata `protobuf:"bytes,1,opt,name=metadata,proto3,oneof"` // 上传流首包元数据，必须先于字节分块发送
 }
 
 type SendMediaRequest_Data struct {
-	// data 媒体上传字节分块，单块不超过 MaxMediaChunkSize
-	Data []byte `protobuf:"bytes,2,opt,name=data,proto3,oneof"`
+	Data []byte `protobuf:"bytes,2,opt,name=data,proto3,oneof"` // 媒体上传字节分块，单块不超过 MaxMediaChunkSize
 }
 
 func (*SendMediaRequest_Metadata) isSendMediaRequest_Value() {}
@@ -522,11 +499,9 @@ func (*SendMediaRequest_Data) isSendMediaRequest_Value() {}
 
 // DownloadRequest 宿主管理的媒体下载请求
 type DownloadRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// media 宿主管理的媒体引用
-	Media         *MediaRef `protobuf:"bytes,2,opt,name=media,proto3" json:"media,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
+	Media         *MediaRef              `protobuf:"bytes,2,opt,name=media,proto3" json:"media,omitempty"`           // 宿主管理的媒体引用
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -577,11 +552,9 @@ func (x *DownloadRequest) GetMedia() *MediaRef {
 
 // ContactGetRequest 指定联系人查询请求
 type ContactGetRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// username 微信 username，不另建用户标识
-	Username      string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
+	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`     // 微信 username，不另建用户标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -632,13 +605,10 @@ func (x *ContactGetRequest) GetUsername() string {
 
 // ContactFindRequest 按昵称或备注查询联系人的分页请求
 type ContactFindRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// query 昵称或备注的字面子串，空字符串等同列表查询
-	Query string `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
-	// page 有界分页请求或分页业务结果
-	Page          *PageRequest `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
+	Query         string                 `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`           // 昵称或备注的字面子串，空字符串等同列表查询
+	Page          *PageRequest           `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`             // 有界分页请求或分页业务结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -696,11 +666,9 @@ func (x *ContactFindRequest) GetPage() *PageRequest {
 
 // ContactListRequest 联系人列表分页请求
 type ContactListRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// page 有界分页请求或分页业务结果
-	Page          *PageRequest `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
+	Page          *PageRequest           `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`             // 有界分页请求或分页业务结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -751,11 +719,9 @@ func (x *ContactListRequest) GetPage() *PageRequest {
 
 // ContactRefreshRequest 显式批量刷新联系人请求
 type ContactRefreshRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// usernames 需要显式刷新的联系人微信 username，结果保持输入顺序
-	Usernames     []string `protobuf:"bytes,2,rep,name=usernames,proto3" json:"usernames,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
+	Usernames     []string               `protobuf:"bytes,2,rep,name=usernames,proto3" json:"usernames,omitempty"`   // 需要显式刷新的联系人微信 username，结果保持输入顺序
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -806,11 +772,9 @@ func (x *ContactRefreshRequest) GetUsernames() []string {
 
 // ContactResponse 单个联系人查询响应
 type ContactResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// contact 变更或查询对应的联系人业务快照
-	Contact *Contact `protobuf:"bytes,1,opt,name=contact,proto3" json:"contact,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Contact       *Contact               `protobuf:"bytes,1,opt,name=contact,proto3" json:"contact,omitempty"` // 变更或查询对应的联系人业务快照
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`     // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -861,11 +825,9 @@ func (x *ContactResponse) GetError() *Error {
 
 // ContactPageResponse 联系人分页查询响应
 type ContactPageResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// page 有界分页请求或分页业务结果
-	Page *ContactPage `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Page          *ContactPage           `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`   // 有界分页请求或分页业务结果
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"` // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -916,11 +878,9 @@ func (x *ContactPageResponse) GetError() *Error {
 
 // ContactBatchResponse 联系人批量刷新响应
 type ContactBatchResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// result 业务处理结果，失败时结合 error 判断
-	Result *ContactBatchResult `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Result        *ContactBatchResult    `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"` // 业务处理结果，失败时结合 error 判断
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -971,11 +931,9 @@ func (x *ContactBatchResponse) GetError() *Error {
 
 // ChatroomGetRequest 指定群资料查询请求
 type ChatroomGetRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// room_username 群的微信 username
-	RoomUsername  string `protobuf:"bytes,2,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                         // 本次反向调用绑定的执行身份凭据
+	RoomUsername  string                 `protobuf:"bytes,2,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"` // 群的微信 username
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1026,13 +984,10 @@ func (x *ChatroomGetRequest) GetRoomUsername() string {
 
 // ChatroomMembersRequest 群成员列表分页请求
 type ChatroomMembersRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// room_username 群的微信 username
-	RoomUsername string `protobuf:"bytes,2,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"`
-	// page 有界分页请求或分页业务结果
-	Page          *PageRequest `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                         // 本次反向调用绑定的执行身份凭据
+	RoomUsername  string                 `protobuf:"bytes,2,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"` // 群的微信 username
+	Page          *PageRequest           `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`                                     // 有界分页请求或分页业务结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1090,13 +1045,10 @@ func (x *ChatroomMembersRequest) GetPage() *PageRequest {
 
 // ChatroomMemberRequest 指定群成员查询请求
 type ChatroomMemberRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// room_username 群的微信 username
-	RoomUsername string `protobuf:"bytes,2,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"`
-	// user_username 群成员的微信 username
-	UserUsername  string `protobuf:"bytes,3,opt,name=user_username,json=userUsername,proto3" json:"user_username,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                         // 本次反向调用绑定的执行身份凭据
+	RoomUsername  string                 `protobuf:"bytes,2,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"` // 群的微信 username
+	UserUsername  string                 `protobuf:"bytes,3,opt,name=user_username,json=userUsername,proto3" json:"user_username,omitempty"` // 群成员的微信 username
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1154,11 +1106,9 @@ func (x *ChatroomMemberRequest) GetUserUsername() string {
 
 // ChatroomRefreshRequest 显式刷新群资料及成员请求
 type ChatroomRefreshRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// room_username 群的微信 username
-	RoomUsername  string `protobuf:"bytes,2,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                         // 本次反向调用绑定的执行身份凭据
+	RoomUsername  string                 `protobuf:"bytes,2,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"` // 群的微信 username
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1209,11 +1159,9 @@ func (x *ChatroomRefreshRequest) GetRoomUsername() string {
 
 // RoomResponse 单个群资料查询响应
 type RoomResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// room 变更或查询对应的群业务快照
-	Room *Room `protobuf:"bytes,1,opt,name=room,proto3" json:"room,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Room          *Room                  `protobuf:"bytes,1,opt,name=room,proto3" json:"room,omitempty"`   // 变更或查询对应的群业务快照
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"` // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1264,11 +1212,9 @@ func (x *RoomResponse) GetError() *Error {
 
 // MemberResponse 单个群成员查询响应
 type MemberResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// member 变更或查询对应的群成员业务快照
-	Member *Member `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Member        *Member                `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"` // 变更或查询对应的群成员业务快照
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1319,11 +1265,9 @@ func (x *MemberResponse) GetError() *Error {
 
 // MemberPageResponse 群成员分页查询响应
 type MemberPageResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// page 有界分页请求或分页业务结果
-	Page *MemberPage `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Page          *MemberPage            `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`   // 有界分页请求或分页业务结果
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"` // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1374,11 +1318,9 @@ func (x *MemberPageResponse) GetError() *Error {
 
 // ChatroomRefreshResponse 群资料及成员刷新响应
 type ChatroomRefreshResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// result 业务处理结果，失败时结合 error 判断
-	Result *ChatroomRefreshResult `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Result        *ChatroomRefreshResult `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"` // 业务处理结果，失败时结合 error 判断
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1429,13 +1371,10 @@ func (x *ChatroomRefreshResponse) GetError() *Error {
 
 // SessionAcquireRequest 联系人或整群会话租约申请请求
 type SessionAcquireRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// conversation 所属或目标业务会话，群内所有成员共用整群会话
-	Conversation *Conversation `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`
-	// topics 租约覆盖的事件主题，作用于联系人或整个群
-	Topics        []string `protobuf:"bytes,3,rep,name=topics,proto3" json:"topics,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`     // 本次反向调用绑定的执行身份凭据
+	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"` // 所属或目标业务会话，群内所有成员共用整群会话
+	Topics        []string               `protobuf:"bytes,3,rep,name=topics,proto3" json:"topics,omitempty"`             // 租约覆盖的事件主题，作用于联系人或整个群
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1493,13 +1432,10 @@ func (x *SessionAcquireRequest) GetTopics() []string {
 
 // SessionRenewRequest 会话租约续期请求
 type SessionRenewRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// lease_id 当前插件持有的会话租约标识
-	LeaseId string `protobuf:"bytes,2,opt,name=lease_id,json=leaseId,proto3" json:"lease_id,omitempty"`
-	// ttl 租约续期时长，受宿主允许范围约束
-	Ttl           *durationpb.Duration `protobuf:"bytes,3,opt,name=ttl,proto3" json:"ttl,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`          // 本次反向调用绑定的执行身份凭据
+	LeaseId       string                 `protobuf:"bytes,2,opt,name=lease_id,json=leaseId,proto3" json:"lease_id,omitempty"` // 当前插件持有的会话租约标识
+	Ttl           *durationpb.Duration   `protobuf:"bytes,3,opt,name=ttl,proto3" json:"ttl,omitempty"`                        // 租约续期时长，受宿主允许范围约束
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1557,11 +1493,9 @@ func (x *SessionRenewRequest) GetTtl() *durationpb.Duration {
 
 // SessionReleaseRequest 会话租约释放请求
 type SessionReleaseRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// lease_id 当前插件持有的会话租约标识
-	LeaseId       string `protobuf:"bytes,2,opt,name=lease_id,json=leaseId,proto3" json:"lease_id,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`          // 本次反向调用绑定的执行身份凭据
+	LeaseId       string                 `protobuf:"bytes,2,opt,name=lease_id,json=leaseId,proto3" json:"lease_id,omitempty"` // 当前插件持有的会话租约标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1612,11 +1546,9 @@ func (x *SessionReleaseRequest) GetLeaseId() string {
 
 // LeaseResponse 会话租约操作响应
 type LeaseResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// lease 关联的会话租约
-	Lease *Lease `protobuf:"bytes,1,opt,name=lease,proto3" json:"lease,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Lease         *Lease                 `protobuf:"bytes,1,opt,name=lease,proto3" json:"lease,omitempty"` // 关联的会话租约
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"` // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1667,11 +1599,9 @@ func (x *LeaseResponse) GetError() *Error {
 
 // HostCallRequest 经宿主路由的跨插件能力调用请求
 type HostCallRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// request 待处理的按能力名调用请求
-	Request       *CallRequest `protobuf:"bytes,2,opt,name=request,proto3" json:"request,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
+	Request       *CallRequest           `protobuf:"bytes,2,opt,name=request,proto3" json:"request,omitempty"`       // 待处理的按能力名调用请求
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1722,11 +1652,9 @@ func (x *HostCallRequest) GetRequest() *CallRequest {
 
 // HostCallResponse 经宿主路由的跨插件能力调用响应
 type HostCallResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// result 业务处理结果，失败时结合 error 判断
-	Result *CallResult `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Result        *CallResult            `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"` // 业务处理结果，失败时结合 error 判断
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1777,9 +1705,8 @@ func (x *HostCallResponse) GetError() *Error {
 
 // ConfigSnapshotRequest 插件自身配置快照查询请求
 type ConfigSnapshotRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation    *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1823,11 +1750,9 @@ func (x *ConfigSnapshotRequest) GetInvocation() *Invocation {
 
 // ConfigSnapshotResponse 插件自身配置快照响应
 type ConfigSnapshotResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// snapshot 插件自身已保存配置及当前生效修订的快照
-	Snapshot *ConfigSnapshot `protobuf:"bytes,1,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Snapshot      *ConfigSnapshot        `protobuf:"bytes,1,opt,name=snapshot,proto3" json:"snapshot,omitempty"` // 插件自身已保存配置及当前生效修订的快照
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`       // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1878,15 +1803,12 @@ func (x *ConfigSnapshotResponse) GetError() *Error {
 
 // ConfigSaveRequest 按预期修订号保存插件自身配置的请求
 type ConfigSaveRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
-	// expected_revision 保存时预期的当前修订号，不匹配时返回 Conflict
-	ExpectedRevision uint64 `protobuf:"varint,2,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
-	// data 插件自身业务配置字节，缺失与显式空字节可区分
-	Data          *BytesValue `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Invocation       *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                                      // 本次反向调用绑定的执行身份凭据
+	ExpectedRevision uint64                 `protobuf:"varint,2,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"` // 保存时预期的当前修订号，不匹配时返回 Conflict
+	Data             *BytesValue            `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`                                                  // 插件自身业务配置字节，缺失与显式空字节可区分
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ConfigSaveRequest) Reset() {
@@ -1942,11 +1864,9 @@ func (x *ConfigSaveRequest) GetData() *BytesValue {
 
 // ConfigSaveResponse 插件自身配置保存响应
 type ConfigSaveResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// result 业务处理结果，失败时结合 error 判断
-	Result *ConfigSaveResult `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Result        *ConfigSaveResult      `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"` // 业务处理结果，失败时结合 error 判断
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1997,9 +1917,8 @@ func (x *ConfigSaveResponse) GetError() *Error {
 
 // AccountCurrentRequest 当前账号业务快照查询请求
 type AccountCurrentRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// invocation 本次反向调用绑定的执行身份凭据
-	Invocation    *Invocation `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2043,11 +1962,9 @@ func (x *AccountCurrentRequest) GetInvocation() *Invocation {
 
 // AccountResponse 当前账号业务快照响应
 type AccountResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// account 变更或查询对应的当前账号业务快照
-	Account *Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	// error 业务错误，成功时为空；部分成功仍保留逐项结果
-	Error         *Error `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Account       *Account               `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"` // 变更或查询对应的当前账号业务快照
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`     // 业务错误，成功时为空；部分成功仍保留逐项结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2098,13 +2015,10 @@ func (x *AccountResponse) GetError() *Error {
 
 // ExecutionCompletedRequest 插件处理函数实际结束后的受控执行确认
 type ExecutionCompletedRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// control_token 绑定插件实例的控制通道凭据，不作为业务参数暴露
-	ControlToken string `protobuf:"bytes,1,opt,name=control_token,json=controlToken,proto3" json:"control_token,omitempty"`
-	// invocation_id 关联执行的唯一标识
-	InvocationId string `protobuf:"bytes,2,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`
-	// instance_generation 插件实例代次，用于拒绝旧实例请求
-	InstanceGeneration uint64 `protobuf:"varint,3,opt,name=instance_generation,json=instanceGeneration,proto3" json:"instance_generation,omitempty"`
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	ControlToken       string                 `protobuf:"bytes,1,opt,name=control_token,json=controlToken,proto3" json:"control_token,omitempty"`                    // 绑定插件实例的控制通道凭据，不作为业务参数暴露
+	InvocationId       string                 `protobuf:"bytes,2,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`                    // 关联执行的唯一标识
+	InstanceGeneration uint64                 `protobuf:"varint,3,opt,name=instance_generation,json=instanceGeneration,proto3" json:"instance_generation,omitempty"` // 插件实例代次，用于拒绝旧实例请求
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -2162,9 +2076,8 @@ func (x *ExecutionCompletedRequest) GetInstanceGeneration() uint64 {
 
 // ReverseReadyRequest 插件反向宿主连接就绪确认
 type ReverseReadyRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// control_token 绑定插件实例的控制通道凭据，不作为业务参数暴露
-	ControlToken  string `protobuf:"bytes,1,opt,name=control_token,json=controlToken,proto3" json:"control_token,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ControlToken  string                 `protobuf:"bytes,1,opt,name=control_token,json=controlToken,proto3" json:"control_token,omitempty"` // 绑定插件实例的控制通道凭据，不作为业务参数暴露
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

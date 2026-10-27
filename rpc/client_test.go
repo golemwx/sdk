@@ -22,14 +22,22 @@ import (
 
 // fixturePlugin 只实现必要的 Loader，以真实进程验证可选生命周期
 type fixturePlugin struct {
-	// mode 当前进程的受控测试场景
-	mode string
+	mode string // 当前进程的受控测试场景
 }
 
 // Descriptor 提供固定测试声明，描述失败场景会触发 SDK 的 panic 保护
 func (p *fixturePlugin) Descriptor() plugin.Descriptor {
 	if p.mode == "describe-failure" {
 		panic("private fixture error")
+	}
+	if p.mode == "missing-event-handler" {
+		return plugin.Descriptor{ID: "fixture", Subscriptions: []plugin.Subscription{{Topic: "fixture"}}}
+	}
+	if p.mode == "missing-command-handler" {
+		return plugin.Descriptor{ID: "fixture", Commands: []plugin.CommandSpec{{Path: []string{"fixture"}}}}
+	}
+	if p.mode == "missing-capability-handler" {
+		return plugin.Descriptor{ID: "fixture", Capabilities: []plugin.CapabilitySpec{{Name: "fixture"}}}
 	}
 	return plugin.Descriptor{ID: "fixture", RequestedPermissions: []sdk.Permission{sdk.PermissionContactRead}}
 }
@@ -108,15 +116,17 @@ func TestPluginProcess(t *testing.T) {
 		})
 		return
 	}
+	if mode == "execution" {
+		plugin.Serve(&executionPlugin{fixturePlugin: fixturePlugin{mode: mode}, release: make(chan struct{})})
+		return
+	}
 	plugin.Serve(&fixturePlugin{mode: mode})
 }
 
 // fixtureAccount 提供独立人工账号数据并观察父调用取消
 type fixtureAccount struct {
-	// calls 已实际进入宿主业务的调用数
-	calls atomic.Int32
-	// entered 可选的显式进入信号
-	entered chan struct{}
+	calls   atomic.Int32  // 已实际进入宿主业务的调用数
+	entered chan struct{} // 可选的显式进入信号
 }
 
 // Current 提供必填 UTC 时间，不访问真实账号或磁盘资料
@@ -214,7 +224,7 @@ func TestStartCloseAndRepeat(t *testing.T) {
 
 // TestStartupFailuresCleanResources 验证各初始化阶段失败均回收实际进程
 func TestStartupFailuresCleanResources(t *testing.T) {
-	for _, scenario := range []string{"cookie-mismatch", "version-mismatch", "describe-failure", "identity-mismatch", "validation-failure", "validation-panic", "reverse-failure", "load-failure", "unrequested-permission"} {
+	for _, scenario := range []string{"cookie-mismatch", "version-mismatch", "describe-failure", "identity-mismatch", "validation-failure", "validation-panic", "reverse-failure", "load-failure", "unrequested-permission", "missing-event-handler", "missing-command-handler", "missing-capability-handler"} {
 		t.Run(scenario, func(t *testing.T) {
 			options := fixtureOptions(t, scenario)
 			switch scenario {

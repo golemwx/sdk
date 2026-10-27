@@ -159,17 +159,12 @@ func (VoiceEncoding) EnumDescriptor() ([]byte, []int) {
 
 // MediaRef 宿主管理的媒体引用，不包含私有协议材料
 type MediaRef struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// token 绑定账号、插件实例和资源范围的不透明媒体引用凭据
-	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	// kind 业务种类，未知枚举归一为对应零值
-	Kind MediaKind `protobuf:"varint,2,opt,name=kind,proto3,enum=golem.sdk.MediaKind" json:"kind,omitempty"`
-	// file_name 展示用文件名及扩展名，不得用于拼接宿主路径
-	FileName string `protobuf:"bytes,3,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
-	// size_bytes 媒体字节数，-1 代表未知
-	SizeBytes int64 `protobuf:"varint,4,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
-	// expires_at 媒体引用到期时间，失效后使用返回 FailedPrecondition
-	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`                           // 绑定账号、插件实例和资源范围的不透明媒体引用凭据
+	Kind          MediaKind              `protobuf:"varint,2,opt,name=kind,proto3,enum=golem.sdk.MediaKind" json:"kind,omitempty"`   // 业务种类，未知枚举归一为对应零值
+	FileName      string                 `protobuf:"bytes,3,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`     // 展示用文件名及扩展名，不得用于拼接宿主路径
+	SizeBytes     int64                  `protobuf:"varint,4,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"` // 媒体字节数，-1 代表未知
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`  // 媒体引用到期时间，失效后使用返回 FailedPrecondition
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -241,11 +236,9 @@ func (x *MediaRef) GetExpiresAt() *timestamppb.Timestamp {
 
 // RevokeRef 宿主管理的消息撤回引用
 type RevokeRef struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// token 绑定账号、插件实例和目标消息的不透明撤回引用凭据
-	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	// expires_at 撤回引用到期时间，失效后使用返回 FailedPrecondition
-	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`                          // 绑定账号、插件实例和目标消息的不透明撤回引用凭据
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"` // 撤回引用到期时间，失效后使用返回 FailedPrecondition
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -296,11 +289,9 @@ func (x *RevokeRef) GetExpiresAt() *timestamppb.Timestamp {
 
 // VoiceOptions 业务音频参数
 type VoiceOptions struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// duration 音频时长，必须为正，精确到毫秒，毫秒数不得超过 int32 上限
-	Duration *durationpb.Duration `protobuf:"bytes,1,opt,name=duration,proto3" json:"duration,omitempty"`
-	// encoding 公共音频编码格式
-	Encoding      VoiceEncoding `protobuf:"varint,2,opt,name=encoding,proto3,enum=golem.sdk.VoiceEncoding" json:"encoding,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Duration      *durationpb.Duration   `protobuf:"bytes,1,opt,name=duration,proto3" json:"duration,omitempty"`                               // 音频时长，必须为正，精确到毫秒，毫秒数不得超过 int32 上限
+	Encoding      VoiceEncoding          `protobuf:"varint,2,opt,name=encoding,proto3,enum=golem.sdk.VoiceEncoding" json:"encoding,omitempty"` // 公共音频编码格式
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -351,9 +342,8 @@ func (x *VoiceOptions) GetEncoding() VoiceEncoding {
 
 // MediaChunk 媒体下载流的单个字节分块
 type MediaChunk struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// data 媒体下载字节分块，单块不超过 MaxMediaChunkSize
-	Data          []byte `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Data          []byte                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"` // 媒体下载字节分块，单块不超过 MaxMediaChunkSize
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

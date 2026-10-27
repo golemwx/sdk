@@ -39,18 +39,12 @@ const (
 
 // Error 跨进程错误载体
 type Error struct {
-	// Category 机器判断的错误类别，不通过匹配 Reason 判断
-	Category Category
-	// Operation 发生错误的业务操作名
-	Operation string
-	// InvocationID 关联执行的唯一标识
-	InvocationID string
-	// Outcome 目标写入副作用结果，只读操作使用 NotApplicable
-	Outcome WriteOutcome
-	// Reason 供人阅读的脱敏错误说明，不用于机器分支判断
-	Reason string
-	// RetryAfter 建议重试等待时长，不构成自动重试写操作的授权
-	RetryAfter time.Duration
+	Category     Category      // 机器判断的错误类别，不通过匹配 Reason 判断
+	Operation    string        // 发生错误的业务操作名
+	InvocationID string        // 关联执行的唯一标识
+	Outcome      WriteOutcome  // 目标写入副作用结果，只读操作使用 NotApplicable
+	Reason       string        // 供人阅读的脱敏错误说明，不用于机器分支判断
+	RetryAfter   time.Duration // 建议重试等待时长，不构成自动重试写操作的授权
 }
 
 // Error 返回脱敏的错误说明

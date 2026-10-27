@@ -26,22 +26,14 @@ const (
 
 // Contact 联系人业务快照
 type Contact struct {
-	// Username 微信 username，不另建用户标识
-	Username string
-	// Kind 业务种类，未知枚举归一为对应零值
-	Kind ContactKind
-	// Nickname 昵称，缺失与显式空字符串可区分
-	Nickname *string
-	// Remark 备注，缺失与显式空字符串可区分
-	Remark *string
-	// AvatarURL 头像地址，缺失与显式空字符串可区分
-	AvatarURL *string
-	// Alias 微信号别名，缺失与显式空字符串可区分
-	Alias *string
-	// UpdatedAt 资料快照更新时间，必填并按 UTC 传递
-	UpdatedAt time.Time
-	// Completeness 对象或查询范围的资料完整性，与分页是否结束无关
-	Completeness sdk.Completeness
+	Username     string           // 微信 username，不另建用户标识
+	Kind         ContactKind      // 业务种类，未知枚举归一为对应零值
+	Nickname     *string          // 昵称，缺失与显式空字符串可区分
+	Remark       *string          // 备注，缺失与显式空字符串可区分
+	AvatarURL    *string          // 头像地址，缺失与显式空字符串可区分
+	Alias        *string          // 微信号别名，缺失与显式空字符串可区分
+	UpdatedAt    time.Time        // 资料快照更新时间，必填并按 UTC 传递
+	Completeness sdk.Completeness // 对象或查询范围的资料完整性，与分页是否结束无关
 }
 
 // ContactsClient 宿主联系人能力

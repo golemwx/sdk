@@ -17,34 +17,88 @@ import (
 
 // Invocation 宿主反向服务边界收到的调用凭据，不从请求决定插件身份
 type Invocation struct {
-	// ID 宿主签发的执行标识，空值仅可按独立后台授权处理
-	ID string
-	// Token 宿主签发的本次执行凭据
-	Token string
+	ID    string // 宿主签发的执行标识，空值仅可按独立后台授权处理
+	Token string // 宿主签发的本次执行凭据
 }
 
 // HostServices 当前实例绑定的宿主实现与授权入口
 type HostServices struct {
-	// Host 已绑定实例和账号的七类宿主业务实现
-	Host *plugin.Host
-	// Authorize 检查实例、调用凭据及操作授权，未提供时默认拒绝
-	Authorize func(context.Context, Invocation, string) (context.Context, error)
-	// ReverseReady 可选的反向连接就绪校验，失败会使整个启动失败
-	ReverseReady func(context.Context) error
+	Host *plugin.Host // 已绑定实例和账号的七类宿主业务实现
+	// 检查实例、调用凭据及操作授权，未提供时默认拒绝
+	Authorize    func(context.Context, Invocation, string) (context.Context, error)
+	ReverseReady func(context.Context) error // 可选的反向连接就绪校验，失败会使整个启动失败
+	// 仅在 handler 实际退出后接收当前实例的独立完成确认
+	ExecutionCompleted func(ctx context.Context, invocationID string, generation uint64) error
 }
 
 // hostControl 将就绪确认绑定到当前实例的随机控制凭据
 type hostControl struct {
-	// UnimplementedHostControlServiceServer 执行完成跟踪未接入前明确返回 Unimplemented
-	wire.UnimplementedHostControlServiceServer
-	// token 当前实例唯一的随机控制凭据
-	token string
-	// ready 反向连接就绪信号
-	ready chan struct{}
-	// once 保证就绪信号只关闭一次
-	once sync.Once
-	// validate 可选的宿主就绪校验
-	validate func(context.Context) error
+	wire.UnimplementedHostControlServiceServer // 为未来新增控制方法提供明确失败
+
+	token        string                                      // 当前实例唯一的随机控制凭据
+	ready        chan struct{}                               // 反向连接就绪信号
+	once         sync.Once                                   // 保证就绪信号只关闭一次
+	validate     func(context.Context) error                 // 可选的宿主就绪校验
+	generation   uint64                                      // 反向连接绑定的实例代次
+	completed    func(context.Context, string, uint64) error // 宿主实际执行记录的完成入口，不能根据业务 RPC 返回自行触发
+	invocationMu sync.Mutex                                  // 保护用户调用权限，与真实执行完成记录独立
+	invocations  map[string]hostInvocation                   // 仅保存宿主仍在等待且尚未取消的用户调用
+}
+
+// hostInvocation 将随机凭据绑定到宿主原调用上下文
+type hostInvocation struct {
+	token string          // 宿主为本次调用签发的随机凭据
+	ctx   context.Context // 原用户调用期限与取消信号
+}
+
+// bindInvocation 在发起业务 RPC 前登记权限，返回后撤销，不等同于实际执行结束
+func (s *hostControl) bindInvocation(ctx context.Context, invocation Invocation) (func(), error) {
+	s.invocationMu.Lock()
+	defer s.invocationMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return nil, transport.DecodeError(nil, err, "plugin.execute")
+	}
+	if _, exists := s.invocations[invocation.ID]; exists {
+		return nil, sdk.NewError(sdk.CategoryAlreadyExists, "plugin.execute", "invocation ID is already in use")
+	}
+	if s.invocations == nil {
+		s.invocations = make(map[string]hostInvocation)
+	}
+	s.invocations[invocation.ID] = hostInvocation{token: invocation.Token, ctx: ctx}
+	return func() {
+		s.invocationMu.Lock()
+		delete(s.invocations, invocation.ID)
+		s.invocationMu.Unlock()
+	}, nil
+}
+
+// invocationContext 拒绝已返回、过期或取消的用户凭据，空身份仍需宿主独立授权
+func (s *hostControl) invocationContext(invocation Invocation) (context.Context, error) {
+	if invocation.ID == "" && invocation.Token == "" {
+		return nil, nil
+	}
+	s.invocationMu.Lock()
+	defer s.invocationMu.Unlock()
+	value, ok := s.invocations[invocation.ID]
+	if !ok || invocation.Token == "" || subtle.ConstantTimeCompare([]byte(invocation.Token), []byte(value.token)) != 1 || value.ctx.Err() != nil {
+		return nil, sdk.NewError(sdk.CategoryPermissionDenied, "host.authorize", "invocation permission is no longer valid")
+	}
+	return value.ctx, nil
+}
+
+// ExecutionCompleted 校验连接绑定的控制凭据和代次，迟到旧通知无法作用于新实例
+func (s *hostControl) ExecutionCompleted(ctx context.Context, request *wire.ExecutionCompletedRequest) (*wire.OperationResponse, error) {
+	if s.token == "" || subtle.ConstantTimeCompare([]byte(request.GetControlToken()), []byte(s.token)) != 1 || request.GetInstanceGeneration() != s.generation {
+		return &wire.OperationResponse{Error: wire.ToWireError(sdk.NewError(sdk.CategoryPermissionDenied, "host.execution_completed", "invalid instance control identity"))}, nil
+	}
+	if request.GetInvocationId() == "" {
+		return &wire.OperationResponse{Error: wire.ToWireError(sdk.NewError(sdk.CategoryInvalidArgument, "host.execution_completed", "missing invocation ID"))}, nil
+	}
+	var err error
+	if s.completed != nil {
+		err = s.completed(ctx, request.InvocationId, s.generation)
+	}
+	return &wire.OperationResponse{Error: transport.EncodeError(err, "host.execution_completed")}, nil
 }
 
 // ReverseReady 验证控制身份并确认已通过安全反向连接
@@ -62,7 +116,7 @@ func (s *hostControl) ReverseReady(ctx context.Context, request *wire.ReverseRea
 }
 
 // hostInterceptor 在可信宿主边界检查每次回调，不将无 token 调用视为管理员
-func hostInterceptor(services HostServices) grpc.UnaryServerInterceptor {
+func hostInterceptor(services HostServices, control *hostControl) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (response any, err error) {
 		defer func() {
 			if recover() != nil {
@@ -78,6 +132,24 @@ func hostInterceptor(services HostServices) grpc.UnaryServerInterceptor {
 		var invocation Invocation
 		if value, ok := request.(interface{ GetInvocation() *wire.Invocation }); ok {
 			invocation.ID, invocation.Token = value.GetInvocation().GetId(), value.GetInvocation().GetToken()
+		}
+		if control != nil {
+			parent, err := control.invocationContext(invocation)
+			if err != nil {
+				return nil, transport.RPCError(err, info.FullMethod)
+			}
+			if parent != nil {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithCancel(ctx)
+				defer cancel()
+				stop := context.AfterFunc(parent, cancel)
+				defer stop()
+				if deadline, ok := parent.Deadline(); ok {
+					var cancelDeadline context.CancelFunc
+					ctx, cancelDeadline = context.WithDeadline(ctx, deadline)
+					defer cancelDeadline()
+				}
+			}
 		}
 		bound, err := services.Authorize(ctx, invocation, info.FullMethod)
 		if err != nil {
@@ -97,6 +169,9 @@ func hostInterceptor(services HostServices) grpc.UnaryServerInterceptor {
 			defer cancelDeadline()
 		}
 		if err := ctx.Err(); err != nil {
+			return nil, transport.RPCError(err, info.FullMethod)
+		}
+		if err := bound.Err(); err != nil {
 			return nil, transport.RPCError(err, info.FullMethod)
 		}
 		return handler(bound, request)
@@ -149,10 +224,9 @@ func registerHost(server *grpc.Server, services HostServices, control *hostContr
 
 // hostMessages 消息一元 RPC 的业务适配，流控在 T26 接入
 type hostMessages struct {
-	// UnimplementedHostMessagesServiceServer 未接入的媒体流明确返回 Unimplemented
-	wire.UnimplementedHostMessagesServiceServer
-	// client 已绑定实例的消息能力
-	client plugin.MessagesClient
+	wire.UnimplementedHostMessagesServiceServer // 未接入的媒体流明确返回 Unimplemented
+
+	client plugin.MessagesClient // 已绑定实例的消息能力
 }
 
 // SendText 将文本请求转换为公开业务类型
@@ -184,10 +258,9 @@ func (s *hostMessages) Revoke(ctx context.Context, r *wire.RevokeRequest) (*wire
 
 // hostContacts 本地联系人查询及显式刷新适配
 type hostContacts struct {
-	// UnimplementedHostContactsServiceServer 为未来兼容方法提供明确失败
-	wire.UnimplementedHostContactsServiceServer
-	// client 已绑定实例的联系人能力
-	client plugin.ContactsClient
+	wire.UnimplementedHostContactsServiceServer // 为未来兼容方法提供明确失败
+
+	client plugin.ContactsClient // 已绑定实例的联系人能力
 }
 
 // Get 查询单个联系人
@@ -228,10 +301,9 @@ func (s *hostContacts) Refresh(ctx context.Context, r *wire.ContactRefreshReques
 
 // hostChatrooms 本地群与成员查询适配
 type hostChatrooms struct {
-	// UnimplementedHostChatroomsServiceServer 为未来兼容方法提供明确失败
-	wire.UnimplementedHostChatroomsServiceServer
-	// client 已绑定实例的群能力
-	client plugin.ChatroomsClient
+	wire.UnimplementedHostChatroomsServiceServer // 为未来兼容方法提供明确失败
+
+	client plugin.ChatroomsClient // 已绑定实例的群能力
 }
 
 // Get 查询单个群资料
@@ -268,10 +340,9 @@ func (s *hostChatrooms) Refresh(ctx context.Context, r *wire.ChatroomRefreshRequ
 
 // hostSessions 会话租约的宿主适配
 type hostSessions struct {
-	// UnimplementedHostSessionsServiceServer 为未来兼容方法提供明确失败
-	wire.UnimplementedHostSessionsServiceServer
-	// client 已绑定实例的租约能力
-	client plugin.SessionsClient
+	wire.UnimplementedHostSessionsServiceServer // 为未来兼容方法提供明确失败
+
+	client plugin.SessionsClient // 已绑定实例的租约能力
 }
 
 // Acquire 为联系人或整群申请租约
@@ -299,10 +370,9 @@ func (s *hostSessions) Release(ctx context.Context, r *wire.SessionReleaseReques
 
 // hostCaller 按能力名路由的宿主适配
 type hostCaller struct {
-	// UnimplementedHostCallerServiceServer 为未来兼容方法提供明确失败
-	wire.UnimplementedHostCallerServiceServer
-	// client 已绑定实例的能力调用入口
-	client plugin.CallerClient
+	wire.UnimplementedHostCallerServiceServer // 为未来兼容方法提供明确失败
+
+	client plugin.CallerClient // 已绑定实例的能力调用入口
 }
 
 // Call 转换能力输入和结果，不允许请求覆盖绑定身份
@@ -318,10 +388,9 @@ func (s *hostCaller) Call(ctx context.Context, r *wire.HostCallRequest) (*wire.H
 
 // hostConfig 插件自身业务配置的宿主适配
 type hostConfig struct {
-	// UnimplementedHostConfigServiceServer 为未来兼容方法提供明确失败
-	wire.UnimplementedHostConfigServiceServer
-	// client 已绑定实例的自身配置入口
-	client plugin.ConfigClient
+	wire.UnimplementedHostConfigServiceServer // 为未来兼容方法提供明确失败
+
+	client plugin.ConfigClient // 已绑定实例的自身配置入口
 }
 
 // Snapshot 查询插件自身配置及当前生效修订
@@ -346,10 +415,8 @@ func (s *hostConfig) Save(ctx context.Context, r *wire.ConfigSaveRequest) (*wire
 
 // hostAccount 当前账号快照的宿主适配
 type hostAccount struct {
-	// UnimplementedHostAccountServiceServer 为未来兼容方法提供明确失败
-	wire.UnimplementedHostAccountServiceServer
-	// client 已绑定实例的账号入口
-	client plugin.AccountClient
+	wire.UnimplementedHostAccountServiceServer                      // 为未来兼容方法提供明确失败
+	client                                     plugin.AccountClient // 已绑定实例的账号入口
 }
 
 // Current 返回不含私有协议材料的当前账号快照
