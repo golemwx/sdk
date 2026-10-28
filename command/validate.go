@@ -1,6 +1,7 @@
 package command
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"strconv"
@@ -28,10 +29,10 @@ func ValidateSpec(spec CommandSpec) error {
 	names := make(map[string]struct{}, len(spec.Args))
 	for _, arg := range spec.Args {
 		if !validName(arg.Name) {
-			return invalidSpec("command contains an invalid argument name")
+			return invalidArgSpec(arg, "has an invalid name")
 		}
 		if _, exists := names[arg.Name]; exists {
-			return invalidSpec("command contains a duplicate argument")
+			return invalidArgSpec(arg, "is duplicated")
 		}
 		names[arg.Name] = struct{}{}
 		if err := validateArgSpec(arg); err != nil {
@@ -85,33 +86,33 @@ func validateArgSpec(arg ArgSpec) error {
 	switch arg.Type {
 	case ArgTypeString, ArgTypeBool:
 		if len(arg.Enum) != 0 || arg.Min != nil || arg.Max != nil {
-			return invalidSpec("command argument has constraints unsupported by its type")
+			return invalidArgSpec(arg, "has constraints unsupported by its type")
 		}
 	case ArgTypeInt:
 		if len(arg.Enum) != 0 || !validRange(arg.Min, arg.Max) || !intRangeHasValue(arg.Min, arg.Max) {
-			return invalidSpec("command numeric argument has an invalid range")
+			return invalidArgSpec(arg, "has an invalid numeric range")
 		}
 	case ArgTypeFloat:
 		if len(arg.Enum) != 0 || !validRange(arg.Min, arg.Max) {
-			return invalidSpec("command numeric argument has an invalid range")
+			return invalidArgSpec(arg, "has an invalid numeric range")
 		}
 	case ArgTypeEnum:
 		if arg.Min != nil || arg.Max != nil || len(arg.Enum) == 0 {
-			return invalidSpec("command enum argument has an invalid declaration")
+			return invalidArgSpec(arg, "has an invalid enum declaration")
 		}
 		values := make(map[string]struct{}, len(arg.Enum))
 		for _, value := range arg.Enum {
 			if _, exists := values[value]; exists {
-				return invalidSpec("command enum argument contains a duplicate value")
+				return invalidArgSpec(arg, "contains a duplicate enum value")
 			}
 			values[value] = struct{}{}
 		}
 	default:
-		return invalidSpec("command argument has an unknown type")
+		return invalidArgSpec(arg, "has an unknown type")
 	}
 	// Default 没有存在位，空字符串固定表示未声明默认值
 	if arg.Default != "" && !validArgValue(arg, arg.Default) {
-		return invalidSpec("command argument has an invalid default value")
+		return invalidArgSpec(arg, "has an invalid default value")
 	}
 	return nil
 }
@@ -238,6 +239,11 @@ func knownPermission(permission sdk.Permission) bool {
 // invalidSpec 创建命令声明错误
 func invalidSpec(reason string) error {
 	return sdk.NewError(sdk.CategoryInvalidArgument, "command.validate_spec", reason)
+}
+
+// invalidArgSpec 为参数 schema 错误补充稳定参数名和修复方向
+func invalidArgSpec(arg ArgSpec, reason string) error {
+	return invalidSpec(fmt.Sprintf("command argument %q %s", arg.Name, reason))
 }
 
 // invalidArgs 创建命令输入错误

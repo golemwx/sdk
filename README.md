@@ -56,8 +56,10 @@ Base 不得复用到其他连接。单测可通过
 
 命令声明通过 `command.ValidateSpec` 校验，词法解析后的命名参数通过
 `command.ValidateArgs` 复制、补默认并校验。SDK 会在插件 `Describe` 及宿主启动的可信边界
-重复校验每条命令，同一 Descriptor 的重复完整路径返回 `AlreadyExists`。类型化反射绑定留待
-T23 冻结字段与标签规则后接入，本阶段不提供全局注册器。
+重复校验每条命令，同一 Descriptor 的重复完整路径返回 `AlreadyExists`。插件可用
+`command.Bind(spec, supplied, &target)` 将命名参数绑定到带 `command:"参数名"` 标签的导出
+字段；只使用普通反射和可写导出字段，不使用 unsafe，也不提供全局注册器。普通字段在缺失时
+写零值，指针字段用 nil 保留可选参数缺失，并在显式空值或默认值存在时指向对应值。
 
 详细用法、资源所有权和阶段边界见 [插件通信](docs/插件通信.md)。
 T08 已接入事件、命令与能力 handler、invocation 自动透传、启用周期 `TaskContext`、
