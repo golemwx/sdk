@@ -461,6 +461,9 @@ type Descriptor struct {
 	Commands             []*CommandSpec         `protobuf:"bytes,8,rep,name=commands,proto3" json:"commands,omitempty"`                                                     // 插件声明的命令集合
 	Capabilities         []*CapabilitySpec      `protobuf:"bytes,9,rep,name=capabilities,proto3" json:"capabilities,omitempty"`                                             // 插件公开提供的能力声明
 	UsesCapabilities     []string               `protobuf:"bytes,10,rep,name=uses_capabilities,json=usesCapabilities,proto3" json:"uses_capabilities,omitempty"`            // 插件声明需要调用的能力名
+	HasConfigDefaults    bool                   `protobuf:"varint,11,opt,name=has_config_defaults,json=hasConfigDefaults,proto3" json:"has_config_defaults,omitempty"`      // SDK 检测到插件实现 ConfigDefaulter
+	HasConfigValidate    bool                   `protobuf:"varint,12,opt,name=has_config_validate,json=hasConfigValidate,proto3" json:"has_config_validate,omitempty"`      // SDK 检测到插件实现 ConfigValidator
+	HasConfigApply       bool                   `protobuf:"varint,13,opt,name=has_config_apply,json=hasConfigApply,proto3" json:"has_config_apply,omitempty"`               // SDK 检测到插件实现 ConfigApplier
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -563,6 +566,27 @@ func (x *Descriptor) GetUsesCapabilities() []string {
 		return x.UsesCapabilities
 	}
 	return nil
+}
+
+func (x *Descriptor) GetHasConfigDefaults() bool {
+	if x != nil {
+		return x.HasConfigDefaults
+	}
+	return false
+}
+
+func (x *Descriptor) GetHasConfigValidate() bool {
+	if x != nil {
+		return x.HasConfigValidate
+	}
+	return false
+}
+
+func (x *Descriptor) GetHasConfigApply() bool {
+	if x != nil {
+		return x.HasConfigApply
+	}
+	return false
 }
 
 // DescribeResponse 插件描述查询响应
@@ -968,6 +992,59 @@ func (x *ConfigCandidateRequest) GetInvocationId() string {
 	return ""
 }
 
+// ConfigResumeRequest 配置屏障结束后恢复业务准入
+type ConfigResumeRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	InvocationId    string                 `protobuf:"bytes,1,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`          // 本次恢复执行的唯一标识
+	BackgroundToken string                 `protobuf:"bytes,2,opt,name=background_token,json=backgroundToken,proto3" json:"background_token,omitempty"` // 恢复后的启用周期后台令牌
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ConfigResumeRequest) Reset() {
+	*x = ConfigResumeRequest{}
+	mi := &file_golem_sdk_plugin_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConfigResumeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConfigResumeRequest) ProtoMessage() {}
+
+func (x *ConfigResumeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_plugin_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConfigResumeRequest.ProtoReflect.Descriptor instead.
+func (*ConfigResumeRequest) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ConfigResumeRequest) GetInvocationId() string {
+	if x != nil {
+		return x.InvocationId
+	}
+	return ""
+}
+
+func (x *ConfigResumeRequest) GetBackgroundToken() string {
+	if x != nil {
+		return x.BackgroundToken
+	}
+	return ""
+}
+
 // ConfigDefaultsResponse 插件默认配置响应
 type ConfigDefaultsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -979,7 +1056,7 @@ type ConfigDefaultsResponse struct {
 
 func (x *ConfigDefaultsResponse) Reset() {
 	*x = ConfigDefaultsResponse{}
-	mi := &file_golem_sdk_plugin_proto_msgTypes[12]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -991,7 +1068,7 @@ func (x *ConfigDefaultsResponse) String() string {
 func (*ConfigDefaultsResponse) ProtoMessage() {}
 
 func (x *ConfigDefaultsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_plugin_proto_msgTypes[12]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1004,7 +1081,7 @@ func (x *ConfigDefaultsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfigDefaultsResponse.ProtoReflect.Descriptor instead.
 func (*ConfigDefaultsResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{12}
+	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ConfigDefaultsResponse) GetData() *BytesValue {
@@ -1033,7 +1110,7 @@ type EventRequest struct {
 
 func (x *EventRequest) Reset() {
 	*x = EventRequest{}
-	mi := &file_golem_sdk_plugin_proto_msgTypes[13]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1045,7 +1122,7 @@ func (x *EventRequest) String() string {
 func (*EventRequest) ProtoMessage() {}
 
 func (x *EventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_plugin_proto_msgTypes[13]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1058,7 +1135,7 @@ func (x *EventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EventRequest.ProtoReflect.Descriptor instead.
 func (*EventRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{13}
+	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *EventRequest) GetInvocationId() string {
@@ -1093,7 +1170,7 @@ type EventResponse struct {
 
 func (x *EventResponse) Reset() {
 	*x = EventResponse{}
-	mi := &file_golem_sdk_plugin_proto_msgTypes[14]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1105,7 +1182,7 @@ func (x *EventResponse) String() string {
 func (*EventResponse) ProtoMessage() {}
 
 func (x *EventResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_plugin_proto_msgTypes[14]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1118,7 +1195,7 @@ func (x *EventResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EventResponse.ProtoReflect.Descriptor instead.
 func (*EventResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{14}
+	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *EventResponse) GetResult() *EventResult {
@@ -1147,7 +1224,7 @@ type CommandRequest struct {
 
 func (x *CommandRequest) Reset() {
 	*x = CommandRequest{}
-	mi := &file_golem_sdk_plugin_proto_msgTypes[15]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1159,7 +1236,7 @@ func (x *CommandRequest) String() string {
 func (*CommandRequest) ProtoMessage() {}
 
 func (x *CommandRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_plugin_proto_msgTypes[15]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1172,7 +1249,7 @@ func (x *CommandRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommandRequest.ProtoReflect.Descriptor instead.
 func (*CommandRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{15}
+	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *CommandRequest) GetInvocationId() string {
@@ -1207,7 +1284,7 @@ type CommandResponse struct {
 
 func (x *CommandResponse) Reset() {
 	*x = CommandResponse{}
-	mi := &file_golem_sdk_plugin_proto_msgTypes[16]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1219,7 +1296,7 @@ func (x *CommandResponse) String() string {
 func (*CommandResponse) ProtoMessage() {}
 
 func (x *CommandResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_plugin_proto_msgTypes[16]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1232,7 +1309,7 @@ func (x *CommandResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommandResponse.ProtoReflect.Descriptor instead.
 func (*CommandResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{16}
+	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CommandResponse) GetResult() *CommandResult {
@@ -1261,7 +1338,7 @@ type CapabilityRequest struct {
 
 func (x *CapabilityRequest) Reset() {
 	*x = CapabilityRequest{}
-	mi := &file_golem_sdk_plugin_proto_msgTypes[17]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1273,7 +1350,7 @@ func (x *CapabilityRequest) String() string {
 func (*CapabilityRequest) ProtoMessage() {}
 
 func (x *CapabilityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_plugin_proto_msgTypes[17]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1286,7 +1363,7 @@ func (x *CapabilityRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CapabilityRequest.ProtoReflect.Descriptor instead.
 func (*CapabilityRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{17}
+	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CapabilityRequest) GetInvocationId() string {
@@ -1321,7 +1398,7 @@ type CapabilityResponse struct {
 
 func (x *CapabilityResponse) Reset() {
 	*x = CapabilityResponse{}
-	mi := &file_golem_sdk_plugin_proto_msgTypes[18]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1333,7 +1410,7 @@ func (x *CapabilityResponse) String() string {
 func (*CapabilityResponse) ProtoMessage() {}
 
 func (x *CapabilityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_plugin_proto_msgTypes[18]
+	mi := &file_golem_sdk_plugin_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1346,7 +1423,7 @@ func (x *CapabilityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CapabilityResponse.ProtoReflect.Descriptor instead.
 func (*CapabilityResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{18}
+	return file_golem_sdk_plugin_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CapabilityResponse) GetResult() *CallResult {
@@ -1398,7 +1475,7 @@ const file_golem_sdk_plugin_proto_rawDesc = "" +
 	"\voutput_type\x18\x03 \x01(\tR\n" +
 	"outputType\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12&\n" +
-	"\x0fmax_inline_size\x18\x05 \x01(\x05R\rmaxInlineSize\"\x98\x03\n" +
+	"\x0fmax_inline_size\x18\x05 \x01(\x05R\rmaxInlineSize\"\xa2\x04\n" +
 	"\n" +
 	"Descriptor\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -1411,7 +1488,10 @@ const file_golem_sdk_plugin_proto_rawDesc = "" +
 	"\bcommands\x18\b \x03(\v2\x16.golem.sdk.CommandSpecR\bcommands\x12=\n" +
 	"\fcapabilities\x18\t \x03(\v2\x19.golem.sdk.CapabilitySpecR\fcapabilities\x12+\n" +
 	"\x11uses_capabilities\x18\n" +
-	" \x03(\tR\x10usesCapabilities\"q\n" +
+	" \x03(\tR\x10usesCapabilities\x12.\n" +
+	"\x13has_config_defaults\x18\v \x01(\bR\x11hasConfigDefaults\x12.\n" +
+	"\x13has_config_validate\x18\f \x01(\bR\x11hasConfigValidate\x12(\n" +
+	"\x10has_config_apply\x18\r \x01(\bR\x0ehasConfigApply\"q\n" +
 	"\x10DescribeResponse\x125\n" +
 	"\n" +
 	"descriptor\x18\x01 \x01(\v2\x15.golem.sdk.DescriptorR\n" +
@@ -1438,7 +1518,10 @@ const file_golem_sdk_plugin_proto_rawDesc = "" +
 	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"r\n" +
 	"\x16ConfigCandidateRequest\x123\n" +
 	"\tcandidate\x18\x01 \x01(\v2\x15.golem.sdk.BytesValueR\tcandidate\x12#\n" +
-	"\rinvocation_id\x18\x02 \x01(\tR\finvocationId\"k\n" +
+	"\rinvocation_id\x18\x02 \x01(\tR\finvocationId\"e\n" +
+	"\x13ConfigResumeRequest\x12#\n" +
+	"\rinvocation_id\x18\x01 \x01(\tR\finvocationId\x12)\n" +
+	"\x10background_token\x18\x02 \x01(\tR\x0fbackgroundToken\"k\n" +
 	"\x16ConfigDefaultsResponse\x12)\n" +
 	"\x04data\x18\x01 \x01(\v2\x15.golem.sdk.BytesValueR\x04data\x12&\n" +
 	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"\x86\x01\n" +
@@ -1473,7 +1556,7 @@ const file_golem_sdk_plugin_proto_rawDesc = "" +
 	"\fARG_TYPE_INT\x10\x02\x12\x12\n" +
 	"\x0eARG_TYPE_FLOAT\x10\x03\x12\x11\n" +
 	"\rARG_TYPE_BOOL\x10\x04\x12\x11\n" +
-	"\rARG_TYPE_ENUM\x10\x052\xe8\x05\n" +
+	"\rARG_TYPE_ENUM\x10\x052\xb6\x06\n" +
 	"\x14PluginControlService\x12?\n" +
 	"\bDescribe\x12\x16.google.protobuf.Empty\x1a\x1b.golem.sdk.DescribeResponse\x12H\n" +
 	"\n" +
@@ -1485,7 +1568,8 @@ const file_golem_sdk_plugin_proto_rawDesc = "" +
 	"\x05Drain\x12\x17.golem.sdk.DrainRequest\x1a\x18.golem.sdk.DrainResponse\x12K\n" +
 	"\x0eConfigDefaults\x12\x16.google.protobuf.Empty\x1a!.golem.sdk.ConfigDefaultsResponse\x12Q\n" +
 	"\x0eConfigValidate\x12!.golem.sdk.ConfigCandidateRequest\x1a\x1c.golem.sdk.OperationResponse\x12N\n" +
-	"\vConfigApply\x12!.golem.sdk.ConfigCandidateRequest\x1a\x1c.golem.sdk.OperationResponse2\xf2\x01\n" +
+	"\vConfigApply\x12!.golem.sdk.ConfigCandidateRequest\x1a\x1c.golem.sdk.OperationResponse\x12L\n" +
+	"\fConfigResume\x12\x1e.golem.sdk.ConfigResumeRequest\x1a\x1c.golem.sdk.OperationResponse2\xf2\x01\n" +
 	"\x15PluginBusinessService\x12@\n" +
 	"\vHandleEvent\x12\x17.golem.sdk.EventRequest\x1a\x18.golem.sdk.EventResponse\x12F\n" +
 	"\rHandleCommand\x12\x19.golem.sdk.CommandRequest\x1a\x1a.golem.sdk.CommandResponse\x12O\n" +
@@ -1504,7 +1588,7 @@ func file_golem_sdk_plugin_proto_rawDescGZIP() []byte {
 }
 
 var file_golem_sdk_plugin_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_golem_sdk_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_golem_sdk_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_golem_sdk_plugin_proto_goTypes = []any{
 	(SubscribeMode)(0),             // 0: golem.sdk.SubscribeMode
 	(ArgType)(0),                   // 1: golem.sdk.ArgType
@@ -1520,23 +1604,24 @@ var file_golem_sdk_plugin_proto_goTypes = []any{
 	(*DrainRequest)(nil),           // 11: golem.sdk.DrainRequest
 	(*DrainResponse)(nil),          // 12: golem.sdk.DrainResponse
 	(*ConfigCandidateRequest)(nil), // 13: golem.sdk.ConfigCandidateRequest
-	(*ConfigDefaultsResponse)(nil), // 14: golem.sdk.ConfigDefaultsResponse
-	(*EventRequest)(nil),           // 15: golem.sdk.EventRequest
-	(*EventResponse)(nil),          // 16: golem.sdk.EventResponse
-	(*CommandRequest)(nil),         // 17: golem.sdk.CommandRequest
-	(*CommandResponse)(nil),        // 18: golem.sdk.CommandResponse
-	(*CapabilityRequest)(nil),      // 19: golem.sdk.CapabilityRequest
-	(*CapabilityResponse)(nil),     // 20: golem.sdk.CapabilityResponse
-	(*Error)(nil),                  // 21: golem.sdk.Error
-	(*ConfigSnapshot)(nil),         // 22: golem.sdk.ConfigSnapshot
-	(*BytesValue)(nil),             // 23: golem.sdk.BytesValue
-	(*Event)(nil),                  // 24: golem.sdk.Event
-	(*EventResult)(nil),            // 25: golem.sdk.EventResult
-	(*Command)(nil),                // 26: golem.sdk.Command
-	(*CommandResult)(nil),          // 27: golem.sdk.CommandResult
-	(*CallRequest)(nil),            // 28: golem.sdk.CallRequest
-	(*CallResult)(nil),             // 29: golem.sdk.CallResult
-	(*emptypb.Empty)(nil),          // 30: google.protobuf.Empty
+	(*ConfigResumeRequest)(nil),    // 14: golem.sdk.ConfigResumeRequest
+	(*ConfigDefaultsResponse)(nil), // 15: golem.sdk.ConfigDefaultsResponse
+	(*EventRequest)(nil),           // 16: golem.sdk.EventRequest
+	(*EventResponse)(nil),          // 17: golem.sdk.EventResponse
+	(*CommandRequest)(nil),         // 18: golem.sdk.CommandRequest
+	(*CommandResponse)(nil),        // 19: golem.sdk.CommandResponse
+	(*CapabilityRequest)(nil),      // 20: golem.sdk.CapabilityRequest
+	(*CapabilityResponse)(nil),     // 21: golem.sdk.CapabilityResponse
+	(*Error)(nil),                  // 22: golem.sdk.Error
+	(*ConfigSnapshot)(nil),         // 23: golem.sdk.ConfigSnapshot
+	(*BytesValue)(nil),             // 24: golem.sdk.BytesValue
+	(*Event)(nil),                  // 25: golem.sdk.Event
+	(*EventResult)(nil),            // 26: golem.sdk.EventResult
+	(*Command)(nil),                // 27: golem.sdk.Command
+	(*CommandResult)(nil),          // 28: golem.sdk.CommandResult
+	(*CallRequest)(nil),            // 29: golem.sdk.CallRequest
+	(*CallResult)(nil),             // 30: golem.sdk.CallResult
+	(*emptypb.Empty)(nil),          // 31: google.protobuf.Empty
 }
 var file_golem_sdk_plugin_proto_depIdxs = []int32{
 	0,  // 0: golem.sdk.Subscription.mode:type_name -> golem.sdk.SubscribeMode
@@ -1546,50 +1631,52 @@ var file_golem_sdk_plugin_proto_depIdxs = []int32{
 	4,  // 4: golem.sdk.Descriptor.commands:type_name -> golem.sdk.CommandSpec
 	5,  // 5: golem.sdk.Descriptor.capabilities:type_name -> golem.sdk.CapabilitySpec
 	6,  // 6: golem.sdk.DescribeResponse.descriptor:type_name -> golem.sdk.Descriptor
-	21, // 7: golem.sdk.DescribeResponse.error:type_name -> golem.sdk.Error
-	22, // 8: golem.sdk.InitializeRequest.config:type_name -> golem.sdk.ConfigSnapshot
-	21, // 9: golem.sdk.OperationResponse.error:type_name -> golem.sdk.Error
-	21, // 10: golem.sdk.DrainResponse.error:type_name -> golem.sdk.Error
-	23, // 11: golem.sdk.ConfigCandidateRequest.candidate:type_name -> golem.sdk.BytesValue
-	23, // 12: golem.sdk.ConfigDefaultsResponse.data:type_name -> golem.sdk.BytesValue
-	21, // 13: golem.sdk.ConfigDefaultsResponse.error:type_name -> golem.sdk.Error
-	24, // 14: golem.sdk.EventRequest.event:type_name -> golem.sdk.Event
-	25, // 15: golem.sdk.EventResponse.result:type_name -> golem.sdk.EventResult
-	21, // 16: golem.sdk.EventResponse.error:type_name -> golem.sdk.Error
-	26, // 17: golem.sdk.CommandRequest.command:type_name -> golem.sdk.Command
-	27, // 18: golem.sdk.CommandResponse.result:type_name -> golem.sdk.CommandResult
-	21, // 19: golem.sdk.CommandResponse.error:type_name -> golem.sdk.Error
-	28, // 20: golem.sdk.CapabilityRequest.request:type_name -> golem.sdk.CallRequest
-	29, // 21: golem.sdk.CapabilityResponse.result:type_name -> golem.sdk.CallResult
-	21, // 22: golem.sdk.CapabilityResponse.error:type_name -> golem.sdk.Error
-	30, // 23: golem.sdk.PluginControlService.Describe:input_type -> google.protobuf.Empty
+	22, // 7: golem.sdk.DescribeResponse.error:type_name -> golem.sdk.Error
+	23, // 8: golem.sdk.InitializeRequest.config:type_name -> golem.sdk.ConfigSnapshot
+	22, // 9: golem.sdk.OperationResponse.error:type_name -> golem.sdk.Error
+	22, // 10: golem.sdk.DrainResponse.error:type_name -> golem.sdk.Error
+	24, // 11: golem.sdk.ConfigCandidateRequest.candidate:type_name -> golem.sdk.BytesValue
+	24, // 12: golem.sdk.ConfigDefaultsResponse.data:type_name -> golem.sdk.BytesValue
+	22, // 13: golem.sdk.ConfigDefaultsResponse.error:type_name -> golem.sdk.Error
+	25, // 14: golem.sdk.EventRequest.event:type_name -> golem.sdk.Event
+	26, // 15: golem.sdk.EventResponse.result:type_name -> golem.sdk.EventResult
+	22, // 16: golem.sdk.EventResponse.error:type_name -> golem.sdk.Error
+	27, // 17: golem.sdk.CommandRequest.command:type_name -> golem.sdk.Command
+	28, // 18: golem.sdk.CommandResponse.result:type_name -> golem.sdk.CommandResult
+	22, // 19: golem.sdk.CommandResponse.error:type_name -> golem.sdk.Error
+	29, // 20: golem.sdk.CapabilityRequest.request:type_name -> golem.sdk.CallRequest
+	30, // 21: golem.sdk.CapabilityResponse.result:type_name -> golem.sdk.CallResult
+	22, // 22: golem.sdk.CapabilityResponse.error:type_name -> golem.sdk.Error
+	31, // 23: golem.sdk.PluginControlService.Describe:input_type -> google.protobuf.Empty
 	8,  // 24: golem.sdk.PluginControlService.Initialize:input_type -> golem.sdk.InitializeRequest
 	10, // 25: golem.sdk.PluginControlService.OnLoad:input_type -> golem.sdk.LifecycleRequest
 	10, // 26: golem.sdk.PluginControlService.OnEnable:input_type -> golem.sdk.LifecycleRequest
 	10, // 27: golem.sdk.PluginControlService.OnDisable:input_type -> golem.sdk.LifecycleRequest
 	10, // 28: golem.sdk.PluginControlService.OnUnload:input_type -> golem.sdk.LifecycleRequest
 	11, // 29: golem.sdk.PluginControlService.Drain:input_type -> golem.sdk.DrainRequest
-	30, // 30: golem.sdk.PluginControlService.ConfigDefaults:input_type -> google.protobuf.Empty
+	31, // 30: golem.sdk.PluginControlService.ConfigDefaults:input_type -> google.protobuf.Empty
 	13, // 31: golem.sdk.PluginControlService.ConfigValidate:input_type -> golem.sdk.ConfigCandidateRequest
 	13, // 32: golem.sdk.PluginControlService.ConfigApply:input_type -> golem.sdk.ConfigCandidateRequest
-	15, // 33: golem.sdk.PluginBusinessService.HandleEvent:input_type -> golem.sdk.EventRequest
-	17, // 34: golem.sdk.PluginBusinessService.HandleCommand:input_type -> golem.sdk.CommandRequest
-	19, // 35: golem.sdk.PluginBusinessService.HandleCapability:input_type -> golem.sdk.CapabilityRequest
-	7,  // 36: golem.sdk.PluginControlService.Describe:output_type -> golem.sdk.DescribeResponse
-	9,  // 37: golem.sdk.PluginControlService.Initialize:output_type -> golem.sdk.OperationResponse
-	9,  // 38: golem.sdk.PluginControlService.OnLoad:output_type -> golem.sdk.OperationResponse
-	9,  // 39: golem.sdk.PluginControlService.OnEnable:output_type -> golem.sdk.OperationResponse
-	9,  // 40: golem.sdk.PluginControlService.OnDisable:output_type -> golem.sdk.OperationResponse
-	9,  // 41: golem.sdk.PluginControlService.OnUnload:output_type -> golem.sdk.OperationResponse
-	12, // 42: golem.sdk.PluginControlService.Drain:output_type -> golem.sdk.DrainResponse
-	14, // 43: golem.sdk.PluginControlService.ConfigDefaults:output_type -> golem.sdk.ConfigDefaultsResponse
-	9,  // 44: golem.sdk.PluginControlService.ConfigValidate:output_type -> golem.sdk.OperationResponse
-	9,  // 45: golem.sdk.PluginControlService.ConfigApply:output_type -> golem.sdk.OperationResponse
-	16, // 46: golem.sdk.PluginBusinessService.HandleEvent:output_type -> golem.sdk.EventResponse
-	18, // 47: golem.sdk.PluginBusinessService.HandleCommand:output_type -> golem.sdk.CommandResponse
-	20, // 48: golem.sdk.PluginBusinessService.HandleCapability:output_type -> golem.sdk.CapabilityResponse
-	36, // [36:49] is the sub-list for method output_type
-	23, // [23:36] is the sub-list for method input_type
+	14, // 33: golem.sdk.PluginControlService.ConfigResume:input_type -> golem.sdk.ConfigResumeRequest
+	16, // 34: golem.sdk.PluginBusinessService.HandleEvent:input_type -> golem.sdk.EventRequest
+	18, // 35: golem.sdk.PluginBusinessService.HandleCommand:input_type -> golem.sdk.CommandRequest
+	20, // 36: golem.sdk.PluginBusinessService.HandleCapability:input_type -> golem.sdk.CapabilityRequest
+	7,  // 37: golem.sdk.PluginControlService.Describe:output_type -> golem.sdk.DescribeResponse
+	9,  // 38: golem.sdk.PluginControlService.Initialize:output_type -> golem.sdk.OperationResponse
+	9,  // 39: golem.sdk.PluginControlService.OnLoad:output_type -> golem.sdk.OperationResponse
+	9,  // 40: golem.sdk.PluginControlService.OnEnable:output_type -> golem.sdk.OperationResponse
+	9,  // 41: golem.sdk.PluginControlService.OnDisable:output_type -> golem.sdk.OperationResponse
+	9,  // 42: golem.sdk.PluginControlService.OnUnload:output_type -> golem.sdk.OperationResponse
+	12, // 43: golem.sdk.PluginControlService.Drain:output_type -> golem.sdk.DrainResponse
+	15, // 44: golem.sdk.PluginControlService.ConfigDefaults:output_type -> golem.sdk.ConfigDefaultsResponse
+	9,  // 45: golem.sdk.PluginControlService.ConfigValidate:output_type -> golem.sdk.OperationResponse
+	9,  // 46: golem.sdk.PluginControlService.ConfigApply:output_type -> golem.sdk.OperationResponse
+	9,  // 47: golem.sdk.PluginControlService.ConfigResume:output_type -> golem.sdk.OperationResponse
+	17, // 48: golem.sdk.PluginBusinessService.HandleEvent:output_type -> golem.sdk.EventResponse
+	19, // 49: golem.sdk.PluginBusinessService.HandleCommand:output_type -> golem.sdk.CommandResponse
+	21, // 50: golem.sdk.PluginBusinessService.HandleCapability:output_type -> golem.sdk.CapabilityResponse
+	37, // [37:51] is the sub-list for method output_type
+	23, // [23:37] is the sub-list for method input_type
 	23, // [23:23] is the sub-list for extension type_name
 	23, // [23:23] is the sub-list for extension extendee
 	0,  // [0:23] is the sub-list for field type_name
@@ -1608,7 +1695,7 @@ func file_golem_sdk_plugin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_golem_sdk_plugin_proto_rawDesc), len(file_golem_sdk_plugin_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

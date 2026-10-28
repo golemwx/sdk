@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"crypto/subtle"
+	"errors"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -81,7 +82,11 @@ func (s *controlServer) Describe(ctx context.Context, _ *emptypb.Empty) (*wire.D
 				return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.describe", "plugin is nil")
 			}
 			// 先形成独立 wire 快照，再校验将被缓存和发送的同一份声明
-			descriptor := wire.ToWireDescriptor(s.implementation.Descriptor())
+			value := s.implementation.Descriptor()
+			_, value.HasConfigDefaults = s.implementation.(ConfigDefaulter)
+			_, value.HasConfigValidate = s.implementation.(ConfigValidator)
+			_, value.HasConfigApply = s.implementation.(ConfigApplier)
+			descriptor := wire.ToWireDescriptor(value)
 			if err := contract.ValidateCommands(wire.FromWireDescriptor(descriptor).Commands); err != nil {
 				return err
 			}
@@ -423,6 +428,7 @@ func (s *controlServer) ConfigApply(ctx context.Context, request *wire.ConfigCan
 	if !ok {
 		return &wire.OperationResponse{Error: wire.ToWireError(sdk.NewError(sdk.CategoryUnimplemented, "plugin.config_apply", "configuration application is not implemented"))}, nil
 	}
+	handlerCalled := false
 	err := protect("plugin.config_apply", func() error {
 		if err := s.beginExecution(ctx, request.GetInvocationId(), executionControl); err != nil {
 			return err
@@ -430,9 +436,55 @@ func (s *controlServer) ConfigApply(ctx context.Context, request *wire.ConfigCan
 		defer s.finishExecution(request.InvocationId)
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
+		handlerCalled = true
 		return handler.ConfigApply(ctx, configBytes(request.GetCandidate()))
 	})
+	if handlerCalled {
+		// 回调执行后，包括 panic 在内的任何未明确结果都必须按未知处理。
+		err = classifyConfigApplyError(err)
+	}
 	return &wire.OperationResponse{Error: transport.EncodeError(err, "plugin.config_apply")}, nil
+}
+
+// ConfigResume 在配置屏障结束后恢复新业务准入及后台启用周期
+func (s *controlServer) ConfigResume(ctx context.Context, request *wire.ConfigResumeRequest) (*wire.OperationResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	err := protect("plugin.config_resume", func() error {
+		if err := s.beginExecution(ctx, request.GetInvocationId(), executionControl); err != nil {
+			return err
+		}
+		defer s.finishExecution(request.InvocationId)
+		return s.resumeAdmission(request.GetBackgroundToken())
+	})
+	return &wire.OperationResponse{Error: transport.EncodeError(err, "plugin.config_resume")}, nil
+}
+
+// classifyConfigApplyError 只把插件明确标记的失败视为可保留旧 active 的确定失败
+func classifyConfigApplyError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var value *sdk.Error
+	if errors.As(err, &value) && value != nil &&
+		(value.Outcome == sdk.OutcomeFailed || value.Category == sdk.CategoryUnimplemented) {
+		return err
+	}
+	category := sdk.CategoryInternal
+	switch {
+	case errors.Is(err, context.Canceled):
+		category = sdk.CategoryCanceled
+	case errors.Is(err, context.DeadlineExceeded):
+		category = sdk.CategoryDeadlineExceeded
+	case errors.As(err, &value) && value != nil:
+		category = value.Category
+	}
+	return &sdk.Error{
+		Category:  category,
+		Operation: "plugin.config_apply",
+		Outcome:   sdk.OutcomeUnknown,
+		Reason:    "configuration apply result is unknown",
+	}
 }
 
 // configBytes 复制可选配置载荷并保留 nil 与显式空的区别

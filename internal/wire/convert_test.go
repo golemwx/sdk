@@ -390,8 +390,11 @@ func TestEventAndBusinessRoundTrips(t *testing.T) {
 			}},
 			Help: "回显",
 		}},
-		Capabilities:     []capability.CapabilitySpec{{Name: "text.to.image", InputType: "application/json", OutputType: "image/png", Description: "渲染", MaxInlineSize: 1024}},
-		UsesCapabilities: []string{"statistics.query_messages"},
+		Capabilities:      []capability.CapabilitySpec{{Name: "text.to.image", InputType: "application/json", OutputType: "image/png", Description: "渲染", MaxInlineSize: 1024}},
+		UsesCapabilities:  []string{"statistics.query_messages"},
+		HasConfigDefaults: true,
+		HasConfigValidate: true,
+		HasConfigApply:    true,
 	}
 	assertEqual(t, FromWireDescriptor(ToWireDescriptor(descriptor)), descriptor)
 }

@@ -55,7 +55,7 @@ func TestMalformedWriteError(t *testing.T) {
 
 // TestTransportWriteOutcome 验证传输失败及缺失回执不会误报确定写入结果
 func TestTransportWriteOutcome(t *testing.T) {
-	for _, operation := range []string{"messages.send_text", "messages.reply", "messages.revoke"} {
+	for _, operation := range []string{"messages.send_text", "messages.reply", "messages.revoke", "plugin.config_apply", "plugin.config_resume"} {
 		for _, err := range []error{status.Error(codes.DeadlineExceeded, "timeout"), status.Error(codes.Canceled, "canceled"), status.Error(codes.Internal, "response damaged")} {
 			var business *sdk.Error
 			if !errors.As(DecodeError(nil, err, operation), &business) || business.Outcome != sdk.OutcomeUnknown {

@@ -70,9 +70,11 @@ func (p *executionPlugin) OnDisable(ctx context.Context) error {
 
 // OnEvent 在一个 token 下调用七类 Host 客户端的全部一元方法
 func (p *executionPlugin) OnEvent(ctx context.Context, value event.Event) (event.EventResult, error) {
-	if p.task.Err() != nil {
+	current := p.Host.TaskContext()
+	if current == nil || current.Err() != nil {
 		return event.EventResult{}, errors.New("lifecycle RPC canceled task context")
 	}
+	p.task = current
 	if _, err := p.Host.Account.Current(ctx); err != nil {
 		return event.EventResult{}, err
 	}
@@ -115,6 +117,12 @@ func (p *executionPlugin) ConfigApply(ctx context.Context, data []byte) error {
 	if string(data) == "release" {
 		p.releaseOnce.Do(func() { close(p.release) })
 		return nil
+	}
+	if string(data) == "fail" {
+		return &sdk.Error{Category: sdk.CategoryInvalidArgument, Operation: "fixture.config_apply", Outcome: sdk.OutcomeFailed, Reason: "controlled apply failure"}
+	}
+	if string(data) == "unknown" {
+		return errors.New("controlled unknown apply result")
 	}
 	return p.fixturePlugin.ConfigApply(ctx, data)
 }
@@ -234,6 +242,76 @@ func TestNestedBusinessCancellation(t *testing.T) {
 	}
 	if err := client.ConfigApply(t.Context(), []byte("stale")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestConfigProviderResumeSemantics 验证确定失败恢复准入、未知结果保持关闭，并绑定新启用周期。
+func TestConfigProviderResumeSemantics(t *testing.T) {
+	options := fixtureOptions(t, "execution")
+	options.Services.Host = fullFixtureHost()
+	client, err := Start(t.Context(), options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	if err := client.EnableWithBackgroundToken(t.Context(), "cycle-one"); err != nil {
+		t.Fatal(err)
+	}
+	// 配置屏障由宿主在调用 ApplyAndResume 前建立；这里显式模拟该步骤。
+	if _, err := client.Drain(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	provider := NewConfigProvider(client)
+	if err := provider.ApplyAndResume(t.Context(), []byte("release"), "cycle-two"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.HandleEvent(t.Context(), Invocation{ID: "after-success", Token: "token"}, event.Event{Topic: "fixture", OccurredAt: time.Now().UTC()}); err != nil {
+		t.Fatalf("successful apply did not restore admission: %v", err)
+	}
+
+	if _, err := client.Drain(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	err = provider.ApplyAndResume(t.Context(), []byte("fail"), "cycle-three")
+	if !hasCategory(err, sdk.CategoryInvalidArgument) {
+		t.Fatalf("determinate apply failure category lost: %v", err)
+	}
+	if _, err := client.HandleEvent(t.Context(), Invocation{ID: "after-determinate", Token: "token"}, event.Event{Topic: "fixture", OccurredAt: time.Now().UTC()}); err != nil {
+		t.Fatalf("determinate failure did not restore old admission: %v", err)
+	}
+
+	if _, err := client.Drain(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	err = provider.ApplyAndResume(t.Context(), []byte("unknown"), "cycle-four")
+	var value *sdk.Error
+	if !errors.As(err, &value) || value.Outcome != sdk.OutcomeUnknown {
+		t.Fatalf("unknown apply result not marked unknown: %v", err)
+	}
+	if _, err := client.HandleEvent(t.Context(), Invocation{ID: "after-unknown", Token: "token"}, event.Event{Topic: "fixture", OccurredAt: time.Now().UTC()}); err == nil {
+		t.Fatal("unknown apply result reopened business admission")
+	}
+}
+
+// TestConfigApplyErrorClassification 验证只有明确失败和未实现可视为确定结果。
+func TestConfigApplyErrorClassification(t *testing.T) {
+	determinate := &sdk.Error{Category: sdk.CategoryInvalidArgument, Operation: "fixture.apply", Outcome: sdk.OutcomeFailed}
+	if !IsDeterminateConfigFailure(determinate) {
+		t.Fatal("explicit failure was not classified as determinate")
+	}
+	unimplemented := sdk.NewError(sdk.CategoryUnimplemented, "fixture.apply", "not implemented")
+	if !IsDeterminateConfigFailure(unimplemented) {
+		t.Fatal("unimplemented apply was not classified as determinate")
+	}
+	for _, err := range []error{
+		nil,
+		errors.New("transport failure"),
+		&sdk.Error{Category: sdk.CategoryConflict, Operation: "fixture.apply", Outcome: sdk.OutcomeNotApplicable},
+		context.DeadlineExceeded,
+	} {
+		if IsDeterminateConfigFailure(err) {
+			t.Fatalf("error was incorrectly treated as determinate: %v", err)
+		}
 	}
 }
 

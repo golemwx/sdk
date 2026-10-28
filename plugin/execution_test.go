@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sync"
@@ -353,6 +354,62 @@ func TestTaskContextCycles(t *testing.T) {
 	cancelOld()
 	if old.Err() == nil || host.TaskContext().Err() != nil {
 		t.Fatal("late task cancellation affected a new enable cycle")
+	}
+}
+
+// TestConfigResumeRestoresAdmissionAndBackgroundToken 验证配置屏障后建立新启用周期
+func TestConfigResumeRestoresAdmissionAndBackgroundToken(t *testing.T) {
+	s, _ := newExecutionFixture(t, &blockingPlugin{entered: make(chan string, 1), release: make(chan struct{})})
+	drain, _ := s.Drain(t.Context(), &wire.DrainRequest{ControlToken: "control", InstanceGeneration: 7})
+	if drain.GetError() != nil || s.accepting || s.host.TaskContext().Err() == nil {
+		t.Fatal("drain did not close admission or cancel old background cycle")
+	}
+	response, _ := s.ConfigResume(t.Context(), &wire.ConfigResumeRequest{InvocationId: "resume", BackgroundToken: "new-token"})
+	if response.GetError() != nil || !s.accepting {
+		t.Fatalf("配置恢复未重新开放准入: %v", response.GetError())
+	}
+	task := s.host.TaskContext()
+	if task == nil || task.Err() != nil {
+		t.Fatal("配置恢复未创建新的后台周期")
+	}
+	if token, ok := s.host.backgroundToken(task); !ok || token != "new-token" {
+		t.Fatal("配置恢复未绑定新的后台令牌")
+	}
+	if err := s.beginExecution(t.Context(), "resumed-business", executionBusiness); err != nil {
+		t.Fatalf("恢复后仍拒绝业务准入: %v", err)
+	}
+	s.finishExecution("resumed-business")
+}
+
+// TestConfigResumeRejectsMissingToken 验证恢复控制不能在没有新启用令牌时重开业务
+func TestConfigResumeRejectsMissingToken(t *testing.T) {
+	s, _ := newExecutionFixture(t, &blockingPlugin{entered: make(chan string, 1), release: make(chan struct{})})
+	_, _ = s.Drain(t.Context(), &wire.DrainRequest{ControlToken: "control", InstanceGeneration: 7})
+	response, _ := s.ConfigResume(t.Context(), &wire.ConfigResumeRequest{InvocationId: "resume"})
+	if response.GetError().GetCategory() != wire.Category_CATEGORY_INVALID_ARGUMENT || s.accepting {
+		t.Fatal("缺少后台令牌仍恢复了业务准入")
+	}
+}
+
+// TestClassifyConfigApplyError 验证只有明确失败保留旧 active，其余错误按未知处理
+func TestClassifyConfigApplyError(t *testing.T) {
+	determinate := &sdk.Error{Category: sdk.CategoryInvalidArgument, Operation: "fixture.apply", Outcome: sdk.OutcomeFailed}
+	if got := classifyConfigApplyError(determinate); got != determinate {
+		t.Fatal("明确失败被改写")
+	}
+	unimplemented := sdk.NewError(sdk.CategoryUnimplemented, "fixture.apply", "not implemented")
+	if got := classifyConfigApplyError(unimplemented); got != unimplemented {
+		t.Fatal("未实现的无副作用结果被改写")
+	}
+	for _, input := range []error{
+		errors.New("plain failure"),
+		&sdk.Error{Category: sdk.CategoryConflict, Operation: "fixture.apply", Outcome: sdk.OutcomeNotApplicable},
+		context.DeadlineExceeded,
+	} {
+		value, ok := errors.AsType[*sdk.Error](classifyConfigApplyError(input))
+		if !ok || value.Outcome != sdk.OutcomeUnknown {
+			t.Fatalf("未将配置错误标记为未知: %v", input)
+		}
 	}
 }
 

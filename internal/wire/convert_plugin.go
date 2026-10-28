@@ -183,6 +183,9 @@ func ToWireDescriptor(value contract.Descriptor) *Descriptor {
 		Commands:             commands,
 		Capabilities:         capabilities,
 		UsesCapabilities:     append([]string(nil), value.UsesCapabilities...),
+		HasConfigDefaults:    value.HasConfigDefaults,
+		HasConfigValidate:    value.HasConfigValidate,
+		HasConfigApply:       value.HasConfigApply,
 	}
 }
 
@@ -223,5 +226,8 @@ func FromWireDescriptor(value *Descriptor) contract.Descriptor {
 		Commands:             commands,
 		Capabilities:         capabilities,
 		UsesCapabilities:     append([]string{}, value.UsesCapabilities...),
+		HasConfigDefaults:    value.HasConfigDefaults,
+		HasConfigValidate:    value.HasConfigValidate,
+		HasConfigApply:       value.HasConfigApply,
 	}
 }

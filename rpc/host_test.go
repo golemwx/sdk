@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -241,14 +242,25 @@ func hasCategory(err error, category sdk.Category) bool {
 func TestHostUnaryContracts(t *testing.T) {
 	options := fixtureOptions(t, "host-contracts")
 	options.Services.Host = &plugin.Host{Messages: fixtureMessages{}, Contacts: fixtureContacts{}, Chatrooms: fixtureChatrooms{}, Sessions: fixtureSessions{}, Caller: fixtureCaller{}, Config: fixtureConfig{}, Account: &fixtureAccount{}}
+	beforeLoadCalled := false
+	options.BeforeLoad = func(ctx context.Context, candidate *Client) error {
+		beforeLoadCalled = true
+		if descriptor := candidate.Descriptor(); !descriptor.HasConfigDefaults || !descriptor.HasConfigValidate || !descriptor.HasConfigApply {
+			return errors.New("configuration capabilities were not described")
+		}
+		defaults, err := NewConfigProvider(candidate).Defaults(ctx)
+		if err != nil || defaults == nil || len(defaults) != 0 {
+			return fmt.Errorf("defaults before load: %v %v", defaults, err)
+		}
+		return nil
+	}
 	client, err := Start(t.Context(), options)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	defaults, err := client.ConfigDefaults(t.Context())
-	if err != nil || defaults == nil || len(defaults) != 0 {
-		t.Fatalf("defaults: %v %v", defaults, err)
+	if !beforeLoadCalled {
+		t.Fatal("BeforeLoad was not called")
 	}
 	if err := client.ConfigValidate(t.Context(), nil); !hasCategory(err, sdk.CategoryInvalidArgument) {
 		t.Fatalf("nil candidate: %v", err)

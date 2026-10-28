@@ -30,6 +30,7 @@ const (
 	PluginControlService_ConfigDefaults_FullMethodName = "/golem.sdk.PluginControlService/ConfigDefaults"
 	PluginControlService_ConfigValidate_FullMethodName = "/golem.sdk.PluginControlService/ConfigValidate"
 	PluginControlService_ConfigApply_FullMethodName    = "/golem.sdk.PluginControlService/ConfigApply"
+	PluginControlService_ConfigResume_FullMethodName   = "/golem.sdk.PluginControlService/ConfigResume"
 )
 
 // PluginControlServiceClient is the client API for PluginControlService service.
@@ -58,6 +59,8 @@ type PluginControlServiceClient interface {
 	ConfigValidate(ctx context.Context, in *ConfigCandidateRequest, opts ...grpc.CallOption) (*OperationResponse, error)
 	// ConfigApply 原子应用候选配置，失败时保留此前生效配置
 	ConfigApply(ctx context.Context, in *ConfigCandidateRequest, opts ...grpc.CallOption) (*OperationResponse, error)
+	// ConfigResume 在配置应用或确定失败后恢复业务准入
+	ConfigResume(ctx context.Context, in *ConfigResumeRequest, opts ...grpc.CallOption) (*OperationResponse, error)
 }
 
 type pluginControlServiceClient struct {
@@ -168,6 +171,16 @@ func (c *pluginControlServiceClient) ConfigApply(ctx context.Context, in *Config
 	return out, nil
 }
 
+func (c *pluginControlServiceClient) ConfigResume(ctx context.Context, in *ConfigResumeRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OperationResponse)
+	err := c.cc.Invoke(ctx, PluginControlService_ConfigResume_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PluginControlServiceServer is the server API for PluginControlService service.
 // All implementations must embed UnimplementedPluginControlServiceServer
 // for forward compatibility.
@@ -194,6 +207,8 @@ type PluginControlServiceServer interface {
 	ConfigValidate(context.Context, *ConfigCandidateRequest) (*OperationResponse, error)
 	// ConfigApply 原子应用候选配置，失败时保留此前生效配置
 	ConfigApply(context.Context, *ConfigCandidateRequest) (*OperationResponse, error)
+	// ConfigResume 在配置应用或确定失败后恢复业务准入
+	ConfigResume(context.Context, *ConfigResumeRequest) (*OperationResponse, error)
 	mustEmbedUnimplementedPluginControlServiceServer()
 }
 
@@ -233,6 +248,9 @@ func (UnimplementedPluginControlServiceServer) ConfigValidate(context.Context, *
 }
 func (UnimplementedPluginControlServiceServer) ConfigApply(context.Context, *ConfigCandidateRequest) (*OperationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ConfigApply not implemented")
+}
+func (UnimplementedPluginControlServiceServer) ConfigResume(context.Context, *ConfigResumeRequest) (*OperationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ConfigResume not implemented")
 }
 func (UnimplementedPluginControlServiceServer) mustEmbedUnimplementedPluginControlServiceServer() {}
 func (UnimplementedPluginControlServiceServer) testEmbeddedByValue()                              {}
@@ -435,6 +453,24 @@ func _PluginControlService_ConfigApply_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PluginControlService_ConfigResume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfigResumeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PluginControlServiceServer).ConfigResume(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PluginControlService_ConfigResume_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PluginControlServiceServer).ConfigResume(ctx, req.(*ConfigResumeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PluginControlService_ServiceDesc is the grpc.ServiceDesc for PluginControlService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -481,6 +517,10 @@ var PluginControlService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ConfigApply",
 			Handler:    _PluginControlService_ConfigApply_Handler,
+		},
+		{
+			MethodName: "ConfigResume",
+			Handler:    _PluginControlService_ConfigResume_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

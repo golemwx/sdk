@@ -81,6 +81,9 @@ message Descriptor {
   repeated CommandSpec commands = 8; // 插件声明的命令集合
   repeated CapabilitySpec capabilities = 9; // 插件公开提供的能力声明
   repeated string uses_capabilities = 10; // 插件声明需要调用的能力名
+  bool has_config_defaults = 11; // SDK 检测到插件实现 ConfigDefaulter
+  bool has_config_validate = 12; // SDK 检测到插件实现 ConfigValidator
+  bool has_config_apply = 13; // SDK 检测到插件实现 ConfigApplier
 }
 
 // DescribeResponse 插件描述查询响应
@@ -127,6 +130,12 @@ message DrainResponse {
 message ConfigCandidateRequest {
   BytesValue candidate = 1; // 待校验或应用的业务配置，包装保留缺失与显式空的区别
   string invocation_id = 2; // 本次配置校验或应用执行的唯一标识
+}
+
+// ConfigResumeRequest 配置屏障结束后恢复业务准入
+message ConfigResumeRequest {
+  string invocation_id = 1; // 本次恢复执行的唯一标识
+  string background_token = 2; // 恢复后的启用周期后台令牌
 }
 
 // ConfigDefaultsResponse 插件默认配置响应
@@ -196,6 +205,8 @@ service PluginControlService {
   rpc ConfigValidate(ConfigCandidateRequest) returns (OperationResponse);
   // ConfigApply 原子应用候选配置，失败时保留此前生效配置
   rpc ConfigApply(ConfigCandidateRequest) returns (OperationResponse);
+  // ConfigResume 在配置应用或确定失败后恢复业务准入
+  rpc ConfigResume(ConfigResumeRequest) returns (OperationResponse);
 }
 
 // PluginBusinessService 插件事件、命令及能力处理服务

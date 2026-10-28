@@ -20,4 +20,7 @@ type Descriptor struct {
 	Commands             []command.CommandSpec       // 插件声明的命令集合
 	Capabilities         []capability.CapabilitySpec // 插件公开提供的能力声明
 	UsesCapabilities     []string                    // 插件声明需要调用的能力名
+	HasConfigDefaults    bool                        // 插件是否实现 ConfigDefaulter
+	HasConfigValidate    bool                        // 插件是否实现 ConfigValidator
+	HasConfigApply       bool                        // 插件是否实现 ConfigApplier
 }

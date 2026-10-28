@@ -34,7 +34,9 @@ type ClientOptions struct {
 	AccountEpoch       uint64                                         // 当前账号运行代次
 	Services           HostServices                                   // 已绑定当前实例的宿主实现和授权策略
 	Validate           func(context.Context, plugin.Descriptor) error // 在反向服务启动之前执行宿主声明与策略校验
+	BeforeLoad         func(context.Context, *Client) error           // 初始化完成、调用 OnLoad 前执行宿主配置准备
 	StartTimeout       time.Duration                                  // 整个握手至 OnLoad 的最大时长，零值使用 10 秒
+	ConfigTimeout      time.Duration                                  // 单次配置控制调用的独立期限，零值使用 5 秒
 	Logger             hclog.Logger                                   // 接收 go-plugin 受控日志，未提供时丢弃
 }
 
@@ -47,6 +49,7 @@ type Client struct {
 	server     *grpc.Server        // 唯一反向 gRPC 服务
 	serverDone chan struct{}       // 反向 Broker 服务实际退出信号，启动失败时也会关闭
 	closeOnce  sync.Once           // 保证重复 Close 只清理一次
+	configTime time.Duration       // 单次配置控制调用的独立期限
 }
 
 // Start 严格按握手、描述校验、反向服务、初始化、就绪确认、OnLoad 启动实例
@@ -57,8 +60,14 @@ func Start(ctx context.Context, options ClientOptions) (_ *Client, err error) {
 	if options.StartTimeout < 0 {
 		return nil, sdk.NewError(sdk.CategoryInvalidArgument, "plugin.start", "negative startup timeout")
 	}
+	if options.ConfigTimeout < 0 {
+		return nil, sdk.NewError(sdk.CategoryInvalidArgument, "plugin.start", "negative configuration timeout")
+	}
 	if options.StartTimeout == 0 {
 		options.StartTimeout = 10 * time.Second
+	}
+	if options.ConfigTimeout == 0 {
+		options.ConfigTimeout = 5 * time.Second
 	}
 	ctx, cancel := context.WithTimeout(ctx, options.StartTimeout)
 	defer cancel()
@@ -70,7 +79,7 @@ func Start(ctx context.Context, options ClientOptions) (_ *Client, err error) {
 	if options.Logger == nil {
 		options.Logger = hclog.NewNullLogger()
 	}
-	client := &Client{process: hplugin.NewClient(&hplugin.ClientConfig{
+	client := &Client{configTime: options.ConfigTimeout, process: hplugin.NewClient(&hplugin.ClientConfig{
 		HandshakeConfig: HandshakeConfig(), Plugins: PluginSet(), Cmd: options.Command,
 		AllowedProtocols: []hplugin.Protocol{hplugin.ProtocolGRPC}, AutoMTLS: true, SkipHostEnv: true,
 		StartTimeout: options.StartTimeout, Logger: options.Logger, GRPCDialOptions: transport.DialOptions(),
@@ -170,6 +179,11 @@ func Start(ctx context.Context, options ClientOptions) (_ *Client, err error) {
 	case <-client.control.ready:
 	default:
 		return nil, sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.initialize", "reverse connection was not confirmed")
+	}
+	if options.BeforeLoad != nil {
+		if err := options.BeforeLoad(ctx, client); err != nil {
+			return nil, err
+		}
 	}
 	if err := client.lifecycle(ctx, LifecycleLoad, ""); err != nil {
 		return nil, err
@@ -295,7 +309,7 @@ func (c *Client) ConfigDefaults(ctx context.Context) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.configTime)
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(ctx, transport.ControlInvocationHeader, id)
 	response, err := c.endpoint.Control.ConfigDefaults(ctx, &emptypb.Empty{})
@@ -310,7 +324,7 @@ func (c *Client) ConfigDefaults(ctx context.Context) ([]byte, error) {
 
 // ConfigValidate 仅校验候选配置，不改变生效配置
 func (c *Client) ConfigValidate(ctx context.Context, data []byte) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.configTime)
 	defer cancel()
 	id, err := newInvocationID()
 	if err != nil {
@@ -326,7 +340,7 @@ func (c *Client) ConfigValidate(ctx context.Context, data []byte) error {
 
 // ConfigApply 原子应用插件业务候选配置
 func (c *Client) ConfigApply(ctx context.Context, data []byte) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, c.configTime)
 	defer cancel()
 	id, err := newInvocationID()
 	if err != nil {
@@ -338,4 +352,18 @@ func (c *Client) ConfigApply(ctx context.Context, data []byte) error {
 	}
 	response, err := c.endpoint.Control.ConfigApply(ctx, request)
 	return transport.DecodeError(response.GetError(), err, "plugin.config_apply")
+}
+
+// ConfigResume 在配置屏障结束后恢复业务准入
+func (c *Client) ConfigResume(ctx context.Context, backgroundToken string) error {
+	ctx, cancel := context.WithTimeout(ctx, c.configTime)
+	defer cancel()
+	id, err := newInvocationID()
+	if err != nil {
+		return err
+	}
+	response, err := c.endpoint.Control.ConfigResume(ctx, &wire.ConfigResumeRequest{
+		InvocationId: id, BackgroundToken: backgroundToken,
+	})
+	return transport.DecodeError(response.GetError(), err, "plugin.config_resume")
 }

@@ -90,6 +90,22 @@ func (s *controlServer) stopAdmission() {
 	s.executionMu.Unlock()
 }
 
+// resumeAdmission 仅在已加载且仍启用的实例上建立新后台周期并重新开放业务准入
+func (s *controlServer) resumeAdmission(backgroundToken string) error {
+	if backgroundToken == "" {
+		return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.config_resume", "missing background token")
+	}
+	s.executionMu.Lock()
+	defer s.executionMu.Unlock()
+	if s.controlContext == nil || s.controlContext.Err() != nil || !s.loaded || !s.enabled || s.host == nil || s.accepting {
+		return sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.config_resume", "instance cannot resume admission")
+	}
+	s.admissionEpoch++
+	s.host.startTasks(s.controlContext, backgroundToken)
+	s.accepting = true
+	return nil
+}
+
 // activeExecutions 返回稳定排序的真实在途标识副本
 func (s *controlServer) activeExecutions() []string {
 	s.executionMu.Lock()

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -24,6 +25,40 @@ func (p commandDescriptorFixture) Descriptor() Descriptor { return p.descriptor 
 // OnCommand 满足命令声明对应的业务接口
 func (commandDescriptorFixture) OnCommand(context.Context, Command) (CommandResult, error) {
 	return CommandResult{}, nil
+}
+
+// descriptorOnlyFixture 只提供自动能力检测所需的固定声明
+type descriptorOnlyFixture struct {
+	descriptor Descriptor // 当前测试使用的固定声明
+}
+
+// Descriptor 返回当前测试的固定声明
+func (p descriptorOnlyFixture) Descriptor() Descriptor { return p.descriptor }
+
+// defaultsFixture 仅实现默认配置接口
+type defaultsFixture struct{ descriptorOnlyFixture }
+
+// ConfigDefaults 返回显式空默认值
+func (defaultsFixture) ConfigDefaults() []byte { return []byte{} }
+
+// validateFixture 仅实现配置校验接口
+type validateFixture struct{ descriptorOnlyFixture }
+
+// ConfigValidate 接受任意候选值
+func (validateFixture) ConfigValidate(context.Context, []byte) error { return nil }
+
+// applyFixture 仅实现配置应用接口
+type applyFixture struct{ descriptorOnlyFixture }
+
+// ConfigApply 接受任意候选值
+func (applyFixture) ConfigApply(context.Context, []byte) error { return nil }
+
+// panicConfigFixture 在配置应用开始时模拟插件 panic
+type panicConfigFixture struct{ descriptorOnlyFixture }
+
+// ConfigApply 触发带私有信息的 panic
+func (panicConfigFixture) ConfigApply(context.Context, []byte) error {
+	panic("private configuration data")
 }
 
 // lifecycleFixture 观察取消后的排队控制操作是否仍进入用户代码
@@ -103,6 +138,57 @@ func TestDescribeCachesIndependentDescriptorSnapshot(t *testing.T) {
 	second, _ := server.Describe(t.Context(), nil)
 	if got := second.GetDescriptor_().GetCommands()[0].GetPath(); len(got) != 2 || got[0] != "fixture" || got[1] != "echo" {
 		t.Fatalf("cached descriptor was mutated through an external declaration: %v", got)
+	}
+}
+
+// TestDescribeReportsImplementedConfigInterfaces 验证能力标志来自实际接口而不是自报字段
+func TestDescribeReportsImplementedConfigInterfaces(t *testing.T) {
+	tests := []struct {
+		name                      string
+		implementation            Plugin
+		defaults, validate, apply bool
+	}{
+		{name: "none", implementation: descriptorOnlyFixture{descriptor: Descriptor{ID: "fixture"}}},
+		{name: "defaults", implementation: defaultsFixture{descriptorOnlyFixture{descriptor: Descriptor{ID: "fixture"}}}, defaults: true},
+		{name: "validate", implementation: validateFixture{descriptorOnlyFixture{descriptor: Descriptor{ID: "fixture"}}}, validate: true},
+		{name: "apply", implementation: applyFixture{descriptorOnlyFixture{descriptor: Descriptor{ID: "fixture"}}}, apply: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server := &controlServer{implementation: test.implementation}
+			response, _ := server.Describe(t.Context(), nil)
+			descriptor := response.GetDescriptor_()
+			if response.GetError() != nil || descriptor == nil {
+				t.Fatalf("Describe failed: %v", response.GetError())
+			}
+			if descriptor.GetHasConfigDefaults() != test.defaults ||
+				descriptor.GetHasConfigValidate() != test.validate ||
+				descriptor.GetHasConfigApply() != test.apply {
+				t.Fatalf("capability mismatch: %+v", descriptor)
+			}
+		})
+	}
+}
+
+// TestConfigApplyPanicIsOutcomeUnknown 验证回调 panic 保留未知结果且不泄漏私有信息
+func TestConfigApplyPanicIsOutcomeUnknown(t *testing.T) {
+	s, completion := newExecutionFixture(t, panicConfigFixture{descriptorOnlyFixture{descriptor: Descriptor{ID: "fixture"}}})
+	response, _ := s.ConfigApply(t.Context(), &wire.ConfigCandidateRequest{
+		InvocationId: "panic-apply", Candidate: &wire.BytesValue{Value: []byte("value=true")},
+	})
+	value := response.GetError()
+	if value.GetCategory() != wire.Category_CATEGORY_INTERNAL ||
+		value.GetOutcome() != wire.WriteOutcome_WRITE_OUTCOME_UNKNOWN ||
+		value.GetOperation() != "plugin.config_apply" ||
+		strings.Contains(value.GetReason(), "private") {
+		t.Fatalf("panic 结果=%+v", value)
+	}
+	<-completion.completed
+
+	invalid, _ := s.ConfigApply(t.Context(), &wire.ConfigCandidateRequest{})
+	if invalid.GetError().GetCategory() != wire.Category_CATEGORY_INVALID_ARGUMENT ||
+		invalid.GetError().GetOutcome() != wire.WriteOutcome_WRITE_OUTCOME_NOT_APPLICABLE {
+		t.Fatalf("回调前错误被标成未知结果: %+v", invalid.GetError())
 	}
 }
 
