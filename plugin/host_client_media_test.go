@@ -64,7 +64,9 @@ func TestRemoteSendMediaChunksAndReceipt(t *testing.T) {
 		data[index] = byte(index % 251)
 	}
 	receipt, conversion := wire.ToWireSendReceipt(&message.SendReceipt{
-		MessageID: "media-id", SentAt: time.Date(2026, 10, 29, 0, 0, 0, 0, time.UTC), Outcome: sdk.OutcomeSucceeded,
+		MessageID:    "media-id",
+		Conversation: sdk.Conversation{AccountUsername: "bot", Kind: sdk.ConversationKindDirect, ID: "friend"},
+		SentAt:       time.Date(2026, 10, 29, 0, 0, 0, 0, time.UTC), Outcome: sdk.OutcomeSucceeded,
 	})
 	if conversion != nil {
 		t.Fatal(conversion)
@@ -94,6 +96,32 @@ func TestRemoteSendMediaChunksAndReceipt(t *testing.T) {
 	}
 	if total != len(data) {
 		t.Fatalf("媒体字节丢失: got=%d want=%d", total, len(data))
+	}
+}
+
+// TestRemoteSendMediaReferenceDoesNotUploadBytes 验证引用发送只传首包且不读取插件字节
+func TestRemoteSendMediaReferenceDoesNotUploadBytes(t *testing.T) {
+	conversation := sdk.Conversation{AccountUsername: "bot", Kind: sdk.ConversationKindDirect, ID: "friend"}
+	receipt, err := wire.ToWireSendReceipt(&message.SendReceipt{
+		MessageID: "forwarded-media", Conversation: conversation,
+		SentAt: time.Date(2026, 10, 29, 0, 0, 0, 0, time.UTC), Outcome: sdk.OutcomeSucceeded,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream := &mediaClientStreamFixture{response: &wire.SendReceiptResponse{Receipt: receipt}}
+	messages := &remoteMessages{client: &mediaClientFixture{stream: stream}}
+	ref := &sdk.MediaRef{
+		Token: "opaque-ref", Kind: sdk.MediaKindImage, FileName: "result.png",
+		SizeBytes: 3, ExpiresAt: time.Now().Add(time.Minute),
+	}
+	value, err := messages.SendMedia(t.Context(), conversation, message.MediaUpload{Kind: sdk.MediaKindImage, Ref: ref})
+	if err != nil || value == nil || value.MessageID != "forwarded-media" {
+		t.Fatalf("引用发送失败: receipt=%+v err=%v", value, err)
+	}
+	if len(stream.requests) != 1 || stream.requests[0].GetMetadata().GetRef().GetToken() != ref.Token ||
+		len(stream.requests[0].GetData()) != 0 {
+		t.Fatalf("引用发送产生了字节帧: %+v", stream.requests)
 	}
 }
 

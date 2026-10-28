@@ -56,6 +56,12 @@ message RevokeRef {
   google.protobuf.Timestamp expires_at = 2; // 撤回引用到期时间，失效后使用返回 FailedPrecondition
 }
 
+// ForwardRef 宿主管理的消息转发引用，不包含私有协议材料
+message ForwardRef {
+  string token = 1; // 绑定账号、插件实例和源消息的不透明转发引用凭据
+  google.protobuf.Timestamp expires_at = 2; // 转发引用到期时间，失效后使用返回 FailedPrecondition
+}
+
 // VoiceOptions 业务音频参数
 message VoiceOptions {
   google.protobuf.Duration duration = 1; // 音频时长，必须为正，精确到毫秒，毫秒数不得超过 int32 上限

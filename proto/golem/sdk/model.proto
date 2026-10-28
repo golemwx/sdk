@@ -315,6 +315,7 @@ message Message {
   StringList mentions = 9; // 被提及者的微信 username 列表，缺失与显式空集合可区分
   Quote quote = 10; // 引用消息摘要，缺失时为空
   MediaRef media = 11; // 宿主管理的媒体引用
+  ForwardRef forward_ref = 12; // 宿主管理的转发引用，不包含原始 XML 或 CDN 参数
 }
 
 // SendReceipt 消息发送结果

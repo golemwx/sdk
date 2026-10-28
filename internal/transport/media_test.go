@@ -40,6 +40,22 @@ func TestValidateMediaUpload(t *testing.T) {
 	if err := ValidateMediaUpload(voice); err != nil {
 		t.Fatal(err)
 	}
+	ref := &sdk.MediaRef{
+		Token: "opaque", Kind: sdk.MediaKindImage, FileName: "result.png",
+		SizeBytes: 3, ExpiresAt: time.Now().Add(time.Minute),
+	}
+	if err := ValidateMediaUpload(message.MediaUpload{Kind: sdk.MediaKindImage, Ref: ref}); err != nil {
+		t.Fatal(err)
+	}
+	for _, upload := range []message.MediaUpload{
+		{Kind: sdk.MediaKindFile, Ref: ref},
+		{Kind: sdk.MediaKindImage, Ref: ref, Reader: strings.NewReader("x")},
+		{Kind: sdk.MediaKindImage, Ref: &sdk.MediaRef{}},
+	} {
+		if err := ValidateMediaUpload(upload); err == nil {
+			t.Fatalf("非法引用发送被接受: %+v", upload)
+		}
+	}
 }
 
 // TestValidateMediaTotal 验证超总量、短读、多读和空流均明确失败

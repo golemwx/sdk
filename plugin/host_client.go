@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/golemwx/sdk"
@@ -62,6 +63,9 @@ func receiptResult(response *wire.SendReceiptResponse, callErr error, operation 
 
 // Revoke 使用宿主签发的撤回引用
 func (c *remoteMessages) Revoke(ctx context.Context, ref sdk.RevokeRef) error {
+	if err := transport.ValidateRevokeRef(ref); err != nil {
+		return err
+	}
 	value, err := wire.ToWireRevokeRef(&ref)
 	if err != nil {
 		return err
@@ -88,6 +92,15 @@ func (c *remoteMessages) SendMedia(ctx context.Context, conversation sdk.Convers
 		FileName:     upload.FileName,
 		Size:         upload.Size,
 	}
+	if upload.Ref != nil {
+		metadata.Ref, err = wire.ToWireMediaRef(upload.Ref)
+		if err != nil {
+			return nil, err
+		}
+		metadata.Kind = wire.MediaKind(upload.Ref.Kind)
+		metadata.FileName = upload.Ref.FileName
+		metadata.Size = upload.Ref.SizeBytes
+	}
 	if upload.Voice != nil {
 		metadata.Voice = &wire.VoiceOptions{
 			Duration: durationpb.New(upload.Voice.Duration),
@@ -96,6 +109,10 @@ func (c *remoteMessages) SendMedia(ctx context.Context, conversation sdk.Convers
 	}
 	if err := stream.Send(&wire.SendMediaRequest{Value: &wire.SendMediaRequest_Metadata{Metadata: metadata}}); err != nil {
 		return finishMediaSend(stream, err, "messages.send_media")
+	}
+	if upload.Ref != nil {
+		response, err := stream.CloseAndRecv()
+		return receiptResult(response, err, "messages.send_media")
 	}
 	buffer := make([]byte, transport.MaxMediaChunkSize)
 	var total int64
@@ -136,6 +153,85 @@ func (c *remoteMessages) SendMedia(ctx context.Context, conversation sdk.Convers
 	return receiptResult(response, err, "messages.send_media")
 }
 
+// StoreMedia 暂存插件打开的有界媒体流并取得宿主签发的引用
+func (c *remoteMessages) StoreMedia(ctx context.Context, upload message.MediaUpload) (*sdk.MediaRef, error) {
+	if err := transport.ValidateMediaStore(upload); err != nil {
+		return nil, err
+	}
+	streamCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stream, err := c.client.StoreMedia(streamCtx)
+	if err != nil {
+		return nil, transport.DecodeError(nil, err, "messages.store_media")
+	}
+	metadata := &wire.StoreMediaMetadata{
+		Invocation: transport.InvocationFromContext(ctx),
+		Kind:       wire.MediaKind(upload.Kind), FileName: upload.FileName, Size: upload.Size,
+	}
+	if upload.Voice != nil {
+		metadata.Voice = &wire.VoiceOptions{
+			Duration: durationpb.New(upload.Voice.Duration),
+			Encoding: wire.VoiceEncoding(upload.Voice.Encoding),
+		}
+	}
+	if err := stream.Send(&wire.StoreMediaRequest{Value: &wire.StoreMediaRequest_Metadata{Metadata: metadata}}); err != nil {
+		return finishMediaStore(stream, err)
+	}
+	buffer := make([]byte, transport.MaxMediaChunkSize)
+	var total int64
+	emptyReads := 0
+	for {
+		if err := streamCtx.Err(); err != nil {
+			return nil, transport.DecodeError(nil, err, "messages.store_media")
+		}
+		n, readErr := transport.ReadMediaChunk(upload.Reader, buffer, &emptyReads)
+		if err := streamCtx.Err(); err != nil {
+			return nil, transport.DecodeError(nil, err, "messages.store_media")
+		}
+		if n > 0 {
+			total += int64(n)
+			if err := transport.ValidateMediaStoreTotal(upload.Kind, upload.Size, total, false); err != nil {
+				return nil, err
+			}
+			if err := stream.Send(&wire.StoreMediaRequest{Value: &wire.StoreMediaRequest_Data{Data: buffer[:n]}}); err != nil {
+				return finishMediaStore(stream, err)
+			}
+		}
+		if readErr != nil {
+			if !errors.Is(readErr, io.EOF) {
+				return nil, sdk.NewError(sdk.CategoryInternal, "messages.store_media", "media reader failed")
+			}
+			break
+		}
+	}
+	if err := transport.ValidateMediaStoreTotal(upload.Kind, upload.Size, total, true); err != nil {
+		return nil, err
+	}
+	response, err := stream.CloseAndRecv()
+	return mediaRefResult(response, err)
+}
+
+// finishMediaStore 读取暂存流服务端的明确业务结果
+func finishMediaStore(stream grpc.ClientStreamingClient[wire.StoreMediaRequest, wire.MediaRefResponse], sendErr error) (*sdk.MediaRef, error) {
+	response, err := stream.CloseAndRecv()
+	if err != nil {
+		return nil, transport.DecodeError(nil, err, "messages.store_media")
+	}
+	if response == nil {
+		return nil, transport.DecodeError(nil, sendErr, "messages.store_media")
+	}
+	return mediaRefResult(response, nil)
+}
+
+// mediaRefResult 校验宿主签发的媒体引用
+func mediaRefResult(response *wire.MediaRefResponse, callErr error) (*sdk.MediaRef, error) {
+	result, err := wire.FromWireMediaRef(response.GetMedia())
+	if err != nil {
+		return nil, transport.ResultError(false, nil, nil, "messages.store_media")
+	}
+	return result, transport.ResultError(result != nil, response.GetError(), callErr, "messages.store_media")
+}
+
 // finishMediaSend 在发送失败后读取服务端最终状态，避免把明确业务拒绝降级为未知传输错误
 func finishMediaSend(stream grpc.ClientStreamingClient[wire.SendMediaRequest, wire.SendReceiptResponse], sendErr error, operation string) (*message.SendReceipt, error) {
 	response, err := stream.CloseAndRecv()
@@ -148,9 +244,153 @@ func finishMediaSend(stream grpc.ClientStreamingClient[wire.SendMediaRequest, wi
 	return receiptResult(response, nil, operation)
 }
 
-// Download 在 T26 流控接入前明确拒绝媒体下载
+// Download 预取首块以尽早返回引用错误，并把后续分块包装成有界读取流
 func (c *remoteMessages) Download(ctx context.Context, media sdk.MediaRef) (io.ReadCloser, error) {
-	return nil, sdk.NewError(sdk.CategoryUnimplemented, "messages.download", "media streaming is not implemented")
+	value, err := wire.ToWireMediaRef(&media)
+	if err != nil {
+		return nil, err
+	}
+	streamCtx, cancel := context.WithCancel(ctx)
+	stream, err := c.client.Download(streamCtx, &wire.DownloadRequest{
+		Invocation: transport.InvocationFromContext(ctx), Media: value,
+	})
+	if err != nil {
+		cancel()
+		return nil, transport.DecodeError(nil, err, "messages.download")
+	}
+	first, err := stream.Recv()
+	if err != nil {
+		cancel()
+		return nil, transport.DecodeError(nil, err, "messages.download")
+	}
+	reader := &remoteMediaReader{
+		stream: stream, cancel: cancel, pending: append([]byte(nil), first.GetData()...),
+		expected: media.SizeBytes, limit: media.SizeBytes,
+	}
+	if sizeLimit, ok := transport.MediaSizeLimit(media.Kind); ok {
+		reader.limit = sizeLimit
+	}
+	if err := reader.validateChunk(reader.pending); err != nil {
+		_ = reader.Close()
+		return nil, err
+	}
+	return reader, nil
+}
+
+// Forward 使用宿主签发的源消息引用转发，不接收原始协议内容
+func (c *remoteMessages) Forward(ctx context.Context, conversation sdk.Conversation, ref sdk.ForwardRef) (*message.SendReceipt, error) {
+	if err := transport.ValidateForwardRef(ref); err != nil {
+		return nil, err
+	}
+	value, err := wire.ToWireForwardRef(&ref)
+	if err != nil {
+		return nil, err
+	}
+	response, err := c.client.Forward(ctx, &wire.ForwardRequest{
+		Invocation: transport.InvocationFromContext(ctx), Conversation: wire.ToWireConversation(conversation), Ref: value,
+	})
+	return receiptResult(response, err, "messages.forward")
+}
+
+// SendLink 发送结构化链接，URL 只作为消息内容传递
+func (c *remoteMessages) SendLink(ctx context.Context, conversation sdk.Conversation, link message.Link) (*message.SendReceipt, error) {
+	if err := transport.ValidateLink(link); err != nil {
+		return nil, err
+	}
+	response, err := c.client.SendLink(ctx, &wire.SendLinkRequest{
+		Invocation: transport.InvocationFromContext(ctx), Conversation: wire.ToWireConversation(conversation),
+		Title: link.Title, Description: link.Description, Url: link.URL,
+	})
+	return receiptResult(response, err, "messages.send_link")
+}
+
+// SendLocation 发送结构化位置
+func (c *remoteMessages) SendLocation(ctx context.Context, conversation sdk.Conversation, location message.Location) (*message.SendReceipt, error) {
+	if err := transport.ValidateLocation(location); err != nil {
+		return nil, err
+	}
+	response, err := c.client.SendLocation(ctx, &wire.SendLocationRequest{
+		Invocation: transport.InvocationFromContext(ctx), Conversation: wire.ToWireConversation(conversation),
+		Label: location.Label, PoiName: location.POIName, Longitude: location.Longitude,
+		Latitude: location.Latitude, Scale: location.Scale,
+	})
+	return receiptResult(response, err, "messages.send_location")
+}
+
+// SendNameCard 发送结构化联系人名片
+func (c *remoteMessages) SendNameCard(ctx context.Context, conversation sdk.Conversation, card message.NameCard) (*message.SendReceipt, error) {
+	if err := transport.ValidateNameCard(card); err != nil {
+		return nil, err
+	}
+	response, err := c.client.SendNameCard(ctx, &wire.SendNameCardRequest{
+		Invocation: transport.InvocationFromContext(ctx), Conversation: wire.ToWireConversation(conversation),
+		Username: card.Username, Nickname: card.Nickname, Alias: card.Alias,
+	})
+	return receiptResult(response, err, "messages.send_name_card")
+}
+
+// remoteMediaReader 将 gRPC 分块流包装成可取消和可关闭的有界 Reader
+type remoteMediaReader struct {
+	stream   grpc.ServerStreamingClient[wire.MediaChunk] // 宿主下载流
+	cancel   context.CancelFunc                          // Close 立即取消底层传输
+	pending  []byte                                      // 预取的首块或上次未读完的块
+	total    int64                                       // 已接收总字节数
+	expected int64                                       // 引用声明字节数
+	limit    int64                                       // 本地总量上限
+	terminal error                                       // 已确认的终态
+	once     sync.Once                                   // 取消只执行一次
+}
+
+// Read 逐块读取媒体，并核对单块、总量和声明长度
+func (r *remoteMediaReader) Read(destination []byte) (int, error) {
+	if len(destination) == 0 {
+		return 0, nil
+	}
+	for len(r.pending) == 0 && r.terminal == nil {
+		chunk, err := r.stream.Recv()
+		if errors.Is(err, io.EOF) {
+			if r.expected >= 0 && r.total != r.expected {
+				r.terminal = sdk.NewError(sdk.CategoryInternal, "messages.download", "download size does not match reference")
+			} else {
+				r.terminal = io.EOF
+			}
+			break
+		}
+		if err != nil {
+			r.terminal = transport.DecodeError(nil, err, "messages.download")
+			break
+		}
+		r.pending = append(r.pending[:0], chunk.GetData()...)
+		if err := r.validateChunk(r.pending); err != nil {
+			r.terminal = err
+			r.pending = nil
+		}
+	}
+	if len(r.pending) == 0 {
+		return 0, r.terminal
+	}
+	n := copy(destination, r.pending)
+	r.pending = r.pending[n:]
+	return n, nil
+}
+
+// validateChunk 在交给插件前累计并校验宿主分块
+func (r *remoteMediaReader) validateChunk(data []byte) error {
+	if len(data) == 0 || len(data) > transport.MaxMediaChunkSize {
+		return sdk.NewError(sdk.CategoryInternal, "messages.download", "invalid media chunk")
+	}
+	r.total += int64(len(data))
+	if r.limit > 0 && r.total > r.limit || r.expected >= 0 && r.total > r.expected {
+		return sdk.NewError(sdk.CategoryResourceExhausted, "messages.download", "download exceeds media reference")
+	}
+	return nil
+}
+
+// Close 取消底层下载并释放连接额度
+func (r *remoteMediaReader) Close() error {
+	r.once.Do(r.cancel)
+	r.pending = nil
+	return nil
 }
 
 // remoteContacts 复用反向连接的联系人客户端

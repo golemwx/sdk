@@ -46,7 +46,17 @@ func ValidateMediaUpload(upload message.MediaUpload) error {
 		return mediaError(sdk.CategoryInvalidArgument, sdk.OutcomeFailed, "unsupported media kind")
 	}
 	if upload.Ref != nil {
-		return mediaError(sdk.CategoryUnimplemented, sdk.OutcomeFailed, "media references are not available before T27")
+		if upload.Reader != nil {
+			return mediaError(sdk.CategoryInvalidArgument, sdk.OutcomeFailed, "media reference and reader are mutually exclusive")
+		}
+		if upload.Ref.Token == "" || upload.Ref.Kind != upload.Kind || upload.Ref.SizeBytes < -1 ||
+			upload.Ref.SizeBytes == 0 || upload.Ref.SizeBytes > limit || upload.Ref.ExpiresAt.IsZero() {
+			return mediaError(sdk.CategoryInvalidArgument, sdk.OutcomeFailed, "invalid media reference")
+		}
+		if upload.Voice != nil {
+			return mediaError(sdk.CategoryInvalidArgument, sdk.OutcomeFailed, "voice options are stored in the media reference")
+		}
+		return nil
 	}
 	if upload.Reader == nil {
 		return mediaError(sdk.CategoryInvalidArgument, sdk.OutcomeFailed, "missing media reader")
@@ -76,6 +86,14 @@ func ValidateMediaUpload(upload message.MediaUpload) error {
 	return nil
 }
 
+// ValidateMediaStore 校验只生成引用、不发送消息的 Reader 媒体
+func ValidateMediaStore(upload message.MediaUpload) error {
+	if upload.Ref != nil {
+		return mediaError(sdk.CategoryInvalidArgument, sdk.OutcomeFailed, "media store requires a reader")
+	}
+	return ValidateMediaUpload(upload)
+}
+
 // ValidateMediaTotal 校验累计字节数及可选声明长度
 func ValidateMediaTotal(kind sdk.MediaKind, declared, actual int64, complete bool) error {
 	limit, supported := MediaSizeLimit(kind)
@@ -90,6 +108,42 @@ func ValidateMediaTotal(kind sdk.MediaKind, declared, actual int64, complete boo
 	}
 	if complete && actual == 0 {
 		return mediaError(sdk.CategoryInvalidArgument, sdk.OutcomeFailed, "media stream is empty")
+	}
+	return nil
+}
+
+// ValidateMediaDownloadTotal 校验宿主下载流，不把读取错误标记为发送副作用
+func ValidateMediaDownloadTotal(kind sdk.MediaKind, declared, actual int64, complete bool) error {
+	limit, supported := MediaSizeLimit(kind)
+	if !supported {
+		return sdk.NewError(sdk.CategoryInvalidArgument, "messages.download", "unsupported media kind")
+	}
+	if actual > limit {
+		return sdk.NewError(sdk.CategoryResourceExhausted, "messages.download", "media size exceeds limit")
+	}
+	if declared >= 0 && actual > declared || complete && declared >= 0 && actual != declared {
+		return sdk.NewError(sdk.CategoryInternal, "messages.download", "media size does not match reference")
+	}
+	if complete && actual == 0 {
+		return sdk.NewError(sdk.CategoryInternal, "messages.download", "media stream is empty")
+	}
+	return nil
+}
+
+// ValidateMediaStoreTotal 校验只产生临时引用的媒体流
+func ValidateMediaStoreTotal(kind sdk.MediaKind, declared, actual int64, complete bool) error {
+	limit, supported := MediaSizeLimit(kind)
+	if !supported {
+		return sdk.NewError(sdk.CategoryInvalidArgument, "messages.store_media", "unsupported media kind")
+	}
+	if actual > limit {
+		return sdk.NewError(sdk.CategoryResourceExhausted, "messages.store_media", "media size exceeds limit")
+	}
+	if declared >= 0 && actual > declared || complete && declared >= 0 && actual != declared {
+		return sdk.NewError(sdk.CategoryInvalidArgument, "messages.store_media", "declared media size does not match stream")
+	}
+	if complete && actual == 0 {
+		return sdk.NewError(sdk.CategoryInvalidArgument, "messages.store_media", "media stream is empty")
 	}
 	return nil
 }

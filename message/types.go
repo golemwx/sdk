@@ -77,6 +77,7 @@ type Message struct {
 	Mentions        []string            // 被提及者的微信 username 列表，缺失与显式空集合可区分
 	Quote           *Quote              // 引用消息摘要，缺失时为空
 	Media           *sdk.MediaRef       // 宿主管理的媒体引用
+	ForwardRef      *sdk.ForwardRef     // 宿主管理的转发引用，不包含原始 XML 或 CDN 参数
 }
 
 // SendReceipt 消息发送结果
@@ -96,6 +97,29 @@ type MediaUpload struct {
 	Reader   io.Reader     // 由插件打开并负责关闭的媒体字节流，与 Ref 必须二选一
 	Ref      *sdk.MediaRef // 复用的宿主管理媒体引用，与 Reader 必须二选一，Kind 须与引用一致
 	Voice    *VoiceOptions // 语音时长与编码参数，Kind 为 Voice 时必填
+}
+
+// Link 结构化链接消息，不触发宿主下载远程 URL
+type Link struct {
+	Title       string // 链接标题
+	Description string // 链接摘要
+	URL         string // 作为消息内容投递的 HTTP/HTTPS 地址，不作为宿主取文件入口
+}
+
+// Location 结构化位置消息
+type Location struct {
+	Label     string  // 展示地址
+	POIName   string  // 地点名称
+	Longitude float64 // 经度，范围 [-180, 180]
+	Latitude  float64 // 纬度，范围 [-90, 90]
+	Scale     float64 // 地图缩放级别，必须为有限正数
+}
+
+// NameCard 结构化联系人名片
+type NameCard struct {
+	Username string // 联系人的微信 username
+	Nickname string // 展示昵称
+	Alias    string // 可选别名
 }
 
 // VoiceOptions 业务音频参数
@@ -126,7 +150,12 @@ const (
 type MessagesClient interface {
 	SendText(ctx context.Context, conversation sdk.Conversation, text string, mentions []string) (*SendReceipt, error)
 	SendMedia(ctx context.Context, conversation sdk.Conversation, media MediaUpload) (*SendReceipt, error)
+	StoreMedia(ctx context.Context, media MediaUpload) (*sdk.MediaRef, error)
 	Reply(ctx context.Context, conversation sdk.Conversation, quote Quote, text string) (*SendReceipt, error)
+	Forward(ctx context.Context, conversation sdk.Conversation, ref sdk.ForwardRef) (*SendReceipt, error)
+	SendLink(ctx context.Context, conversation sdk.Conversation, link Link) (*SendReceipt, error)
+	SendLocation(ctx context.Context, conversation sdk.Conversation, location Location) (*SendReceipt, error)
+	SendNameCard(ctx context.Context, conversation sdk.Conversation, card NameCard) (*SendReceipt, error)
 	Revoke(ctx context.Context, ref sdk.RevokeRef) error
 	Download(ctx context.Context, media sdk.MediaRef) (io.ReadCloser, error)
 }

@@ -1661,6 +1661,7 @@ type Message struct {
 	Mentions        *StringList            `protobuf:"bytes,9,opt,name=mentions,proto3" json:"mentions,omitempty"`                                                                      // 被提及者的微信 username 列表，缺失与显式空集合可区分
 	Quote           *Quote                 `protobuf:"bytes,10,opt,name=quote,proto3" json:"quote,omitempty"`                                                                           // 引用消息摘要，缺失时为空
 	Media           *MediaRef              `protobuf:"bytes,11,opt,name=media,proto3" json:"media,omitempty"`                                                                           // 宿主管理的媒体引用
+	ForwardRef      *ForwardRef            `protobuf:"bytes,12,opt,name=forward_ref,json=forwardRef,proto3" json:"forward_ref,omitempty"`                                               // 宿主管理的转发引用，不包含原始 XML 或 CDN 参数
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1768,6 +1769,13 @@ func (x *Message) GetQuote() *Quote {
 func (x *Message) GetMedia() *MediaRef {
 	if x != nil {
 		return x.Media
+	}
+	return nil
+}
+
+func (x *Message) GetForwardRef() *ForwardRef {
+	if x != nil {
+		return x.ForwardRef
 	}
 	return nil
 }
@@ -3000,7 +3008,7 @@ const file_golem_sdk_model_proto_rawDesc = "" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12%\n" +
 	"\x0eactor_username\x18\x02 \x01(\tR\ractorUsername\x12\x16\n" +
-	"\x06digest\x18\x03 \x01(\tR\x06digest\"\x88\x04\n" +
+	"\x06digest\x18\x03 \x01(\tR\x06digest\"\xc0\x04\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12;\n" +
 	"\fconversation\x18\x02 \x01(\v2\x17.golem.sdk.ConversationR\fconversation\x12&\n" +
@@ -3014,7 +3022,9 @@ const file_golem_sdk_model_proto_rawDesc = "" +
 	"\bmentions\x18\t \x01(\v2\x15.golem.sdk.StringListR\bmentions\x12&\n" +
 	"\x05quote\x18\n" +
 	" \x01(\v2\x10.golem.sdk.QuoteR\x05quote\x12)\n" +
-	"\x05media\x18\v \x01(\v2\x13.golem.sdk.MediaRefR\x05mediaB\a\n" +
+	"\x05media\x18\v \x01(\v2\x13.golem.sdk.MediaRefR\x05media\x126\n" +
+	"\vforward_ref\x18\f \x01(\v2\x15.golem.sdk.ForwardRefR\n" +
+	"forwardRefB\a\n" +
 	"\x05_text\"\x86\x02\n" +
 	"\vSendReceipt\x12\x1d\n" +
 	"\n" +
@@ -3268,7 +3278,8 @@ var file_golem_sdk_model_proto_goTypes = []any{
 	(*durationpb.Duration)(nil),   // 43: google.protobuf.Duration
 	(*timestamppb.Timestamp)(nil), // 44: google.protobuf.Timestamp
 	(*MediaRef)(nil),              // 45: golem.sdk.MediaRef
-	(*RevokeRef)(nil),             // 46: golem.sdk.RevokeRef
+	(*ForwardRef)(nil),            // 46: golem.sdk.ForwardRef
+	(*RevokeRef)(nil),             // 47: golem.sdk.RevokeRef
 }
 var file_golem_sdk_model_proto_depIdxs = []int32{
 	0,  // 0: golem.sdk.Error.category:type_name -> golem.sdk.Category
@@ -3295,50 +3306,51 @@ var file_golem_sdk_model_proto_depIdxs = []int32{
 	13, // 21: golem.sdk.Message.mentions:type_name -> golem.sdk.StringList
 	23, // 22: golem.sdk.Message.quote:type_name -> golem.sdk.Quote
 	45, // 23: golem.sdk.Message.media:type_name -> golem.sdk.MediaRef
-	18, // 24: golem.sdk.SendReceipt.conversation:type_name -> golem.sdk.Conversation
-	44, // 25: golem.sdk.SendReceipt.sent_at:type_name -> google.protobuf.Timestamp
-	1,  // 26: golem.sdk.SendReceipt.outcome:type_name -> golem.sdk.WriteOutcome
-	46, // 27: golem.sdk.SendReceipt.revoke_ref:type_name -> golem.sdk.RevokeRef
-	10, // 28: golem.sdk.Change.domain:type_name -> golem.sdk.ChangeDomain
-	11, // 29: golem.sdk.Change.action:type_name -> golem.sdk.ChangeAction
-	13, // 30: golem.sdk.Change.changed_fields:type_name -> golem.sdk.StringList
-	20, // 31: golem.sdk.Change.contact:type_name -> golem.sdk.Contact
-	21, // 32: golem.sdk.Change.room:type_name -> golem.sdk.Room
-	22, // 33: golem.sdk.Change.member:type_name -> golem.sdk.Member
-	17, // 34: golem.sdk.Change.account:type_name -> golem.sdk.Account
-	18, // 35: golem.sdk.Lease.conversation:type_name -> golem.sdk.Conversation
-	44, // 36: golem.sdk.Lease.expires_at:type_name -> google.protobuf.Timestamp
-	24, // 37: golem.sdk.Event.message:type_name -> golem.sdk.Message
-	26, // 38: golem.sdk.Event.change:type_name -> golem.sdk.Change
-	27, // 39: golem.sdk.Event.lease:type_name -> golem.sdk.Lease
-	44, // 40: golem.sdk.Event.occurred_at:type_name -> google.protobuf.Timestamp
-	42, // 41: golem.sdk.Command.args:type_name -> golem.sdk.Command.ArgsEntry
-	19, // 42: golem.sdk.Command.actor:type_name -> golem.sdk.Actor
-	24, // 43: golem.sdk.Command.message:type_name -> golem.sdk.Message
-	45, // 44: golem.sdk.CommandResult.media:type_name -> golem.sdk.MediaRef
-	14, // 45: golem.sdk.CallRequest.payload:type_name -> golem.sdk.BytesValue
-	14, // 46: golem.sdk.CallResult.payload:type_name -> golem.sdk.BytesValue
-	45, // 47: golem.sdk.CallResult.media:type_name -> golem.sdk.MediaRef
-	14, // 48: golem.sdk.ConfigSnapshot.data:type_name -> golem.sdk.BytesValue
-	12, // 49: golem.sdk.ConfigSnapshot.apply_status:type_name -> golem.sdk.ApplyStatus
-	20, // 50: golem.sdk.ContactPage.items:type_name -> golem.sdk.Contact
-	2,  // 51: golem.sdk.ContactPage.completeness:type_name -> golem.sdk.Completeness
-	22, // 52: golem.sdk.MemberPage.items:type_name -> golem.sdk.Member
-	2,  // 53: golem.sdk.MemberPage.completeness:type_name -> golem.sdk.Completeness
-	20, // 54: golem.sdk.ContactBatchItem.value:type_name -> golem.sdk.Contact
-	1,  // 55: golem.sdk.ContactBatchItem.outcome:type_name -> golem.sdk.WriteOutcome
-	15, // 56: golem.sdk.ContactBatchItem.error:type_name -> golem.sdk.Error
-	38, // 57: golem.sdk.ContactBatchResult.items:type_name -> golem.sdk.ContactBatchItem
-	1,  // 58: golem.sdk.RefreshStageResult.outcome:type_name -> golem.sdk.WriteOutcome
-	15, // 59: golem.sdk.RefreshStageResult.error:type_name -> golem.sdk.Error
-	21, // 60: golem.sdk.ChatroomRefreshResult.room:type_name -> golem.sdk.Room
-	37, // 61: golem.sdk.ChatroomRefreshResult.members:type_name -> golem.sdk.MemberPage
-	40, // 62: golem.sdk.ChatroomRefreshResult.stages:type_name -> golem.sdk.RefreshStageResult
-	63, // [63:63] is the sub-list for method output_type
-	63, // [63:63] is the sub-list for method input_type
-	63, // [63:63] is the sub-list for extension type_name
-	63, // [63:63] is the sub-list for extension extendee
-	0,  // [0:63] is the sub-list for field type_name
+	46, // 24: golem.sdk.Message.forward_ref:type_name -> golem.sdk.ForwardRef
+	18, // 25: golem.sdk.SendReceipt.conversation:type_name -> golem.sdk.Conversation
+	44, // 26: golem.sdk.SendReceipt.sent_at:type_name -> google.protobuf.Timestamp
+	1,  // 27: golem.sdk.SendReceipt.outcome:type_name -> golem.sdk.WriteOutcome
+	47, // 28: golem.sdk.SendReceipt.revoke_ref:type_name -> golem.sdk.RevokeRef
+	10, // 29: golem.sdk.Change.domain:type_name -> golem.sdk.ChangeDomain
+	11, // 30: golem.sdk.Change.action:type_name -> golem.sdk.ChangeAction
+	13, // 31: golem.sdk.Change.changed_fields:type_name -> golem.sdk.StringList
+	20, // 32: golem.sdk.Change.contact:type_name -> golem.sdk.Contact
+	21, // 33: golem.sdk.Change.room:type_name -> golem.sdk.Room
+	22, // 34: golem.sdk.Change.member:type_name -> golem.sdk.Member
+	17, // 35: golem.sdk.Change.account:type_name -> golem.sdk.Account
+	18, // 36: golem.sdk.Lease.conversation:type_name -> golem.sdk.Conversation
+	44, // 37: golem.sdk.Lease.expires_at:type_name -> google.protobuf.Timestamp
+	24, // 38: golem.sdk.Event.message:type_name -> golem.sdk.Message
+	26, // 39: golem.sdk.Event.change:type_name -> golem.sdk.Change
+	27, // 40: golem.sdk.Event.lease:type_name -> golem.sdk.Lease
+	44, // 41: golem.sdk.Event.occurred_at:type_name -> google.protobuf.Timestamp
+	42, // 42: golem.sdk.Command.args:type_name -> golem.sdk.Command.ArgsEntry
+	19, // 43: golem.sdk.Command.actor:type_name -> golem.sdk.Actor
+	24, // 44: golem.sdk.Command.message:type_name -> golem.sdk.Message
+	45, // 45: golem.sdk.CommandResult.media:type_name -> golem.sdk.MediaRef
+	14, // 46: golem.sdk.CallRequest.payload:type_name -> golem.sdk.BytesValue
+	14, // 47: golem.sdk.CallResult.payload:type_name -> golem.sdk.BytesValue
+	45, // 48: golem.sdk.CallResult.media:type_name -> golem.sdk.MediaRef
+	14, // 49: golem.sdk.ConfigSnapshot.data:type_name -> golem.sdk.BytesValue
+	12, // 50: golem.sdk.ConfigSnapshot.apply_status:type_name -> golem.sdk.ApplyStatus
+	20, // 51: golem.sdk.ContactPage.items:type_name -> golem.sdk.Contact
+	2,  // 52: golem.sdk.ContactPage.completeness:type_name -> golem.sdk.Completeness
+	22, // 53: golem.sdk.MemberPage.items:type_name -> golem.sdk.Member
+	2,  // 54: golem.sdk.MemberPage.completeness:type_name -> golem.sdk.Completeness
+	20, // 55: golem.sdk.ContactBatchItem.value:type_name -> golem.sdk.Contact
+	1,  // 56: golem.sdk.ContactBatchItem.outcome:type_name -> golem.sdk.WriteOutcome
+	15, // 57: golem.sdk.ContactBatchItem.error:type_name -> golem.sdk.Error
+	38, // 58: golem.sdk.ContactBatchResult.items:type_name -> golem.sdk.ContactBatchItem
+	1,  // 59: golem.sdk.RefreshStageResult.outcome:type_name -> golem.sdk.WriteOutcome
+	15, // 60: golem.sdk.RefreshStageResult.error:type_name -> golem.sdk.Error
+	21, // 61: golem.sdk.ChatroomRefreshResult.room:type_name -> golem.sdk.Room
+	37, // 62: golem.sdk.ChatroomRefreshResult.members:type_name -> golem.sdk.MemberPage
+	40, // 63: golem.sdk.ChatroomRefreshResult.stages:type_name -> golem.sdk.RefreshStageResult
+	64, // [64:64] is the sub-list for method output_type
+	64, // [64:64] is the sub-list for method input_type
+	64, // [64:64] is the sub-list for extension type_name
+	64, // [64:64] is the sub-list for extension extendee
+	0,  // [0:64] is the sub-list for field type_name
 }
 
 func init() { file_golem_sdk_model_proto_init() }

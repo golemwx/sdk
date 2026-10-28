@@ -229,6 +229,8 @@ func hostStreamInterceptor(services HostServices, control *hostControl) grpc.Str
 		switch info.FullMethod {
 		case wire.HostMessagesService_SendMedia_FullMethodName:
 			first = new(wire.SendMediaRequest)
+		case wire.HostMessagesService_StoreMedia_FullMethodName:
+			first = new(wire.StoreMediaRequest)
 		case wire.HostMessagesService_Download_FullMethodName:
 			first = new(wire.DownloadRequest)
 		default:
@@ -241,6 +243,9 @@ func hostStreamInterceptor(services HostServices, control *hostControl) grpc.Str
 		if value, ok := first.(interface{ GetInvocation() *wire.Invocation }); ok {
 			invocation.ID, invocation.Token = value.GetInvocation().GetId(), value.GetInvocation().GetToken()
 		} else if request, ok := first.(*wire.SendMediaRequest); ok {
+			invocation.ID = request.GetMetadata().GetInvocation().GetId()
+			invocation.Token = request.GetMetadata().GetInvocation().GetToken()
+		} else if request, ok := first.(*wire.StoreMediaRequest); ok {
 			invocation.ID = request.GetMetadata().GetInvocation().GetId()
 			invocation.Token = request.GetMetadata().GetInvocation().GetToken()
 		}
@@ -394,7 +399,7 @@ func registerHost(server *grpc.Server, services HostServices, control *hostContr
 
 // hostMessages 消息 RPC 的业务适配
 type hostMessages struct {
-	wire.UnimplementedHostMessagesServiceServer // 未接入的下载流明确返回 Unimplemented
+	wire.UnimplementedHostMessagesServiceServer // 为未来兼容方法提供明确失败
 
 	client plugin.MessagesClient // 已绑定实例的消息能力
 }
@@ -412,6 +417,20 @@ func (s *hostMessages) SendMedia(stream grpc.ClientStreamingServer[wire.SendMedi
 	upload, err := mediaUploadFromWire(metadata)
 	if err != nil {
 		return transport.RPCError(err, "messages.send_media")
+	}
+	if upload.Ref != nil {
+		if extra, receiveErr := stream.Recv(); !errors.Is(receiveErr, io.EOF) {
+			if receiveErr == nil && extra != nil {
+				receiveErr = mediaInputError("media reference stream must not contain data")
+			}
+			return transport.RPCError(receiveErr, "messages.send_media")
+		}
+		value, callErr := s.client.SendMedia(stream.Context(), wire.FromWireConversation(metadata.GetConversation()), upload)
+		result, conversion := wire.ToWireSendReceipt(value)
+		return stream.SendAndClose(&wire.SendReceiptResponse{
+			Receipt: result,
+			Error:   hostResultError(result != nil, callErr, conversion, "messages.send_media"),
+		})
 	}
 	second, err := stream.Recv()
 	if err != nil {
@@ -447,13 +466,56 @@ func (s *hostMessages) SendMedia(stream grpc.ClientStreamingServer[wire.SendMedi
 	return stream.SendAndClose(&wire.SendReceiptResponse{Receipt: result, Error: hostResultError(result != nil, callErr, conversion, "messages.send_media")})
 }
 
+// StoreMedia 校验首包和累计字节后将有界 Reader 交给宿主引用存储
+func (s *hostMessages) StoreMedia(stream grpc.ClientStreamingServer[wire.StoreMediaRequest, wire.MediaRefResponse]) error {
+	first, err := stream.Recv()
+	if err != nil {
+		return transport.RPCError(err, "messages.store_media")
+	}
+	metadata := first.GetMetadata()
+	if metadata == nil {
+		return transport.RPCError(mediaStoreInputError("first media frame must contain metadata"), "messages.store_media")
+	}
+	upload, err := storedMediaUploadFromWire(metadata)
+	if err != nil {
+		return transport.RPCError(err, "messages.store_media")
+	}
+	second, err := stream.Recv()
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			err = mediaStoreInputError("media stream is empty")
+		}
+		return transport.RPCError(err, "messages.store_media")
+	}
+	if len(second.GetData()) == 0 || len(second.GetData()) > transport.MaxMediaChunkSize {
+		return transport.RPCError(mediaStoreInputError("invalid media chunk"), "messages.store_media")
+	}
+	reader, writer := io.Pipe()
+	defer func() { _ = reader.Close() }()
+	upload.Reader = reader
+	received := make(chan error, 1)
+	go receiveStoredMedia(stream, writer, upload.Kind, upload.Size, second.GetData(), received)
+	value, callErr := s.client.StoreMedia(stream.Context(), upload)
+	_ = reader.Close()
+	if callErr == nil {
+		if receiveErr := <-received; receiveErr != nil {
+			callErr = receiveErr
+		}
+	}
+	result, conversion := wire.ToWireMediaRef(value)
+	return stream.SendAndClose(&wire.MediaRefResponse{
+		Media: result,
+		Error: hostResultError(result != nil, callErr, conversion, "messages.store_media"),
+	})
+}
+
 // isMediaInputError 判断接收端已确认的协议错误，优先于由此引发的宿主读取失败
 func isMediaInputError(err error) bool {
 	var value *sdk.Error
 	return errors.As(err, &value) && (value.Category == sdk.CategoryInvalidArgument || value.Category == sdk.CategoryResourceExhausted)
 }
 
-// mediaUploadFromWire 转换并验证媒体首包，引用发送保留给 T27
+// mediaUploadFromWire 转换并验证媒体上传首包
 func mediaUploadFromWire(value *wire.SendMediaMetadata) (message.MediaUpload, error) {
 	upload := message.MediaUpload{
 		Kind:     sdk.MediaKind(value.GetKind()),
@@ -466,6 +528,9 @@ func mediaUploadFromWire(value *wire.SendMediaMetadata) (message.MediaUpload, er
 			return message.MediaUpload{}, err
 		}
 		upload.Ref = ref
+		upload.Kind = ref.Kind
+		upload.FileName = ref.FileName
+		upload.Size = ref.SizeBytes
 	}
 	if voice := value.GetVoice(); voice != nil {
 		if err := voice.GetDuration().CheckValid(); err != nil {
@@ -474,8 +539,31 @@ func mediaUploadFromWire(value *wire.SendMediaMetadata) (message.MediaUpload, er
 		upload.Voice = &message.VoiceOptions{Duration: voice.GetDuration().AsDuration(), Encoding: message.VoiceEncoding(voice.GetEncoding())}
 	}
 	// Reader 占位只用于复用同一份元数据校验，实际 pipe 在通过后注入
-	upload.Reader = emptyReader{}
+	if upload.Ref == nil {
+		upload.Reader = emptyReader{}
+	}
 	if err := transport.ValidateMediaUpload(upload); err != nil {
+		return message.MediaUpload{}, err
+	}
+	upload.Reader = nil
+	return upload, nil
+}
+
+// storedMediaUploadFromWire 转换媒体暂存首包并复用上传边界
+func storedMediaUploadFromWire(value *wire.StoreMediaMetadata) (message.MediaUpload, error) {
+	upload := message.MediaUpload{
+		Kind: sdk.MediaKind(value.GetKind()), FileName: value.GetFileName(), Size: value.GetSize(),
+		Reader: emptyReader{},
+	}
+	if voice := value.GetVoice(); voice != nil {
+		if err := voice.GetDuration().CheckValid(); err != nil {
+			return message.MediaUpload{}, mediaStoreInputError("invalid voice duration")
+		}
+		upload.Voice = &message.VoiceOptions{
+			Duration: voice.GetDuration().AsDuration(), Encoding: message.VoiceEncoding(voice.GetEncoding()),
+		}
+	}
+	if err := transport.ValidateMediaStore(upload); err != nil {
 		return message.MediaUpload{}, err
 	}
 	upload.Reader = nil
@@ -532,6 +620,50 @@ func receiveMedia(stream grpc.ClientStreamingServer[wire.SendMediaRequest, wire.
 	}
 }
 
+// receiveStoredMedia 按序写入媒体暂存 pipe，并在 EOF 时核对声明长度
+func receiveStoredMedia(stream grpc.ClientStreamingServer[wire.StoreMediaRequest, wire.MediaRefResponse], writer *io.PipeWriter, kind sdk.MediaKind, declared int64, first []byte, result chan<- error) {
+	var final error
+	defer func() {
+		result <- final
+		_ = writer.CloseWithError(final)
+	}()
+	var total int64
+	write := func(data []byte) bool {
+		if len(data) == 0 || len(data) > transport.MaxMediaChunkSize {
+			final = mediaStoreProtocolError("invalid media chunk")
+			return false
+		}
+		total += int64(len(data))
+		if final = transport.ValidateMediaStoreTotal(kind, declared, total, false); final != nil {
+			return false
+		}
+		if _, final = writer.Write(data); final != nil {
+			return false
+		}
+		return true
+	}
+	if !write(first) {
+		return
+	}
+	for {
+		request, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			final = transport.ValidateMediaStoreTotal(kind, declared, total, true)
+			return
+		}
+		if err != nil {
+			final = err
+			return
+		}
+		if request.GetMetadata() != nil || !write(request.GetData()) {
+			if final == nil {
+				final = mediaStoreProtocolError("metadata may only appear in the first frame")
+			}
+			return
+		}
+	}
+}
+
 // mediaInputError 表示尚未进入宿主业务的参数错误
 func mediaInputError(reason string) *sdk.Error {
 	value := sdk.NewError(sdk.CategoryInvalidArgument, "messages.send_media", reason)
@@ -544,6 +676,16 @@ func mediaProtocolError(reason string) *sdk.Error {
 	value := sdk.NewError(sdk.CategoryInvalidArgument, "messages.send_media", reason)
 	value.Outcome = sdk.OutcomeUnknown
 	return value
+}
+
+// mediaStoreInputError 表示尚未进入宿主暂存业务的参数错误
+func mediaStoreInputError(reason string) *sdk.Error {
+	return sdk.NewError(sdk.CategoryInvalidArgument, "messages.store_media", reason)
+}
+
+// mediaStoreProtocolError 表示开始接收后发现的暂存流协议错误
+func mediaStoreProtocolError(reason string) *sdk.Error {
+	return sdk.NewError(sdk.CategoryInvalidArgument, "messages.store_media", reason)
 }
 
 // SendText 将文本请求转换为公开业务类型
@@ -571,6 +713,110 @@ func (s *hostMessages) Revoke(ctx context.Context, r *wire.RevokeRequest) (*wire
 		err = s.client.Revoke(ctx, *ref)
 	}
 	return &wire.OperationResponse{Error: transport.EncodeError(err, "messages.revoke")}, nil
+}
+
+// Forward 校验宿主转发引用后调用业务入口
+func (s *hostMessages) Forward(ctx context.Context, r *wire.ForwardRequest) (*wire.SendReceiptResponse, error) {
+	ref, err := wire.FromWireForwardRef(r.GetRef())
+	if err == nil && ref == nil {
+		err = sdk.NewError(sdk.CategoryInvalidArgument, "messages.forward", "missing forward reference")
+	}
+	var value *message.SendReceipt
+	if err == nil {
+		value, err = s.client.Forward(ctx, wire.FromWireConversation(r.GetConversation()), *ref)
+	}
+	result, conversion := wire.ToWireSendReceipt(value)
+	return &wire.SendReceiptResponse{
+		Receipt: result, Error: hostResultError(result != nil, err, conversion, "messages.forward"),
+	}, nil
+}
+
+// SendLink 校验结构化链接后调用业务入口
+func (s *hostMessages) SendLink(ctx context.Context, r *wire.SendLinkRequest) (*wire.SendReceiptResponse, error) {
+	link := message.Link{Title: r.GetTitle(), Description: r.GetDescription(), URL: r.GetUrl()}
+	err := transport.ValidateLink(link)
+	var value *message.SendReceipt
+	if err == nil {
+		value, err = s.client.SendLink(ctx, wire.FromWireConversation(r.GetConversation()), link)
+	}
+	result, conversion := wire.ToWireSendReceipt(value)
+	return &wire.SendReceiptResponse{
+		Receipt: result, Error: hostResultError(result != nil, err, conversion, "messages.send_link"),
+	}, nil
+}
+
+// SendLocation 校验结构化位置后调用业务入口
+func (s *hostMessages) SendLocation(ctx context.Context, r *wire.SendLocationRequest) (*wire.SendReceiptResponse, error) {
+	location := message.Location{
+		Label: r.GetLabel(), POIName: r.GetPoiName(), Longitude: r.GetLongitude(),
+		Latitude: r.GetLatitude(), Scale: r.GetScale(),
+	}
+	err := transport.ValidateLocation(location)
+	var value *message.SendReceipt
+	if err == nil {
+		value, err = s.client.SendLocation(ctx, wire.FromWireConversation(r.GetConversation()), location)
+	}
+	result, conversion := wire.ToWireSendReceipt(value)
+	return &wire.SendReceiptResponse{
+		Receipt: result, Error: hostResultError(result != nil, err, conversion, "messages.send_location"),
+	}, nil
+}
+
+// SendNameCard 校验结构化名片后调用业务入口
+func (s *hostMessages) SendNameCard(ctx context.Context, r *wire.SendNameCardRequest) (*wire.SendReceiptResponse, error) {
+	card := message.NameCard{Username: r.GetUsername(), Nickname: r.GetNickname(), Alias: r.GetAlias()}
+	err := transport.ValidateNameCard(card)
+	var value *message.SendReceipt
+	if err == nil {
+		value, err = s.client.SendNameCard(ctx, wire.FromWireConversation(r.GetConversation()), card)
+	}
+	result, conversion := wire.ToWireSendReceipt(value)
+	return &wire.SendReceiptResponse{
+		Receipt: result, Error: hostResultError(result != nil, err, conversion, "messages.send_name_card"),
+	}, nil
+}
+
+// Download 将宿主授权的媒体 Reader 转为有界 gRPC 分块流
+func (s *hostMessages) Download(r *wire.DownloadRequest, stream grpc.ServerStreamingServer[wire.MediaChunk]) error {
+	ref, err := wire.FromWireMediaRef(r.GetMedia())
+	if err == nil && ref == nil {
+		err = sdk.NewError(sdk.CategoryInvalidArgument, "messages.download", "missing media reference")
+	}
+	if err != nil {
+		return transport.RPCError(err, "messages.download")
+	}
+	reader, err := s.client.Download(stream.Context(), *ref)
+	if err != nil {
+		return transport.RPCError(err, "messages.download")
+	}
+	if reader == nil {
+		return transport.RPCError(sdk.NewError(sdk.CategoryInternal, "messages.download", "missing media stream"), "messages.download")
+	}
+	defer func() { _ = reader.Close() }()
+	buffer := make([]byte, transport.MaxMediaChunkSize)
+	var total int64
+	emptyReads := 0
+	for {
+		n, readErr := transport.ReadMediaChunk(reader, buffer, &emptyReads)
+		if n > 0 {
+			total += int64(n)
+			if err := transport.ValidateMediaDownloadTotal(ref.Kind, ref.SizeBytes, total, false); err != nil {
+				return transport.RPCError(err, "messages.download")
+			}
+			if err := stream.Send(&wire.MediaChunk{Data: append([]byte(nil), buffer[:n]...)}); err != nil {
+				return err
+			}
+		}
+		if readErr != nil {
+			if errors.Is(readErr, io.EOF) {
+				return transport.RPCError(
+					transport.ValidateMediaDownloadTotal(ref.Kind, ref.SizeBytes, total, true),
+					"messages.download",
+				)
+			}
+			return transport.RPCError(readErr, "messages.download")
+		}
+	}
 }
 
 // hostContacts 本地联系人查询及显式刷新适配

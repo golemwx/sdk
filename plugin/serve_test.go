@@ -268,7 +268,11 @@ func TestLifecycleBindsHostCredential(t *testing.T) {
 
 // TestReceiptResultPreservesPartialError 验证业务错误旁的有效回执不会被丢弃
 func TestReceiptResultPreservesPartialError(t *testing.T) {
-	response := &wire.SendReceiptResponse{Receipt: &wire.SendReceipt{MessageId: "18446744073709551615", SentAt: &timestamppb.Timestamp{Seconds: 1}}, Error: wire.ToWireError(&sdk.Error{Category: sdk.CategoryDeadlineExceeded, Outcome: sdk.OutcomeUnknown})}
+	response := &wire.SendReceiptResponse{Receipt: &wire.SendReceipt{
+		MessageId:    "18446744073709551615",
+		Conversation: &wire.Conversation{AccountUsername: "bot", Kind: wire.ConversationKind_CONVERSATION_KIND_DIRECT, Id: "friend"},
+		SentAt:       &timestamppb.Timestamp{Seconds: 1}, Outcome: wire.WriteOutcome_WRITE_OUTCOME_UNKNOWN,
+	}, Error: wire.ToWireError(&sdk.Error{Category: sdk.CategoryDeadlineExceeded, Outcome: sdk.OutcomeUnknown})}
 	receipt, err := receiptResult(response, nil, "messages.send_text")
 	if err == nil || receipt == nil || receipt.MessageID != response.Receipt.MessageId {
 		t.Fatal("partial receipt lost")

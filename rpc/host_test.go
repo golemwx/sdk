@@ -42,6 +42,38 @@ func (f fixtureMessages) Reply(ctx context.Context, conversation sdk.Conversatio
 // Revoke 允许撤回人工引用，不执行真实业务
 func (fixtureMessages) Revoke(context.Context, sdk.RevokeRef) error { return nil }
 
+// StoreMedia 为人工字节签发短期引用
+func (fixtureMessages) StoreMedia(_ context.Context, upload message.MediaUpload) (*sdk.MediaRef, error) {
+	data, err := io.ReadAll(upload.Reader)
+	if err != nil {
+		return nil, err
+	}
+	return &sdk.MediaRef{
+		Token: "stored-media", Kind: upload.Kind, FileName: upload.FileName,
+		SizeBytes: int64(len(data)), ExpiresAt: fixtureTime().Add(time.Minute),
+	}, nil
+}
+
+// Forward 回显人工转发回执
+func (f fixtureMessages) Forward(ctx context.Context, conversation sdk.Conversation, _ sdk.ForwardRef) (*message.SendReceipt, error) {
+	return f.SendText(ctx, conversation, "forward", nil)
+}
+
+// SendLink 回显人工链接回执
+func (f fixtureMessages) SendLink(ctx context.Context, conversation sdk.Conversation, _ message.Link) (*message.SendReceipt, error) {
+	return f.SendText(ctx, conversation, "link", nil)
+}
+
+// SendLocation 回显人工位置回执
+func (f fixtureMessages) SendLocation(ctx context.Context, conversation sdk.Conversation, _ message.Location) (*message.SendReceipt, error) {
+	return f.SendText(ctx, conversation, "location", nil)
+}
+
+// SendNameCard 回显人工名片回执
+func (f fixtureMessages) SendNameCard(ctx context.Context, conversation sdk.Conversation, _ message.NameCard) (*message.SendReceipt, error) {
+	return f.SendText(ctx, conversation, "name-card", nil)
+}
+
 // SendMedia 读取人工分片并回显媒体发送回执
 func (fixtureMessages) SendMedia(ctx context.Context, conversation sdk.Conversation, upload message.MediaUpload) (*message.SendReceipt, error) {
 	data, err := io.ReadAll(upload.Reader)
@@ -54,9 +86,9 @@ func (fixtureMessages) SendMedia(ctx context.Context, conversation sdk.Conversat
 	return &message.SendReceipt{MessageID: "media-id", Conversation: conversation, SentAt: fixtureTime(), Outcome: sdk.OutcomeSucceeded}, nil
 }
 
-// Download 不在握手测试中实现真实媒体下载
+// Download 返回人工媒体下载流
 func (fixtureMessages) Download(context.Context, sdk.MediaRef) (io.ReadCloser, error) {
-	return nil, sdk.NewError(sdk.CategoryUnimplemented, "fixture.download", "not available")
+	return io.NopCloser(strings.NewReader("download")), nil
 }
 
 // fixtureContacts 提供本地联系人及部分成功刷新结果
@@ -198,8 +230,43 @@ func exerciseHost(ctx context.Context, host *plugin.Host) error {
 	}); !hasCategory(err, sdk.CategoryInvalidArgument) {
 		return errors.New("declared media size mismatch was accepted")
 	}
-	if _, err := host.Messages.Download(ctx, sdk.MediaRef{}); !hasCategory(err, sdk.CategoryUnimplemented) {
-		return errors.New("download silently succeeded")
+	stored, err := host.Messages.StoreMedia(ctx, message.MediaUpload{
+		Kind: sdk.MediaKindImage, FileName: "result.png", Size: 3, Reader: strings.NewReader("png"),
+	})
+	if err != nil || stored == nil || stored.Token == "" {
+		return fmt.Errorf("media store failed: %v", err)
+	}
+	if _, err := host.Messages.Forward(ctx, conversation, sdk.ForwardRef{
+		Token: "forward-token", ExpiresAt: fixtureTime().Add(time.Minute),
+	}); err != nil {
+		return err
+	}
+	if _, err := host.Messages.SendLink(ctx, conversation, message.Link{
+		Title: "link", Description: "fixture", URL: "https://example.invalid/path",
+	}); err != nil {
+		return err
+	}
+	if _, err := host.Messages.SendLocation(ctx, conversation, message.Location{
+		Label: "fixture", POIName: "point", Longitude: 120, Latitude: 30, Scale: 16,
+	}); err != nil {
+		return err
+	}
+	if _, err := host.Messages.SendNameCard(ctx, conversation, message.NameCard{
+		Username: "friend", Nickname: "Fixture",
+	}); err != nil {
+		return err
+	}
+	download, err := host.Messages.Download(ctx, sdk.MediaRef{
+		Token: "download-token", Kind: sdk.MediaKindFile, FileName: "fixture.bin",
+		SizeBytes: int64(len("download")), ExpiresAt: fixtureTime().Add(time.Minute),
+	})
+	if err != nil {
+		return err
+	}
+	data, err := io.ReadAll(download)
+	_ = download.Close()
+	if err != nil || string(data) != "download" {
+		return errors.New("download stream changed")
 	}
 	if _, err := host.Contacts.Get(ctx, "friend"); err != nil {
 		return err

@@ -176,6 +176,12 @@ type RevokeRef struct {
 	ExpiresAt time.Time // 撤回引用到期时间，失效后使用返回 FailedPrecondition
 }
 
+// ForwardRef 宿主管理的消息转发引用
+type ForwardRef struct {
+	Token     string    // 绑定账号、插件实例和源消息的不透明转发引用凭据
+	ExpiresAt time.Time // 转发引用到期时间，失效后使用返回 FailedPrecondition
+}
+
 // Permission 插件权限标识
 type Permission string
 

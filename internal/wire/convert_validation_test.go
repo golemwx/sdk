@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golemwx/sdk"
+	"github.com/golemwx/sdk/message"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -21,6 +22,29 @@ func TestDurationRange(t *testing.T) {
 		decoded, err := FromWireDuration(durationpb.New(value), "fixture.duration")
 		if err != nil || decoded != value {
 			t.Fatalf("duration %v changed to %v: %v", value, decoded, err)
+		}
+	}
+}
+
+// TestSendReceiptValidation 验证空成功、失败回执和未知结果撤回引用均被拒绝
+func TestSendReceiptValidation(t *testing.T) {
+	conversation := sdk.Conversation{AccountUsername: "bot", Kind: sdk.ConversationKindDirect, ID: "friend"}
+	valid := &message.SendReceipt{
+		MessageID: "1", Conversation: conversation, SentAt: sampleTime(), Outcome: sdk.OutcomeSucceeded,
+	}
+	if _, err := ToWireSendReceipt(valid); err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []*message.SendReceipt{
+		{Conversation: conversation, SentAt: sampleTime(), Outcome: sdk.OutcomeSucceeded},
+		{MessageID: "1", Conversation: conversation, SentAt: sampleTime(), Outcome: sdk.OutcomeFailed},
+		{
+			Conversation: conversation, SentAt: sampleTime(), Outcome: sdk.OutcomeUnknown,
+			RevokeRef: &sdk.RevokeRef{Token: "revoke", ExpiresAt: sampleTime().Add(time.Minute)},
+		},
+	} {
+		if _, err := ToWireSendReceipt(value); err == nil {
+			t.Fatalf("非法回执被接受: %+v", value)
 		}
 	}
 }

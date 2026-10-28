@@ -287,6 +287,59 @@ func (x *RevokeRef) GetExpiresAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// ForwardRef 宿主管理的消息转发引用，不包含私有协议材料
+type ForwardRef struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`                          // 绑定账号、插件实例和源消息的不透明转发引用凭据
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"` // 转发引用到期时间，失效后使用返回 FailedPrecondition
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ForwardRef) Reset() {
+	*x = ForwardRef{}
+	mi := &file_golem_sdk_media_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ForwardRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ForwardRef) ProtoMessage() {}
+
+func (x *ForwardRef) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_media_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ForwardRef.ProtoReflect.Descriptor instead.
+func (*ForwardRef) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_media_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ForwardRef) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *ForwardRef) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
 // VoiceOptions 业务音频参数
 type VoiceOptions struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -298,7 +351,7 @@ type VoiceOptions struct {
 
 func (x *VoiceOptions) Reset() {
 	*x = VoiceOptions{}
-	mi := &file_golem_sdk_media_proto_msgTypes[2]
+	mi := &file_golem_sdk_media_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -310,7 +363,7 @@ func (x *VoiceOptions) String() string {
 func (*VoiceOptions) ProtoMessage() {}
 
 func (x *VoiceOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_media_proto_msgTypes[2]
+	mi := &file_golem_sdk_media_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -323,7 +376,7 @@ func (x *VoiceOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VoiceOptions.ProtoReflect.Descriptor instead.
 func (*VoiceOptions) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_media_proto_rawDescGZIP(), []int{2}
+	return file_golem_sdk_media_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *VoiceOptions) GetDuration() *durationpb.Duration {
@@ -350,7 +403,7 @@ type MediaChunk struct {
 
 func (x *MediaChunk) Reset() {
 	*x = MediaChunk{}
-	mi := &file_golem_sdk_media_proto_msgTypes[3]
+	mi := &file_golem_sdk_media_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -362,7 +415,7 @@ func (x *MediaChunk) String() string {
 func (*MediaChunk) ProtoMessage() {}
 
 func (x *MediaChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_media_proto_msgTypes[3]
+	mi := &file_golem_sdk_media_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -375,7 +428,7 @@ func (x *MediaChunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MediaChunk.ProtoReflect.Descriptor instead.
 func (*MediaChunk) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_media_proto_rawDescGZIP(), []int{3}
+	return file_golem_sdk_media_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *MediaChunk) GetData() []byte {
@@ -399,6 +452,11 @@ const file_golem_sdk_media_proto_rawDesc = "" +
 	"\n" +
 	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\\\n" +
 	"\tRevokeRef\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x129\n" +
+	"\n" +
+	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"]\n" +
+	"\n" +
+	"ForwardRef\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x129\n" +
 	"\n" +
 	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"{\n" +
@@ -437,28 +495,30 @@ func file_golem_sdk_media_proto_rawDescGZIP() []byte {
 }
 
 var file_golem_sdk_media_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_golem_sdk_media_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_golem_sdk_media_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_golem_sdk_media_proto_goTypes = []any{
 	(MediaKind)(0),                // 0: golem.sdk.MediaKind
 	(VoiceEncoding)(0),            // 1: golem.sdk.VoiceEncoding
 	(*MediaRef)(nil),              // 2: golem.sdk.MediaRef
 	(*RevokeRef)(nil),             // 3: golem.sdk.RevokeRef
-	(*VoiceOptions)(nil),          // 4: golem.sdk.VoiceOptions
-	(*MediaChunk)(nil),            // 5: golem.sdk.MediaChunk
-	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 7: google.protobuf.Duration
+	(*ForwardRef)(nil),            // 4: golem.sdk.ForwardRef
+	(*VoiceOptions)(nil),          // 5: golem.sdk.VoiceOptions
+	(*MediaChunk)(nil),            // 6: golem.sdk.MediaChunk
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 8: google.protobuf.Duration
 }
 var file_golem_sdk_media_proto_depIdxs = []int32{
 	0, // 0: golem.sdk.MediaRef.kind:type_name -> golem.sdk.MediaKind
-	6, // 1: golem.sdk.MediaRef.expires_at:type_name -> google.protobuf.Timestamp
-	6, // 2: golem.sdk.RevokeRef.expires_at:type_name -> google.protobuf.Timestamp
-	7, // 3: golem.sdk.VoiceOptions.duration:type_name -> google.protobuf.Duration
-	1, // 4: golem.sdk.VoiceOptions.encoding:type_name -> golem.sdk.VoiceEncoding
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	7, // 1: golem.sdk.MediaRef.expires_at:type_name -> google.protobuf.Timestamp
+	7, // 2: golem.sdk.RevokeRef.expires_at:type_name -> google.protobuf.Timestamp
+	7, // 3: golem.sdk.ForwardRef.expires_at:type_name -> google.protobuf.Timestamp
+	8, // 4: golem.sdk.VoiceOptions.duration:type_name -> google.protobuf.Duration
+	1, // 5: golem.sdk.VoiceOptions.encoding:type_name -> golem.sdk.VoiceEncoding
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_golem_sdk_media_proto_init() }
@@ -472,7 +532,7 @@ func file_golem_sdk_media_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_golem_sdk_media_proto_rawDesc), len(file_golem_sdk_media_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

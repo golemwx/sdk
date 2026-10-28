@@ -180,6 +180,7 @@ func TestCoreModelRoundTrips(t *testing.T) {
 			SizeBytes: 42,
 			ExpiresAt: now.Add(time.Minute),
 		},
+		ForwardRef: &sdk.ForwardRef{Token: "forward-token", ExpiresAt: now.Add(time.Minute)},
 	}
 	wireMessage, err := ToWireMessage(messageValue)
 	if err != nil {

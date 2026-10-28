@@ -1,6 +1,9 @@
 package wire
 
 import (
+	"strings"
+	"time"
+
 	"github.com/golemwx/sdk"
 	"github.com/golemwx/sdk/message"
 )
@@ -9,6 +12,9 @@ import (
 func ToWireMediaRef(value *sdk.MediaRef) (*MediaRef, error) {
 	if value == nil {
 		return nil, nil
+	}
+	if err := validateMediaRef(value.Token, value.Kind, value.FileName, value.SizeBytes, value.ExpiresAt); err != nil {
+		return nil, err
 	}
 
 	expiresAt, err := toRequiredTimestamp(value.ExpiresAt, "media_ref.expires_at")
@@ -36,19 +42,26 @@ func FromWireMediaRef(value *MediaRef) (*sdk.MediaRef, error) {
 		return nil, err
 	}
 
-	return &sdk.MediaRef{
+	result := &sdk.MediaRef{
 		Token:     value.Token,
 		Kind:      fromMediaKind(value.Kind),
 		FileName:  value.FileName,
 		SizeBytes: value.SizeBytes,
 		ExpiresAt: expiresAt,
-	}, nil
+	}
+	if err := validateMediaRef(result.Token, result.Kind, result.FileName, result.SizeBytes, result.ExpiresAt); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // ToWireRevokeRef 转换撤回引用
 func ToWireRevokeRef(value *sdk.RevokeRef) (*RevokeRef, error) {
 	if value == nil {
 		return nil, nil
+	}
+	if err := validateOpaqueRef("revoke_ref", value.Token, value.ExpiresAt); err != nil {
+		return nil, err
 	}
 
 	expiresAt, err := toRequiredTimestamp(value.ExpiresAt, "revoke_ref.expires_at")
@@ -70,7 +83,40 @@ func FromWireRevokeRef(value *RevokeRef) (*sdk.RevokeRef, error) {
 		return nil, err
 	}
 
+	if err := validateOpaqueRef("revoke_ref", value.Token, expiresAt); err != nil {
+		return nil, err
+	}
 	return &sdk.RevokeRef{Token: value.Token, ExpiresAt: expiresAt}, nil
+}
+
+// ToWireForwardRef 转换转发引用
+func ToWireForwardRef(value *sdk.ForwardRef) (*ForwardRef, error) {
+	if value == nil {
+		return nil, nil
+	}
+	if err := validateOpaqueRef("forward_ref", value.Token, value.ExpiresAt); err != nil {
+		return nil, err
+	}
+	expiresAt, err := toRequiredTimestamp(value.ExpiresAt, "forward_ref.expires_at")
+	if err != nil {
+		return nil, err
+	}
+	return &ForwardRef{Token: value.Token, ExpiresAt: expiresAt}, nil
+}
+
+// FromWireForwardRef 转换 wire 转发引用
+func FromWireForwardRef(value *ForwardRef) (*sdk.ForwardRef, error) {
+	if value == nil {
+		return nil, nil
+	}
+	expiresAt, err := fromRequiredTimestamp(value.ExpiresAt, "forward_ref.expires_at")
+	if err != nil {
+		return nil, err
+	}
+	if err := validateOpaqueRef("forward_ref", value.Token, expiresAt); err != nil {
+		return nil, err
+	}
+	return &sdk.ForwardRef{Token: value.Token, ExpiresAt: expiresAt}, nil
 }
 
 // toWireQuote 复制引用消息摘要到传输模型
@@ -113,6 +159,10 @@ func ToWireMessage(value *message.Message) (*Message, error) {
 	if err != nil {
 		return nil, err
 	}
+	forwardRef, err := ToWireForwardRef(value.ForwardRef)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Message{
 		Id:              value.ID,
@@ -126,6 +176,7 @@ func ToWireMessage(value *message.Message) (*Message, error) {
 		Mentions:        toStringList(value.Mentions),
 		Quote:           toWireQuote(value.Quote),
 		Media:           media,
+		ForwardRef:      forwardRef,
 	}, nil
 }
 
@@ -143,6 +194,10 @@ func FromWireMessage(value *Message) (*message.Message, error) {
 	if err != nil {
 		return nil, err
 	}
+	forwardRef, err := FromWireForwardRef(value.ForwardRef)
+	if err != nil {
+		return nil, err
+	}
 
 	return &message.Message{
 		ID:              value.Id,
@@ -156,6 +211,7 @@ func FromWireMessage(value *Message) (*message.Message, error) {
 		Mentions:        fromStringList(value.Mentions),
 		Quote:           fromWireQuote(value.Quote),
 		Media:           media,
+		ForwardRef:      forwardRef,
 	}, nil
 }
 
@@ -163,6 +219,9 @@ func FromWireMessage(value *Message) (*message.Message, error) {
 func ToWireSendReceipt(value *message.SendReceipt) (*SendReceipt, error) {
 	if value == nil {
 		return nil, nil
+	}
+	if err := validateSendReceipt(value); err != nil {
+		return nil, err
 	}
 
 	sentAt, err := toRequiredTimestamp(value.SentAt, "send_receipt.sent_at")
@@ -198,11 +257,54 @@ func FromWireSendReceipt(value *SendReceipt) (*message.SendReceipt, error) {
 		return nil, err
 	}
 
-	return &message.SendReceipt{
+	result := &message.SendReceipt{
 		MessageID:    value.MessageId,
 		Conversation: FromWireConversation(value.Conversation),
 		SentAt:       sentAt,
 		Outcome:      fromWriteOutcome(value.Outcome),
 		RevokeRef:    revokeRef,
-	}, nil
+	}
+	if err := validateSendReceipt(result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// validateSendReceipt 拒绝空成功和未知结果携带可撤回凭据
+func validateSendReceipt(value *message.SendReceipt) error {
+	switch value.Outcome {
+	case sdk.OutcomeSucceeded:
+		if strings.TrimSpace(value.MessageID) == "" {
+			return sdk.NewError(sdk.CategoryInternal, "send_receipt", "successful receipt is missing message ID")
+		}
+	case sdk.OutcomeUnknown:
+		if value.RevokeRef != nil {
+			return sdk.NewError(sdk.CategoryInternal, "send_receipt", "unknown receipt must not contain revoke reference")
+		}
+	default:
+		return sdk.NewError(sdk.CategoryInternal, "send_receipt", "invalid receipt outcome")
+	}
+	if strings.TrimSpace(value.Conversation.AccountUsername) == "" || strings.TrimSpace(value.Conversation.ID) == "" {
+		return sdk.NewError(sdk.CategoryInternal, "send_receipt", "receipt is missing conversation")
+	}
+	return nil
+}
+
+// validateOpaqueRef 拒绝可猜测的空引用和缺失期限
+func validateOpaqueRef(field, token string, expiresAt time.Time) error {
+	if strings.TrimSpace(token) == "" || expiresAt.IsZero() {
+		return sdk.NewError(sdk.CategoryInvalidArgument, field, "invalid opaque reference")
+	}
+	return nil
+}
+
+// validateMediaRef 校验媒体引用的公开元数据，不解析 token
+func validateMediaRef(token string, kind sdk.MediaKind, fileName string, size int64, expiresAt time.Time) error {
+	if err := validateOpaqueRef("media_ref", token, expiresAt); err != nil {
+		return err
+	}
+	if kind < sdk.MediaKindImage || kind > sdk.MediaKindOther || strings.TrimSpace(fileName) == "" || size < -1 || size == 0 {
+		return sdk.NewError(sdk.CategoryInvalidArgument, "media_ref", "invalid media reference metadata")
+	}
+	return nil
 }

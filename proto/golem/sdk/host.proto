@@ -69,6 +69,66 @@ message DownloadRequest {
   MediaRef media = 2; // 宿主管理的媒体引用
 }
 
+// StoreMediaMetadata 媒体暂存流首包的调用身份和业务元数据
+message StoreMediaMetadata {
+  Invocation invocation = 1; // 本次反向调用绑定的执行身份凭据
+  MediaKind kind = 2; // 业务种类，未知枚举归一为对应零值
+  string file_name = 3; // 展示用文件名及扩展名，不得用于拼接宿主路径
+  int64 size = 4; // 待暂存媒体字节数，-1 代表未知
+  VoiceOptions voice = 5; // 语音时长与编码参数，非语音媒体时为空
+}
+
+// StoreMediaRequest 媒体暂存流中的元数据或字节分块
+message StoreMediaRequest {
+  // value 暂存流包体，首包为元数据，后续包为字节分块
+  oneof value {
+    StoreMediaMetadata metadata = 1; // 暂存流首包元数据，必须先于字节分块发送
+    bytes data = 2; // 媒体暂存字节分块，单块不超过 MaxMediaChunkSize
+  }
+}
+
+// MediaRefResponse 宿主媒体引用响应
+message MediaRefResponse {
+  MediaRef media = 1; // 已绑定账号、实例、调用范围和期限的媒体引用
+  Error error = 2; // 业务错误，成功时为空
+}
+
+// ForwardRequest 使用宿主管理引用转发消息
+message ForwardRequest {
+  Invocation invocation = 1; // 本次反向调用绑定的执行身份凭据
+  Conversation conversation = 2; // 目标业务会话
+  ForwardRef ref = 3; // 宿主管理的源消息引用
+}
+
+// SendLinkRequest 结构化链接消息请求
+message SendLinkRequest {
+  Invocation invocation = 1; // 本次反向调用绑定的执行身份凭据
+  Conversation conversation = 2; // 目标业务会话
+  string title = 3; // 链接标题
+  string description = 4; // 链接摘要
+  string url = 5; // 仅作为消息内容投递的 HTTP/HTTPS 地址
+}
+
+// SendLocationRequest 结构化位置消息请求
+message SendLocationRequest {
+  Invocation invocation = 1; // 本次反向调用绑定的执行身份凭据
+  Conversation conversation = 2; // 目标业务会话
+  string label = 3; // 展示地址
+  string poi_name = 4; // 地点名称
+  double longitude = 5; // 经度
+  double latitude = 6; // 纬度
+  double scale = 7; // 地图缩放级别
+}
+
+// SendNameCardRequest 结构化联系人名片请求
+message SendNameCardRequest {
+  Invocation invocation = 1; // 本次反向调用绑定的执行身份凭据
+  Conversation conversation = 2; // 目标业务会话
+  string username = 3; // 联系人的微信 username
+  string nickname = 4; // 展示昵称
+  string alias = 5; // 可选别名
+}
+
 // ContactGetRequest 指定联系人查询请求
 message ContactGetRequest {
   Invocation invocation = 1; // 本次反向调用绑定的执行身份凭据
@@ -260,8 +320,18 @@ service HostMessagesService {
   rpc SendText(SendTextRequest) returns (SendReceiptResponse);
   // SendMedia 通过首包元数据和后续字节分块发送媒体
   rpc SendMedia(stream SendMediaRequest) returns (SendReceiptResponse);
+  // StoreMedia 通过有界流暂存媒体并签发受限引用，不产生消息发送副作用
+  rpc StoreMedia(stream StoreMediaRequest) returns (MediaRefResponse);
   // Reply 向指定业务会话发送引用回复
   rpc Reply(ReplyRequest) returns (SendReceiptResponse);
+  // Forward 使用宿主管理的源消息引用转发
+  rpc Forward(ForwardRequest) returns (SendReceiptResponse);
+  // SendLink 发送结构化链接消息
+  rpc SendLink(SendLinkRequest) returns (SendReceiptResponse);
+  // SendLocation 发送结构化位置消息
+  rpc SendLocation(SendLocationRequest) returns (SendReceiptResponse);
+  // SendNameCard 发送结构化联系人名片
+  rpc SendNameCard(SendNameCardRequest) returns (SendReceiptResponse);
   // Revoke 使用宿主签发的撤回引用撤回消息
   rpc Revoke(RevokeRequest) returns (OperationResponse);
   // Download 按媒体引用下载有界字节分块流

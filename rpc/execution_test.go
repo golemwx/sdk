@@ -190,8 +190,8 @@ func TestInvocationAcrossAllHostClients(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(methods) != 19 {
-		t.Fatalf("only %d/19 host methods carried invocation", len(methods))
+	if len(methods) != 25 {
+		t.Fatalf("only %d/25 host methods carried invocation", len(methods))
 	}
 }
 

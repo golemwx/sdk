@@ -93,7 +93,7 @@ func DecodeError(value *wire.Error, err error, operation string) error {
 // isWrite 判断配置应用及当前已开放的目标写入操作，传输失败不能降为确定失败或只读结果
 func isWrite(operation string) bool {
 	return strings.HasPrefix(operation, "messages.send_") || operation == "messages.reply" || operation == "messages.revoke" ||
-		operation == "plugin.capability" || operation == "caller.call" || operation == "plugin.config_apply" ||
+		operation == "messages.forward" || operation == "plugin.capability" || operation == "caller.call" || operation == "plugin.config_apply" ||
 		operation == "plugin.config_resume"
 }
 

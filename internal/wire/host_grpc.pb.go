@@ -19,11 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	HostMessagesService_SendText_FullMethodName  = "/golem.sdk.HostMessagesService/SendText"
-	HostMessagesService_SendMedia_FullMethodName = "/golem.sdk.HostMessagesService/SendMedia"
-	HostMessagesService_Reply_FullMethodName     = "/golem.sdk.HostMessagesService/Reply"
-	HostMessagesService_Revoke_FullMethodName    = "/golem.sdk.HostMessagesService/Revoke"
-	HostMessagesService_Download_FullMethodName  = "/golem.sdk.HostMessagesService/Download"
+	HostMessagesService_SendText_FullMethodName     = "/golem.sdk.HostMessagesService/SendText"
+	HostMessagesService_SendMedia_FullMethodName    = "/golem.sdk.HostMessagesService/SendMedia"
+	HostMessagesService_StoreMedia_FullMethodName   = "/golem.sdk.HostMessagesService/StoreMedia"
+	HostMessagesService_Reply_FullMethodName        = "/golem.sdk.HostMessagesService/Reply"
+	HostMessagesService_Forward_FullMethodName      = "/golem.sdk.HostMessagesService/Forward"
+	HostMessagesService_SendLink_FullMethodName     = "/golem.sdk.HostMessagesService/SendLink"
+	HostMessagesService_SendLocation_FullMethodName = "/golem.sdk.HostMessagesService/SendLocation"
+	HostMessagesService_SendNameCard_FullMethodName = "/golem.sdk.HostMessagesService/SendNameCard"
+	HostMessagesService_Revoke_FullMethodName       = "/golem.sdk.HostMessagesService/Revoke"
+	HostMessagesService_Download_FullMethodName     = "/golem.sdk.HostMessagesService/Download"
 )
 
 // HostMessagesServiceClient is the client API for HostMessagesService service.
@@ -36,8 +41,18 @@ type HostMessagesServiceClient interface {
 	SendText(ctx context.Context, in *SendTextRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error)
 	// SendMedia 通过首包元数据和后续字节分块发送媒体
 	SendMedia(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[SendMediaRequest, SendReceiptResponse], error)
+	// StoreMedia 通过有界流暂存媒体并签发受限引用，不产生消息发送副作用
+	StoreMedia(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[StoreMediaRequest, MediaRefResponse], error)
 	// Reply 向指定业务会话发送引用回复
 	Reply(ctx context.Context, in *ReplyRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error)
+	// Forward 使用宿主管理的源消息引用转发
+	Forward(ctx context.Context, in *ForwardRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error)
+	// SendLink 发送结构化链接消息
+	SendLink(ctx context.Context, in *SendLinkRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error)
+	// SendLocation 发送结构化位置消息
+	SendLocation(ctx context.Context, in *SendLocationRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error)
+	// SendNameCard 发送结构化联系人名片
+	SendNameCard(ctx context.Context, in *SendNameCardRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error)
 	// Revoke 使用宿主签发的撤回引用撤回消息
 	Revoke(ctx context.Context, in *RevokeRequest, opts ...grpc.CallOption) (*OperationResponse, error)
 	// Download 按媒体引用下载有界字节分块流
@@ -75,10 +90,63 @@ func (c *hostMessagesServiceClient) SendMedia(ctx context.Context, opts ...grpc.
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type HostMessagesService_SendMediaClient = grpc.ClientStreamingClient[SendMediaRequest, SendReceiptResponse]
 
+func (c *hostMessagesServiceClient) StoreMedia(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[StoreMediaRequest, MediaRefResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &HostMessagesService_ServiceDesc.Streams[1], HostMessagesService_StoreMedia_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[StoreMediaRequest, MediaRefResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type HostMessagesService_StoreMediaClient = grpc.ClientStreamingClient[StoreMediaRequest, MediaRefResponse]
+
 func (c *hostMessagesServiceClient) Reply(ctx context.Context, in *ReplyRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SendReceiptResponse)
 	err := c.cc.Invoke(ctx, HostMessagesService_Reply_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hostMessagesServiceClient) Forward(ctx context.Context, in *ForwardRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendReceiptResponse)
+	err := c.cc.Invoke(ctx, HostMessagesService_Forward_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hostMessagesServiceClient) SendLink(ctx context.Context, in *SendLinkRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendReceiptResponse)
+	err := c.cc.Invoke(ctx, HostMessagesService_SendLink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hostMessagesServiceClient) SendLocation(ctx context.Context, in *SendLocationRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendReceiptResponse)
+	err := c.cc.Invoke(ctx, HostMessagesService_SendLocation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hostMessagesServiceClient) SendNameCard(ctx context.Context, in *SendNameCardRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendReceiptResponse)
+	err := c.cc.Invoke(ctx, HostMessagesService_SendNameCard_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +165,7 @@ func (c *hostMessagesServiceClient) Revoke(ctx context.Context, in *RevokeReques
 
 func (c *hostMessagesServiceClient) Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MediaChunk], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &HostMessagesService_ServiceDesc.Streams[1], HostMessagesService_Download_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &HostMessagesService_ServiceDesc.Streams[2], HostMessagesService_Download_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -124,8 +192,18 @@ type HostMessagesServiceServer interface {
 	SendText(context.Context, *SendTextRequest) (*SendReceiptResponse, error)
 	// SendMedia 通过首包元数据和后续字节分块发送媒体
 	SendMedia(grpc.ClientStreamingServer[SendMediaRequest, SendReceiptResponse]) error
+	// StoreMedia 通过有界流暂存媒体并签发受限引用，不产生消息发送副作用
+	StoreMedia(grpc.ClientStreamingServer[StoreMediaRequest, MediaRefResponse]) error
 	// Reply 向指定业务会话发送引用回复
 	Reply(context.Context, *ReplyRequest) (*SendReceiptResponse, error)
+	// Forward 使用宿主管理的源消息引用转发
+	Forward(context.Context, *ForwardRequest) (*SendReceiptResponse, error)
+	// SendLink 发送结构化链接消息
+	SendLink(context.Context, *SendLinkRequest) (*SendReceiptResponse, error)
+	// SendLocation 发送结构化位置消息
+	SendLocation(context.Context, *SendLocationRequest) (*SendReceiptResponse, error)
+	// SendNameCard 发送结构化联系人名片
+	SendNameCard(context.Context, *SendNameCardRequest) (*SendReceiptResponse, error)
 	// Revoke 使用宿主签发的撤回引用撤回消息
 	Revoke(context.Context, *RevokeRequest) (*OperationResponse, error)
 	// Download 按媒体引用下载有界字节分块流
@@ -146,8 +224,23 @@ func (UnimplementedHostMessagesServiceServer) SendText(context.Context, *SendTex
 func (UnimplementedHostMessagesServiceServer) SendMedia(grpc.ClientStreamingServer[SendMediaRequest, SendReceiptResponse]) error {
 	return status.Error(codes.Unimplemented, "method SendMedia not implemented")
 }
+func (UnimplementedHostMessagesServiceServer) StoreMedia(grpc.ClientStreamingServer[StoreMediaRequest, MediaRefResponse]) error {
+	return status.Error(codes.Unimplemented, "method StoreMedia not implemented")
+}
 func (UnimplementedHostMessagesServiceServer) Reply(context.Context, *ReplyRequest) (*SendReceiptResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Reply not implemented")
+}
+func (UnimplementedHostMessagesServiceServer) Forward(context.Context, *ForwardRequest) (*SendReceiptResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Forward not implemented")
+}
+func (UnimplementedHostMessagesServiceServer) SendLink(context.Context, *SendLinkRequest) (*SendReceiptResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendLink not implemented")
+}
+func (UnimplementedHostMessagesServiceServer) SendLocation(context.Context, *SendLocationRequest) (*SendReceiptResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendLocation not implemented")
+}
+func (UnimplementedHostMessagesServiceServer) SendNameCard(context.Context, *SendNameCardRequest) (*SendReceiptResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendNameCard not implemented")
 }
 func (UnimplementedHostMessagesServiceServer) Revoke(context.Context, *RevokeRequest) (*OperationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Revoke not implemented")
@@ -201,6 +294,13 @@ func _HostMessagesService_SendMedia_Handler(srv interface{}, stream grpc.ServerS
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type HostMessagesService_SendMediaServer = grpc.ClientStreamingServer[SendMediaRequest, SendReceiptResponse]
 
+func _HostMessagesService_StoreMedia_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(HostMessagesServiceServer).StoreMedia(&grpc.GenericServerStream[StoreMediaRequest, MediaRefResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type HostMessagesService_StoreMediaServer = grpc.ClientStreamingServer[StoreMediaRequest, MediaRefResponse]
+
 func _HostMessagesService_Reply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ReplyRequest)
 	if err := dec(in); err != nil {
@@ -215,6 +315,78 @@ func _HostMessagesService_Reply_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HostMessagesServiceServer).Reply(ctx, req.(*ReplyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HostMessagesService_Forward_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ForwardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostMessagesServiceServer).Forward(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostMessagesService_Forward_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostMessagesServiceServer).Forward(ctx, req.(*ForwardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HostMessagesService_SendLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendLinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostMessagesServiceServer).SendLink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostMessagesService_SendLink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostMessagesServiceServer).SendLink(ctx, req.(*SendLinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HostMessagesService_SendLocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendLocationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostMessagesServiceServer).SendLocation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostMessagesService_SendLocation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostMessagesServiceServer).SendLocation(ctx, req.(*SendLocationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HostMessagesService_SendNameCard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendNameCardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostMessagesServiceServer).SendNameCard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostMessagesService_SendNameCard_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostMessagesServiceServer).SendNameCard(ctx, req.(*SendNameCardRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -264,6 +436,22 @@ var HostMessagesService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _HostMessagesService_Reply_Handler,
 		},
 		{
+			MethodName: "Forward",
+			Handler:    _HostMessagesService_Forward_Handler,
+		},
+		{
+			MethodName: "SendLink",
+			Handler:    _HostMessagesService_SendLink_Handler,
+		},
+		{
+			MethodName: "SendLocation",
+			Handler:    _HostMessagesService_SendLocation_Handler,
+		},
+		{
+			MethodName: "SendNameCard",
+			Handler:    _HostMessagesService_SendNameCard_Handler,
+		},
+		{
 			MethodName: "Revoke",
 			Handler:    _HostMessagesService_Revoke_Handler,
 		},
@@ -272,6 +460,11 @@ var HostMessagesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "SendMedia",
 			Handler:       _HostMessagesService_SendMedia_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "StoreMedia",
+			Handler:       _HostMessagesService_StoreMedia_Handler,
 			ClientStreams: true,
 		},
 		{
