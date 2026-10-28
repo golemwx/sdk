@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"io"
 	"time"
 
@@ -69,9 +70,82 @@ func (c *remoteMessages) Revoke(ctx context.Context, ref sdk.RevokeRef) error {
 	return transport.DecodeError(response.GetError(), err, "messages.revoke")
 }
 
-// SendMedia 在 T26 流控接入前明确拒绝媒体上传
+// SendMedia 使用首包元数据和有界分块上传插件已经打开的媒体字节
 func (c *remoteMessages) SendMedia(ctx context.Context, conversation sdk.Conversation, upload message.MediaUpload) (*message.SendReceipt, error) {
-	return nil, sdk.NewError(sdk.CategoryUnimplemented, "messages.send_media", "media streaming is not implemented")
+	if err := transport.ValidateMediaUpload(upload); err != nil {
+		return nil, err
+	}
+	streamCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stream, err := c.client.SendMedia(streamCtx)
+	if err != nil {
+		return nil, transport.DecodeError(nil, err, "messages.send_media")
+	}
+	metadata := &wire.SendMediaMetadata{
+		Invocation:   transport.InvocationFromContext(ctx),
+		Conversation: wire.ToWireConversation(conversation),
+		Kind:         wire.MediaKind(upload.Kind),
+		FileName:     upload.FileName,
+		Size:         upload.Size,
+	}
+	if upload.Voice != nil {
+		metadata.Voice = &wire.VoiceOptions{
+			Duration: durationpb.New(upload.Voice.Duration),
+			Encoding: wire.VoiceEncoding(upload.Voice.Encoding),
+		}
+	}
+	if err := stream.Send(&wire.SendMediaRequest{Value: &wire.SendMediaRequest_Metadata{Metadata: metadata}}); err != nil {
+		return finishMediaSend(stream, err, "messages.send_media")
+	}
+	buffer := make([]byte, transport.MaxMediaChunkSize)
+	var total int64
+	emptyReads := 0
+	for {
+		if err := streamCtx.Err(); err != nil {
+			return nil, transport.DecodeError(nil, err, "messages.send_media")
+		}
+		n, readErr := transport.ReadMediaChunk(upload.Reader, buffer, &emptyReads)
+		if err := streamCtx.Err(); err != nil {
+			return nil, transport.DecodeError(nil, err, "messages.send_media")
+		}
+		if n > 0 {
+			total += int64(n)
+			if err := transport.ValidateMediaTotal(upload.Kind, upload.Size, total, false); err != nil {
+				return nil, err
+			}
+			if err := stream.Send(&wire.SendMediaRequest{Value: &wire.SendMediaRequest_Data{Data: buffer[:n]}}); err != nil {
+				return finishMediaSend(stream, err, "messages.send_media")
+			}
+		}
+		if readErr != nil {
+			if !errors.Is(readErr, io.EOF) {
+				value := sdk.NewError(sdk.CategoryInternal, "messages.send_media", "media reader failed")
+				value.Outcome = sdk.OutcomeUnknown
+				return nil, value
+			}
+			break
+		}
+		if err := streamCtx.Err(); err != nil {
+			return nil, transport.DecodeError(nil, err, "messages.send_media")
+		}
+	}
+	if err := transport.ValidateMediaTotal(upload.Kind, upload.Size, total, true); err != nil {
+		return nil, err
+	}
+	response, err := stream.CloseAndRecv()
+	return receiptResult(response, err, "messages.send_media")
+}
+
+// finishMediaSend 在发送失败后读取服务端最终状态，避免把明确业务拒绝降级为未知传输错误
+func finishMediaSend(stream grpc.ClientStreamingClient[wire.SendMediaRequest, wire.SendReceiptResponse], sendErr error, operation string) (*message.SendReceipt, error) {
+	response, err := stream.CloseAndRecv()
+	if err != nil {
+		return nil, transport.DecodeError(nil, err, operation)
+	}
+	if response == nil {
+		return nil, transport.DecodeError(nil, sendErr, operation)
+	}
+	return receiptResult(response, nil, operation)
 }
 
 // Download 在 T26 流控接入前明确拒绝媒体下载

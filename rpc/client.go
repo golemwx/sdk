@@ -148,7 +148,10 @@ func Start(ctx context.Context, options ClientOptions) (_ *Client, err error) {
 	go func() {
 		defer close(client.serverDone)
 		client.endpoint.Broker.AcceptAndServe(brokerID, func(secure []grpc.ServerOption) *grpc.Server {
-			client.server = transport.Server(append(secure, grpc.UnaryInterceptor(hostInterceptor(options.Services, client.control))))
+			client.server = transport.Server(append(secure,
+				grpc.UnaryInterceptor(hostInterceptor(options.Services, client.control)),
+				grpc.StreamInterceptor(hostStreamInterceptor(options.Services, client.control)),
+			))
 			registerHost(client.server, options.Services, client.control)
 			close(serverReady)
 			return client.server

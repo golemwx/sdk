@@ -3,6 +3,8 @@ package rpc
 import (
 	"context"
 	"crypto/subtle"
+	"errors"
+	"io"
 	"sync"
 
 	"github.com/golemwx/sdk"
@@ -14,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 // Invocation 宿主反向服务边界收到的调用凭据，不从请求决定插件身份
@@ -189,9 +192,6 @@ func hostInterceptor(services HostServices, control *hostControl) grpc.UnaryServ
 		if info.FullMethod == wire.HostControlService_ReverseReady_FullMethodName || info.FullMethod == wire.HostControlService_ExecutionCompleted_FullMethodName {
 			return handler(ctx, request)
 		}
-		if services.Authorize == nil {
-			return nil, status.Error(codes.PermissionDenied, "host authorization is required")
-		}
 		var invocation Invocation
 		if value, ok := request.(interface{ GetInvocation() *wire.Invocation }); ok {
 			invocation.ID, invocation.Token = value.GetInvocation().GetId(), value.GetInvocation().GetToken()
@@ -204,48 +204,147 @@ func hostInterceptor(services HostServices, control *hostControl) grpc.UnaryServ
 			}
 			ctx = transport.WithBackgroundToken(ctx, value.GetBackgroundToken())
 		}
-		if control != nil && !background {
-			parent, err := control.invocationContext(invocation)
-			if err != nil {
-				return nil, transport.RPCError(err, info.FullMethod)
-			}
-			if parent != nil {
-				var cancel context.CancelFunc
-				ctx, cancel = context.WithCancel(ctx)
-				defer cancel()
-				stop := context.AfterFunc(parent, cancel)
-				defer stop()
-				if deadline, ok := parent.Deadline(); ok {
-					var cancelDeadline context.CancelFunc
-					ctx, cancelDeadline = context.WithDeadline(ctx, deadline)
-					defer cancelDeadline()
-				}
-			}
+		authority := control
+		if background {
+			authority = nil
 		}
-		bound, err := services.Authorize(ctx, invocation, info.FullMethod)
+		bound, cleanup, err := authorizeHostContext(ctx, services, authority, invocation, info.FullMethod)
 		if err != nil {
-			return nil, transport.RPCError(err, info.FullMethod)
+			return nil, err
 		}
-		if bound == nil {
-			return nil, status.Error(codes.Internal, "authorization returned no context")
-		}
-		// 保留授权上下文的值，同时强制继承原请求的取消和更早的截止时间
-		bound, cancel := context.WithCancel(bound)
-		defer cancel()
-		stop := context.AfterFunc(ctx, cancel)
-		defer stop()
-		if deadline, ok := ctx.Deadline(); ok {
-			var cancelDeadline context.CancelFunc
-			bound, cancelDeadline = context.WithDeadline(bound, deadline)
-			defer cancelDeadline()
-		}
-		if err := ctx.Err(); err != nil {
-			return nil, transport.RPCError(err, info.FullMethod)
-		}
-		if err := bound.Err(); err != nil {
-			return nil, transport.RPCError(err, info.FullMethod)
-		}
+		defer cleanup()
 		return handler(bound, request)
+	}
+}
+
+// hostStreamInterceptor 在读取首包后执行与一元 RPC 相同的可信身份绑定
+func hostStreamInterceptor(services HostServices, control *hostControl) grpc.StreamServerInterceptor {
+	return func(server any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+		defer func() {
+			if recover() != nil {
+				err = status.Error(codes.Internal, "host operation panicked")
+			}
+		}()
+		var first proto.Message
+		switch info.FullMethod {
+		case wire.HostMessagesService_SendMedia_FullMethodName:
+			first = new(wire.SendMediaRequest)
+		case wire.HostMessagesService_Download_FullMethodName:
+			first = new(wire.DownloadRequest)
+		default:
+			return status.Error(codes.PermissionDenied, "host stream is not authorized")
+		}
+		if err := stream.RecvMsg(first); err != nil {
+			return err
+		}
+		var invocation Invocation
+		if value, ok := first.(interface{ GetInvocation() *wire.Invocation }); ok {
+			invocation.ID, invocation.Token = value.GetInvocation().GetId(), value.GetInvocation().GetToken()
+		} else if request, ok := first.(*wire.SendMediaRequest); ok {
+			invocation.ID = request.GetMetadata().GetInvocation().GetId()
+			invocation.Token = request.GetMetadata().GetInvocation().GetToken()
+		}
+		bound, cleanup, err := authorizeHostContext(stream.Context(), services, control, invocation, info.FullMethod)
+		if err != nil {
+			return err
+		}
+		defer cleanup()
+		return handler(server, &replayServerStream{ServerStream: stream, ctx: bound, first: first})
+	}
+}
+
+// authorizeHostContext 统一继承宿主原调用期限、授权值和取消信号
+func authorizeHostContext(ctx context.Context, services HostServices, control *hostControl, invocation Invocation, method string) (context.Context, func(), error) {
+	if services.Authorize == nil {
+		return nil, nil, status.Error(codes.PermissionDenied, "host authorization is required")
+	}
+	var cleanups []func()
+	cleanup := func() {
+		for index := len(cleanups) - 1; index >= 0; index-- {
+			cleanups[index]()
+		}
+	}
+	if control != nil {
+		parent, err := control.invocationContext(invocation)
+		if err != nil {
+			return nil, nil, transport.RPCError(err, method)
+		}
+		if parent != nil {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithCancel(ctx)
+			cleanups = append(cleanups, cancel)
+			stop := context.AfterFunc(parent, cancel)
+			cleanups = append(cleanups, func() { stop() })
+			if deadline, ok := parent.Deadline(); ok {
+				ctx, cancel = context.WithDeadline(ctx, deadline)
+				cleanups = append(cleanups, cancel)
+			}
+		}
+	}
+	bound, err := services.Authorize(ctx, invocation, method)
+	if err != nil {
+		cleanup()
+		return nil, nil, transport.RPCError(err, method)
+	}
+	if bound == nil {
+		cleanup()
+		return nil, nil, status.Error(codes.Internal, "authorization returned no context")
+	}
+	bound, cancel := context.WithCancel(bound)
+	cleanups = append(cleanups, cancel)
+	stop := context.AfterFunc(ctx, cancel)
+	cleanups = append(cleanups, func() { stop() })
+	if deadline, ok := ctx.Deadline(); ok {
+		bound, cancel = context.WithDeadline(bound, deadline)
+		cleanups = append(cleanups, cancel)
+	}
+	if err := ctx.Err(); err != nil {
+		cleanup()
+		return nil, nil, transport.RPCError(err, method)
+	}
+	if err := bound.Err(); err != nil {
+		cleanup()
+		return nil, nil, transport.RPCError(err, method)
+	}
+	return bound, cleanup, nil
+}
+
+// replayServerStream 把鉴权时消费的首包原样交还给类型化 handler
+type replayServerStream struct {
+	grpc.ServerStream
+	ctx   context.Context // 已绑定实例和资源范围的可信上下文
+	first proto.Message   // 仅回放一次的首包
+}
+
+// Context 返回授权后仍继承调用取消与期限的上下文
+func (s *replayServerStream) Context() context.Context { return s.ctx }
+
+// RecvMsg 先回放鉴权首包，后续继续读取实际流
+func (s *replayServerStream) RecvMsg(target any) error {
+	if s.first != nil {
+		value, ok := target.(proto.Message)
+		if !ok {
+			return status.Error(codes.Internal, "stream message is not protobuf")
+		}
+		proto.Merge(value, s.first)
+		s.first = nil
+		return nil
+	}
+	if err := s.ctx.Err(); err != nil {
+		return err
+	}
+	// 底层 RecvMsg 只监听连接上下文，单独撤销业务授权无法唤醒它
+	// handler 返回后 gRPC 会取消原始流，收尾这一次仍在等待的底层读取
+	done := make(chan error, 1)
+	go func() { done <- s.ServerStream.RecvMsg(target) }()
+	select {
+	case err := <-done:
+		if canceled := s.ctx.Err(); canceled != nil {
+			return canceled
+		}
+		return err
+	case <-s.ctx.Done():
+		return s.ctx.Err()
 	}
 }
 
@@ -293,11 +392,158 @@ func registerHost(server *grpc.Server, services HostServices, control *hostContr
 	}
 }
 
-// hostMessages 消息一元 RPC 的业务适配，流控在 T26 接入
+// hostMessages 消息 RPC 的业务适配
 type hostMessages struct {
-	wire.UnimplementedHostMessagesServiceServer // 未接入的媒体流明确返回 Unimplemented
+	wire.UnimplementedHostMessagesServiceServer // 未接入的下载流明确返回 Unimplemented
 
 	client plugin.MessagesClient // 已绑定实例的消息能力
+}
+
+// SendMedia 校验首包和累计字节后以 io.Pipe 向宿主提供有界 Reader
+func (s *hostMessages) SendMedia(stream grpc.ClientStreamingServer[wire.SendMediaRequest, wire.SendReceiptResponse]) error {
+	first, err := stream.Recv()
+	if err != nil {
+		return transport.RPCError(err, "messages.send_media")
+	}
+	metadata := first.GetMetadata()
+	if metadata == nil {
+		return transport.RPCError(sdk.NewError(sdk.CategoryInvalidArgument, "messages.send_media", "first media frame must contain metadata"), "messages.send_media")
+	}
+	upload, err := mediaUploadFromWire(metadata)
+	if err != nil {
+		return transport.RPCError(err, "messages.send_media")
+	}
+	second, err := stream.Recv()
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			err = mediaInputError("media stream is empty")
+		}
+		return transport.RPCError(err, "messages.send_media")
+	}
+	if len(second.GetData()) == 0 || len(second.GetData()) > transport.MaxMediaChunkSize {
+		return transport.RPCError(mediaInputError("invalid media chunk"), "messages.send_media")
+	}
+	reader, writer := io.Pipe()
+	defer func() { _ = reader.Close() }()
+	upload.Reader = reader
+	received := make(chan error, 1)
+	go receiveMedia(stream, writer, upload.Kind, upload.Size, second.GetData(), received)
+	value, callErr := s.client.SendMedia(stream.Context(), wire.FromWireConversation(metadata.GetConversation()), upload)
+	_ = reader.Close()
+	if callErr == nil {
+		if receiveErr := <-received; receiveErr != nil {
+			callErr = receiveErr
+		}
+	} else {
+		select {
+		case receiveErr := <-received:
+			if isMediaInputError(receiveErr) {
+				callErr = receiveErr
+			}
+		default:
+		}
+	}
+	result, conversion := wire.ToWireSendReceipt(value)
+	return stream.SendAndClose(&wire.SendReceiptResponse{Receipt: result, Error: hostResultError(result != nil, callErr, conversion, "messages.send_media")})
+}
+
+// isMediaInputError 判断接收端已确认的协议错误，优先于由此引发的宿主读取失败
+func isMediaInputError(err error) bool {
+	var value *sdk.Error
+	return errors.As(err, &value) && (value.Category == sdk.CategoryInvalidArgument || value.Category == sdk.CategoryResourceExhausted)
+}
+
+// mediaUploadFromWire 转换并验证媒体首包，引用发送保留给 T27
+func mediaUploadFromWire(value *wire.SendMediaMetadata) (message.MediaUpload, error) {
+	upload := message.MediaUpload{
+		Kind:     sdk.MediaKind(value.GetKind()),
+		FileName: value.GetFileName(),
+		Size:     value.GetSize(),
+	}
+	if value.GetRef() != nil {
+		ref, err := wire.FromWireMediaRef(value.GetRef())
+		if err != nil {
+			return message.MediaUpload{}, err
+		}
+		upload.Ref = ref
+	}
+	if voice := value.GetVoice(); voice != nil {
+		if err := voice.GetDuration().CheckValid(); err != nil {
+			return message.MediaUpload{}, mediaInputError("invalid voice duration")
+		}
+		upload.Voice = &message.VoiceOptions{Duration: voice.GetDuration().AsDuration(), Encoding: message.VoiceEncoding(voice.GetEncoding())}
+	}
+	// Reader 占位只用于复用同一份元数据校验，实际 pipe 在通过后注入
+	upload.Reader = emptyReader{}
+	if err := transport.ValidateMediaUpload(upload); err != nil {
+		return message.MediaUpload{}, err
+	}
+	upload.Reader = nil
+	return upload, nil
+}
+
+// emptyReader 只标记首包选择 Reader 上传，不参与实际读取
+type emptyReader struct{}
+
+// Read 不应在元数据校验阶段被调用
+func (emptyReader) Read([]byte) (int, error) { return 0, io.EOF }
+
+// receiveMedia 按序写入 pipe，并在 EOF 时核对声明长度
+func receiveMedia(stream grpc.ClientStreamingServer[wire.SendMediaRequest, wire.SendReceiptResponse], writer *io.PipeWriter, kind sdk.MediaKind, declared int64, first []byte, result chan<- error) {
+	var final error
+	defer func() {
+		result <- final
+		_ = writer.CloseWithError(final)
+	}()
+	var total int64
+	write := func(data []byte) bool {
+		if len(data) == 0 || len(data) > transport.MaxMediaChunkSize {
+			final = mediaProtocolError("invalid media chunk")
+			return false
+		}
+		total += int64(len(data))
+		if final = transport.ValidateMediaTotal(kind, declared, total, false); final != nil {
+			return false
+		}
+		if _, final = writer.Write(data); final != nil {
+			return false
+		}
+		return true
+	}
+	if !write(first) {
+		return
+	}
+	for {
+		request, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			final = transport.ValidateMediaTotal(kind, declared, total, true)
+			return
+		}
+		if err != nil {
+			final = err
+			return
+		}
+		if request.GetMetadata() != nil || !write(request.GetData()) {
+			if final == nil {
+				final = mediaProtocolError("metadata may only appear in the first frame")
+			}
+			return
+		}
+	}
+}
+
+// mediaInputError 表示尚未进入宿主业务的参数错误
+func mediaInputError(reason string) *sdk.Error {
+	value := sdk.NewError(sdk.CategoryInvalidArgument, "messages.send_media", reason)
+	value.Outcome = sdk.OutcomeFailed
+	return value
+}
+
+// mediaProtocolError 表示已经接收媒体流后发现的协议错误
+func mediaProtocolError(reason string) *sdk.Error {
+	value := sdk.NewError(sdk.CategoryInvalidArgument, "messages.send_media", reason)
+	value.Outcome = sdk.OutcomeUnknown
+	return value
 }
 
 // SendText 将文本请求转换为公开业务类型

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,9 +42,16 @@ func (f fixtureMessages) Reply(ctx context.Context, conversation sdk.Conversatio
 // Revoke 允许撤回人工引用，不执行真实业务
 func (fixtureMessages) Revoke(context.Context, sdk.RevokeRef) error { return nil }
 
-// SendMedia 不在握手测试中实现真实媒体上传
-func (fixtureMessages) SendMedia(context.Context, sdk.Conversation, message.MediaUpload) (*message.SendReceipt, error) {
-	return nil, sdk.NewError(sdk.CategoryUnimplemented, "fixture.media", "not available")
+// SendMedia 读取人工分片并回显媒体发送回执
+func (fixtureMessages) SendMedia(ctx context.Context, conversation sdk.Conversation, upload message.MediaUpload) (*message.SendReceipt, error) {
+	data, err := io.ReadAll(upload.Reader)
+	if err != nil {
+		return nil, err
+	}
+	if ctx.Err() != nil || upload.Kind != sdk.MediaKindFile || upload.FileName != "fixture.bin" || upload.Size != int64(len(data)) || string(data) != "media-stream" {
+		return nil, sdk.NewError(sdk.CategoryInvalidArgument, "fixture.media", "unexpected media fixture")
+	}
+	return &message.SendReceipt{MessageID: "media-id", Conversation: conversation, SentAt: fixtureTime(), Outcome: sdk.OutcomeSucceeded}, nil
 }
 
 // Download 不在握手测试中实现真实媒体下载
@@ -178,8 +186,17 @@ func exerciseHost(ctx context.Context, host *plugin.Host) error {
 	if err := host.Messages.Revoke(ctx, sdk.RevokeRef{Token: "revoke", ExpiresAt: fixtureTime().Add(time.Minute)}); err != nil {
 		return err
 	}
-	if _, err := host.Messages.SendMedia(ctx, conversation, message.MediaUpload{}); !hasCategory(err, sdk.CategoryUnimplemented) {
-		return errors.New("upload silently succeeded")
+	mediaReader := &oneByteReader{reader: strings.NewReader("media-stream")}
+	mediaReceipt, err := host.Messages.SendMedia(ctx, conversation, message.MediaUpload{
+		Kind: sdk.MediaKindFile, FileName: "fixture.bin", Size: int64(len("media-stream")), Reader: mediaReader,
+	})
+	if err != nil || mediaReceipt == nil || mediaReceipt.MessageID != "media-id" || mediaReader.closed {
+		return fmt.Errorf("media stream failed: %v", err)
+	}
+	if _, err := host.Messages.SendMedia(ctx, conversation, message.MediaUpload{
+		Kind: sdk.MediaKindFile, FileName: "fixture.bin", Size: 1, Reader: strings.NewReader("too-long"),
+	}); !hasCategory(err, sdk.CategoryInvalidArgument) {
+		return errors.New("declared media size mismatch was accepted")
 	}
 	if _, err := host.Messages.Download(ctx, sdk.MediaRef{}); !hasCategory(err, sdk.CategoryUnimplemented) {
 		return errors.New("download silently succeeded")
@@ -231,6 +248,23 @@ func exerciseHost(ctx context.Context, host *plugin.Host) error {
 	}
 	return nil
 }
+
+// oneByteReader 模拟频繁短读，确保客户端不会把一次 Read 当作完整媒体
+type oneByteReader struct {
+	reader *strings.Reader // 人工媒体来源
+	closed bool            // SDK 不得代替调用方关闭来源
+}
+
+// Read 每次最多返回一个字节
+func (r *oneByteReader) Read(data []byte) (int, error) {
+	if len(data) > 1 {
+		data = data[:1]
+	}
+	return r.reader.Read(data)
+}
+
+// Close 记录意外的所有权转移
+func (r *oneByteReader) Close() error { r.closed = true; return nil }
 
 // hasCategory 判断业务错误类别，测试不依赖展示文本
 func hasCategory(err error, category sdk.Category) bool {

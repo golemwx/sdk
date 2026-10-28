@@ -190,8 +190,8 @@ func TestInvocationAcrossAllHostClients(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(methods) != 18 {
-		t.Fatalf("only %d/18 unary host methods carried invocation", len(methods))
+	if len(methods) != 19 {
+		t.Fatalf("only %d/19 host methods carried invocation", len(methods))
 	}
 }
 
@@ -245,7 +245,7 @@ func TestNestedBusinessCancellation(t *testing.T) {
 	}
 }
 
-// TestConfigProviderResumeSemantics 验证确定失败恢复准入、未知结果保持关闭，并绑定新启用周期。
+// TestConfigProviderResumeSemantics 验证确定失败恢复准入、未知结果保持关闭，并绑定新启用周期
 func TestConfigProviderResumeSemantics(t *testing.T) {
 	options := fixtureOptions(t, "execution")
 	options.Services.Host = fullFixtureHost()
@@ -257,7 +257,7 @@ func TestConfigProviderResumeSemantics(t *testing.T) {
 	if err := client.EnableWithBackgroundToken(t.Context(), "cycle-one"); err != nil {
 		t.Fatal(err)
 	}
-	// 配置屏障由宿主在调用 ApplyAndResume 前建立；这里显式模拟该步骤。
+	// 配置屏障由宿主在调用 ApplyAndResume 前建立；这里显式模拟该步骤
 	if _, err := client.Drain(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +293,7 @@ func TestConfigProviderResumeSemantics(t *testing.T) {
 	}
 }
 
-// TestConfigApplyErrorClassification 验证只有明确失败和未实现可视为确定结果。
+// TestConfigApplyErrorClassification 验证只有明确失败和未实现可视为确定结果
 func TestConfigApplyErrorClassification(t *testing.T) {
 	determinate := &sdk.Error{Category: sdk.CategoryInvalidArgument, Operation: "fixture.apply", Outcome: sdk.OutcomeFailed}
 	if !IsDeterminateConfigFailure(determinate) {

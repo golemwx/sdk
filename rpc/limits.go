@@ -9,5 +9,5 @@ const (
 	// MaxInlinePayloadSize 普通能力内联载荷上限
 	MaxInlinePayloadSize = transport.MaxInlinePayloadSize
 	// MaxMediaChunkSize 媒体分块上限
-	MaxMediaChunkSize = 256 << 10
+	MaxMediaChunkSize = transport.MaxMediaChunkSize
 )
