@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/golemwx/sdk"
+	"github.com/golemwx/sdk/capability"
 	"github.com/golemwx/sdk/internal/transport"
 	"github.com/golemwx/sdk/internal/wire"
 	"github.com/golemwx/sdk/message"
@@ -195,7 +196,15 @@ func hostInterceptor(services HostServices, control *hostControl) grpc.UnaryServ
 		if value, ok := request.(interface{ GetInvocation() *wire.Invocation }); ok {
 			invocation.ID, invocation.Token = value.GetInvocation().GetId(), value.GetInvocation().GetToken()
 		}
-		if control != nil {
+		_, background := request.(*wire.HostBackgroundCallRequest)
+		if background {
+			value := request.(*wire.HostBackgroundCallRequest)
+			if value.GetBackgroundToken() == "" {
+				return nil, transport.RPCError(sdk.NewError(sdk.CategoryPermissionDenied, info.FullMethod, "invalid background invocation"), info.FullMethod)
+			}
+			ctx = transport.WithBackgroundToken(ctx, value.GetBackgroundToken())
+		}
+		if control != nil && !background {
 			parent, err := control.invocationContext(invocation)
 			if err != nil {
 				return nil, transport.RPCError(err, info.FullMethod)
@@ -437,9 +446,45 @@ type hostCaller struct {
 	client plugin.CallerClient // 已绑定实例的能力调用入口
 }
 
+// BackgroundConversation 返回反向服务端验证前的后台目标，业务层仍须独立授权
+func BackgroundConversation(ctx context.Context) (sdk.Conversation, bool) {
+	return transport.BackgroundConversation(ctx)
+}
+
+// BackgroundToken 返回后台启用令牌，仅供宿主二次绑定校验
+func BackgroundToken(ctx context.Context) (string, bool) {
+	return transport.BackgroundToken(ctx)
+}
+
+// WithBackgroundToken 在宿主边界测试中模拟已提取的后台令牌
+func WithBackgroundToken(ctx context.Context, token string) context.Context {
+	return transport.WithBackgroundToken(ctx, token)
+}
+
 // Call 转换能力输入和结果，不允许请求覆盖绑定身份
 func (s *hostCaller) Call(ctx context.Context, r *wire.HostCallRequest) (*wire.HostCallResponse, error) {
 	value, err := s.client.Call(ctx, wire.FromWireCallRequest(r.GetRequest()))
+	var result *wire.CallResult
+	var conversion error
+	if value != nil {
+		result, conversion = wire.ToWireCallResult(*value)
+	}
+	return &wire.HostCallResponse{Result: result, Error: hostResultError(result != nil, err, conversion, "caller.call")}, nil
+}
+
+// CallBackground 使用无 token 独立授权，目标不进入能力业务请求
+func (s *hostCaller) CallBackground(ctx context.Context, r *wire.HostBackgroundCallRequest) (*wire.HostCallResponse, error) {
+	var value *capability.CallResult
+	var err error
+	client, ok := s.client.(interface {
+		CallBackground(context.Context, sdk.Conversation, capability.CallRequest) (*capability.CallResult, error)
+	})
+	if ok {
+		ctx = transport.WithBackgroundConversation(ctx, wire.FromWireConversation(r.GetConversation()))
+		value, err = client.CallBackground(ctx, wire.FromWireConversation(r.GetConversation()), wire.FromWireCallRequest(r.GetRequest()))
+	} else {
+		err = sdk.NewError(sdk.CategoryUnimplemented, "caller.call", "background calls are not supported")
+	}
 	var result *wire.CallResult
 	var conversion error
 	if value != nil {

@@ -2309,8 +2309,6 @@ type CallRequest struct {
 	CapabilityName string                 `protobuf:"bytes,1,opt,name=capability_name,json=capabilityName,proto3" json:"capability_name,omitempty"` // 目标能力名，由宿主选择提供者，不指定插件 ID
 	ContentType    string                 `protobuf:"bytes,2,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`          // 载荷内容类型
 	Payload        *BytesValue            `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`                                     // 内联业务载荷，缺失与显式空字节可区分
-	Actor          *Actor                 `protobuf:"bytes,4,opt,name=actor,proto3" json:"actor,omitempty"`                                         // 实际发言者，无法确定或没有发言者时为空
-	Conversation   *Conversation          `protobuf:"bytes,5,opt,name=conversation,proto3" json:"conversation,omitempty"`                           // 所属或目标业务会话，群内所有成员共用整群会话
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -2362,20 +2360,6 @@ func (x *CallRequest) GetContentType() string {
 func (x *CallRequest) GetPayload() *BytesValue {
 	if x != nil {
 		return x.Payload
-	}
-	return nil
-}
-
-func (x *CallRequest) GetActor() *Actor {
-	if x != nil {
-		return x.Actor
-	}
-	return nil
-}
-
-func (x *CallRequest) GetConversation() *Conversation {
-	if x != nil {
-		return x.Conversation
 	}
 	return nil
 }
@@ -3085,13 +3069,11 @@ const file_golem_sdk_model_proto_rawDesc = "" +
 	"\areplied\x18\x01 \x01(\bR\areplied\x12\x17\n" +
 	"\x04text\x18\x02 \x01(\tH\x00R\x04text\x88\x01\x01\x12)\n" +
 	"\x05media\x18\x03 \x01(\v2\x13.golem.sdk.MediaRefR\x05mediaB\a\n" +
-	"\x05_text\"\xef\x01\n" +
+	"\x05_text\"\xab\x01\n" +
 	"\vCallRequest\x12'\n" +
 	"\x0fcapability_name\x18\x01 \x01(\tR\x0ecapabilityName\x12!\n" +
 	"\fcontent_type\x18\x02 \x01(\tR\vcontentType\x12/\n" +
-	"\apayload\x18\x03 \x01(\v2\x15.golem.sdk.BytesValueR\apayload\x12&\n" +
-	"\x05actor\x18\x04 \x01(\v2\x10.golem.sdk.ActorR\x05actor\x12;\n" +
-	"\fconversation\x18\x05 \x01(\v2\x17.golem.sdk.ConversationR\fconversation\"\x8b\x01\n" +
+	"\apayload\x18\x03 \x01(\v2\x15.golem.sdk.BytesValueR\apayloadJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06R\x05actorR\fconversation\"\x8b\x01\n" +
 	"\n" +
 	"CallResult\x12!\n" +
 	"\fcontent_type\x18\x01 \x01(\tR\vcontentType\x12/\n" +
@@ -3335,30 +3317,28 @@ var file_golem_sdk_model_proto_depIdxs = []int32{
 	24, // 43: golem.sdk.Command.message:type_name -> golem.sdk.Message
 	45, // 44: golem.sdk.CommandResult.media:type_name -> golem.sdk.MediaRef
 	14, // 45: golem.sdk.CallRequest.payload:type_name -> golem.sdk.BytesValue
-	19, // 46: golem.sdk.CallRequest.actor:type_name -> golem.sdk.Actor
-	18, // 47: golem.sdk.CallRequest.conversation:type_name -> golem.sdk.Conversation
-	14, // 48: golem.sdk.CallResult.payload:type_name -> golem.sdk.BytesValue
-	45, // 49: golem.sdk.CallResult.media:type_name -> golem.sdk.MediaRef
-	14, // 50: golem.sdk.ConfigSnapshot.data:type_name -> golem.sdk.BytesValue
-	12, // 51: golem.sdk.ConfigSnapshot.apply_status:type_name -> golem.sdk.ApplyStatus
-	20, // 52: golem.sdk.ContactPage.items:type_name -> golem.sdk.Contact
-	2,  // 53: golem.sdk.ContactPage.completeness:type_name -> golem.sdk.Completeness
-	22, // 54: golem.sdk.MemberPage.items:type_name -> golem.sdk.Member
-	2,  // 55: golem.sdk.MemberPage.completeness:type_name -> golem.sdk.Completeness
-	20, // 56: golem.sdk.ContactBatchItem.value:type_name -> golem.sdk.Contact
-	1,  // 57: golem.sdk.ContactBatchItem.outcome:type_name -> golem.sdk.WriteOutcome
-	15, // 58: golem.sdk.ContactBatchItem.error:type_name -> golem.sdk.Error
-	38, // 59: golem.sdk.ContactBatchResult.items:type_name -> golem.sdk.ContactBatchItem
-	1,  // 60: golem.sdk.RefreshStageResult.outcome:type_name -> golem.sdk.WriteOutcome
-	15, // 61: golem.sdk.RefreshStageResult.error:type_name -> golem.sdk.Error
-	21, // 62: golem.sdk.ChatroomRefreshResult.room:type_name -> golem.sdk.Room
-	37, // 63: golem.sdk.ChatroomRefreshResult.members:type_name -> golem.sdk.MemberPage
-	40, // 64: golem.sdk.ChatroomRefreshResult.stages:type_name -> golem.sdk.RefreshStageResult
-	65, // [65:65] is the sub-list for method output_type
-	65, // [65:65] is the sub-list for method input_type
-	65, // [65:65] is the sub-list for extension type_name
-	65, // [65:65] is the sub-list for extension extendee
-	0,  // [0:65] is the sub-list for field type_name
+	14, // 46: golem.sdk.CallResult.payload:type_name -> golem.sdk.BytesValue
+	45, // 47: golem.sdk.CallResult.media:type_name -> golem.sdk.MediaRef
+	14, // 48: golem.sdk.ConfigSnapshot.data:type_name -> golem.sdk.BytesValue
+	12, // 49: golem.sdk.ConfigSnapshot.apply_status:type_name -> golem.sdk.ApplyStatus
+	20, // 50: golem.sdk.ContactPage.items:type_name -> golem.sdk.Contact
+	2,  // 51: golem.sdk.ContactPage.completeness:type_name -> golem.sdk.Completeness
+	22, // 52: golem.sdk.MemberPage.items:type_name -> golem.sdk.Member
+	2,  // 53: golem.sdk.MemberPage.completeness:type_name -> golem.sdk.Completeness
+	20, // 54: golem.sdk.ContactBatchItem.value:type_name -> golem.sdk.Contact
+	1,  // 55: golem.sdk.ContactBatchItem.outcome:type_name -> golem.sdk.WriteOutcome
+	15, // 56: golem.sdk.ContactBatchItem.error:type_name -> golem.sdk.Error
+	38, // 57: golem.sdk.ContactBatchResult.items:type_name -> golem.sdk.ContactBatchItem
+	1,  // 58: golem.sdk.RefreshStageResult.outcome:type_name -> golem.sdk.WriteOutcome
+	15, // 59: golem.sdk.RefreshStageResult.error:type_name -> golem.sdk.Error
+	21, // 60: golem.sdk.ChatroomRefreshResult.room:type_name -> golem.sdk.Room
+	37, // 61: golem.sdk.ChatroomRefreshResult.members:type_name -> golem.sdk.MemberPage
+	40, // 62: golem.sdk.ChatroomRefreshResult.stages:type_name -> golem.sdk.RefreshStageResult
+	63, // [63:63] is the sub-list for method output_type
+	63, // [63:63] is the sub-list for method input_type
+	63, // [63:63] is the sub-list for extension type_name
+	63, // [63:63] is the sub-list for extension extendee
+	0,  // [0:63] is the sub-list for field type_name
 }
 
 func init() { file_golem_sdk_model_proto_init() }

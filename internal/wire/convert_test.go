@@ -367,8 +367,6 @@ func TestEventAndBusinessRoundTrips(t *testing.T) {
 		CapabilityName: "text.to.image",
 		ContentType:    "application/json",
 		Payload:        []byte{},
-		Actor:          &sdk.Actor{Username: "wxid_member", Resolution: sdk.ActorResolutionDirect},
-		Conversation:   &sdk.Conversation{AccountUsername: "wxid_owner", Kind: sdk.ConversationKindDirect, ID: "wxid_member"},
 	}
 	assertEqual(t, FromWireCallRequest(ToWireCallRequest(call)), call)
 

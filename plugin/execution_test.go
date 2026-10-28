@@ -79,7 +79,7 @@ func newExecutionFixture(t *testing.T, implementation Plugin) (*controlServer, *
 	control, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 	host := &Host{}
-	host.startTasks(control)
+	host.startTasks(control, "fixture-token")
 	return &controlServer{implementation: implementation, conn: &grpc.ClientConn{}, host: host, loaded: true, enabled: true, accepting: true, controlToken: "control", generation: 7, controlContext: control, controlCancel: cancel, completion: completion}, completion
 }
 
@@ -251,6 +251,35 @@ func TestOversizedResultPreservesPrimaryError(t *testing.T) {
 	}
 }
 
+// TestCapabilityRequestValidationOrder 验证身份先于请求内容检查，并区分缺失参数与超限载荷
+func TestCapabilityRequestValidationOrder(t *testing.T) {
+	p := &blockingPlugin{entered: make(chan string, 1), release: make(chan struct{})}
+	s, _ := newExecutionFixture(t, p)
+	b := &businessServer{state: s}
+	oversized := &wire.CallRequest{Payload: &wire.BytesValue{Value: make([]byte, transport.MaxInlinePayloadSize+1)}}
+	tests := []struct {
+		name     string
+		request  *wire.CapabilityRequest
+		category wire.Category
+	}{
+		{name: "missing identity before size", request: &wire.CapabilityRequest{InvocationId: "missing-token", Request: oversized}, category: wire.Category_CATEGORY_PERMISSION_DENIED},
+		{name: "missing id before size", request: &wire.CapabilityRequest{InvocationToken: "token", Request: oversized}, category: wire.Category_CATEGORY_PERMISSION_DENIED},
+		{name: "missing request", request: &wire.CapabilityRequest{InvocationId: "missing-request", InvocationToken: "token"}, category: wire.Category_CATEGORY_INVALID_ARGUMENT},
+		{name: "oversized payload", request: &wire.CapabilityRequest{InvocationId: "oversized-payload", InvocationToken: "token", Request: oversized}, category: wire.Category_CATEGORY_RESOURCE_EXHAUSTED},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			response, err := b.HandleCapability(t.Context(), test.request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if response.GetResult() != nil || response.GetError().GetCategory() != test.category {
+				t.Fatalf("返回结果或错误类别不符: %+v", response)
+			}
+		})
+	}
+}
+
 // Descriptor 提供最小声明
 func (*enablePlugin) Descriptor() Descriptor { return Descriptor{ID: "enable"} }
 
@@ -273,38 +302,53 @@ func TestTaskContextCycles(t *testing.T) {
 	p.host = s.host
 	s.enabled = false
 	s.accepting = false
-	response, _ := s.OnEnable(lifecycleIncomingContext(t.Context(), "enable-1", "token"), &wire.LifecycleRequest{InvocationId: "enable-1"})
+	response, _ := s.OnEnable(lifecycleIncomingContext(t.Context(), "enable-1", "token"), &wire.LifecycleRequest{InvocationId: "enable-1", BackgroundToken: "cycle-one"})
 	first := s.host.TaskContext()
 	if response.GetError() != nil || first == nil || first.Err() != nil || transport.InvocationFromContext(first) != nil {
 		t.Fatal("enable did not create independent task context")
+	}
+	if token, ok := s.host.backgroundToken(first); !ok || token != "cycle-one" {
+		t.Fatal("enable did not bind background token")
 	}
 	response, _ = s.OnDisable(lifecycleIncomingContext(t.Context(), "disable-1", "token"), &wire.LifecycleRequest{InvocationId: "disable-1"})
 	if response.GetError() != nil || first.Err() == nil {
 		t.Fatal("disable did not cancel task context")
 	}
-	response, _ = s.OnEnable(lifecycleIncomingContext(t.Context(), "enable-2", "token"), &wire.LifecycleRequest{InvocationId: "enable-2"})
+	if _, ok := s.host.backgroundToken(first); ok {
+		t.Fatal("disable retained revoked background token")
+	}
+	response, _ = s.OnEnable(lifecycleIncomingContext(t.Context(), "enable-2", "token"), &wire.LifecycleRequest{InvocationId: "enable-2", BackgroundToken: "cycle-two"})
 	second := s.host.TaskContext()
 	if response.GetError() != nil || second == first || second.Err() != nil {
 		t.Fatal("re-enable reused canceled task context")
 	}
+	if _, ok := s.host.backgroundToken(first); ok {
+		t.Fatal("re-enable retained old background token")
+	}
+	if token, ok := s.host.backgroundToken(second); !ok || token != "cycle-two" {
+		t.Fatal("re-enable did not bind new background token")
+	}
 	s.controlCancel()
 	if second.Err() == nil {
 		t.Fatal("instance invalidation kept task context alive")
+	}
+	if _, ok := s.host.backgroundToken(second); ok {
+		t.Fatal("instance invalidation retained background token")
 	}
 	failure := &enablePlugin{fail: true}
 	s, _ = newExecutionFixture(t, failure)
 	failure.host = s.host
 	s.enabled = false
 	s.accepting = false
-	response, _ = s.OnEnable(lifecycleIncomingContext(t.Context(), "enable-fail", "token"), &wire.LifecycleRequest{InvocationId: "enable-fail"})
+	response, _ = s.OnEnable(lifecycleIncomingContext(t.Context(), "enable-fail", "token"), &wire.LifecycleRequest{InvocationId: "enable-fail", BackgroundToken: "background-fail"})
 	if response.GetError() == nil || s.host.TaskContext().Err() == nil || s.enabled || s.accepting {
 		t.Fatal("failed enable left active background context or admission")
 	}
 	// 旧轮次延迟到达的取消只能作用于原 context，不能撤销重新启用的新周期
 	host := &Host{}
-	cancelOld := host.startTasks(t.Context())
+	cancelOld := host.startTasks(t.Context(), "old-token")
 	old := host.TaskContext()
-	cancelNew := host.startTasks(t.Context())
+	cancelNew := host.startTasks(t.Context(), "new-token")
 	defer cancelNew()
 	cancelOld()
 	if old.Err() == nil || host.TaskContext().Err() != nil {

@@ -338,3 +338,14 @@ func TestOldGenerationCompletionDenied(t *testing.T) {
 		t.Fatal("valid generation completion was rejected")
 	}
 }
+
+// TestHandleCapabilityOversizedCategory 验证合法身份的超限载荷在进入传输前返回资源耗尽
+func TestHandleCapabilityOversizedCategory(t *testing.T) {
+	client := &Client{}
+	_, err := client.HandleCapability(t.Context(), Invocation{ID: "oversized", Token: "token"}, capability.CallRequest{
+		Payload: make([]byte, MaxInlinePayloadSize+1),
+	})
+	if !hasCategory(err, sdk.CategoryResourceExhausted) {
+		t.Fatalf("超限载荷错误类别不正确: %v", err)
+	}
+}

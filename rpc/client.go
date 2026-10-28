@@ -171,7 +171,7 @@ func Start(ctx context.Context, options ClientOptions) (_ *Client, err error) {
 	default:
 		return nil, sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.initialize", "reverse connection was not confirmed")
 	}
-	if err := client.lifecycle(ctx, LifecycleLoad); err != nil {
+	if err := client.lifecycle(ctx, LifecycleLoad, ""); err != nil {
 		return nil, err
 	}
 	return client, nil
@@ -216,7 +216,7 @@ func (c *Client) Descriptor() plugin.Descriptor {
 }
 
 // lifecycle 登记宿主签发的单次凭据后发送控制请求，不占业务执行额度
-func (c *Client) lifecycle(ctx context.Context, operation LifecycleOperation) error {
+func (c *Client) lifecycle(ctx context.Context, operation LifecycleOperation, backgroundToken string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	invocation, err := newInvocation()
 	if err != nil {
@@ -237,7 +237,7 @@ func (c *Client) lifecycle(ctx context.Context, operation LifecycleOperation) er
 		transport.LifecycleInvocationIDHeader, invocation.ID,
 		transport.LifecycleInvocationTokenHeader, invocation.Token,
 	)
-	request := &wire.LifecycleRequest{InvocationId: invocation.ID}
+	request := &wire.LifecycleRequest{InvocationId: invocation.ID, BackgroundToken: backgroundToken}
 	var response *wire.OperationResponse
 	switch operation {
 	case LifecycleLoad:
@@ -254,15 +254,20 @@ func (c *Client) lifecycle(ctx context.Context, operation LifecycleOperation) er
 	return transport.DecodeError(response.GetError(), err, string(operation))
 }
 
-// Enable 显式启用已加载实例
-func (c *Client) Enable(ctx context.Context) error { return c.lifecycle(ctx, LifecycleEnable) }
+// Enable 显式启用已加载实例，不签发后台令牌
+func (c *Client) Enable(ctx context.Context) error { return c.EnableWithBackgroundToken(ctx, "") }
+
+// EnableWithBackgroundToken 显式启用并绑定本周期不可预测的后台令牌
+func (c *Client) EnableWithBackgroundToken(ctx context.Context, backgroundToken string) error {
+	return c.lifecycle(ctx, LifecycleEnable, backgroundToken)
+}
 
 // Disable 显式禁用已启用实例
-func (c *Client) Disable(ctx context.Context) error { return c.lifecycle(ctx, LifecycleDisable) }
+func (c *Client) Disable(ctx context.Context) error { return c.lifecycle(ctx, LifecycleDisable, "") }
 
 // Unload 调用插件卸载并无条件回收实例，卸载错误不会跳过清理
 func (c *Client) Unload(ctx context.Context) error {
-	err := c.lifecycle(ctx, LifecycleUnload)
+	err := c.lifecycle(ctx, LifecycleUnload, "")
 	_ = c.Close()
 	return err
 }

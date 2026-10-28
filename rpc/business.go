@@ -90,7 +90,7 @@ func (c *Client) HandleCapability(ctx context.Context, invocation Invocation, va
 		return capability.CallResult{}, err
 	}
 	if len(value.Payload) > MaxInlinePayloadSize {
-		return capability.CallResult{}, sdk.NewError(sdk.CategoryInvalidArgument, "plugin.capability", "inline payload is too large")
+		return capability.CallResult{}, sdk.NewError(sdk.CategoryResourceExhausted, "plugin.capability", "inline payload is too large")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

@@ -200,6 +200,13 @@ message HostCallResponse {
   Error error = 2; // 业务错误，成功时为空；部分成功仍保留逐项结果
 }
 
+// HostBackgroundCallRequest 独立后台授权的目标会话及能力调用
+message HostBackgroundCallRequest {
+  string background_token = 1; // 宿主启用时签发的不可预测后台令牌
+  Conversation conversation = 2; // 后台授权目标，不冒充原用户或当前调用会话
+  CallRequest request = 3; // 待处理的按能力名调用请求
+}
+
 // ConfigSnapshotRequest 插件自身配置快照查询请求
 message ConfigSnapshotRequest {
   Invocation invocation = 1; // 本次反向调用绑定的执行身份凭据
@@ -299,6 +306,8 @@ service HostSessionsService {
 service HostCallerService {
   // Call 按能力名调用，由宿主选择提供者
   rpc Call(HostCallRequest) returns (HostCallResponse);
+  // CallBackground 使用 background.run、能力名和明确目标会话独立授权
+  rpc CallBackground(HostBackgroundCallRequest) returns (HostCallResponse);
 }
 
 // HostConfigService 宿主插件自身业务配置服务

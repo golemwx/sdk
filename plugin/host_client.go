@@ -20,15 +20,17 @@ import (
 
 // newRemoteHost 在唯一反向连接上构造七类类型化客户端
 func newRemoteHost(conn *grpc.ClientConn, dataDir string) *Host {
-	return NewHost(
+	host := NewHost(
 		&remoteMessages{wire.NewHostMessagesServiceClient(conn)},
 		&remoteContacts{wire.NewHostContactsServiceClient(conn)},
 		&remoteChatrooms{wire.NewHostChatroomsServiceClient(conn)},
 		&remoteSessions{wire.NewHostSessionsServiceClient(conn)},
-		&remoteCaller{wire.NewHostCallerServiceClient(conn)},
+		&remoteCaller{client: wire.NewHostCallerServiceClient(conn)},
 		&remoteConfig{wire.NewHostConfigServiceClient(conn)},
 		&remoteAccount{wire.NewHostAccountServiceClient(conn)}, dataDir, nil,
 	)
+	host.Caller = &remoteCaller{client: wire.NewHostCallerServiceClient(conn), host: host}
+	return host
 }
 
 // remoteMessages 复用反向连接的消息客户端
@@ -193,11 +195,41 @@ func (c *remoteSessions) Release(ctx context.Context, id string) error {
 // remoteCaller 复用反向连接的能力调用客户端
 type remoteCaller struct {
 	client wire.HostCallerServiceClient // 能力调用传输入口
+	host   *Host                        // 当前实例的后台启用令牌所有者
 }
 
 // Call 按能力名调用，不接受插件目标身份
 func (c *remoteCaller) Call(ctx context.Context, request capability.CallRequest) (*capability.CallResult, error) {
-	response, err := c.client.Call(ctx, &wire.HostCallRequest{Invocation: transport.InvocationFromContext(ctx), Request: wire.ToWireCallRequest(request)})
+	invocation := transport.InvocationFromContext(ctx)
+	if invocation.GetId() == "" {
+		target, exists := capability.BackgroundTarget(ctx)
+		if !exists {
+			return nil, sdk.NewError(sdk.CategoryPermissionDenied, "caller.call", "background target is required")
+		}
+		if c.host == nil {
+			return nil, sdk.NewError(sdk.CategoryPermissionDenied, "caller.call", "background host is unavailable")
+		}
+		backgroundToken, ok := c.host.backgroundToken(ctx)
+		if !ok {
+			return nil, sdk.NewError(sdk.CategoryPermissionDenied, "caller.call", "background context does not belong to the active enable cycle")
+		}
+		if len(request.Payload) > transport.MaxInlinePayloadSize {
+			return nil, sdk.NewError(sdk.CategoryResourceExhausted, "caller.call", "inline payload is too large")
+		}
+		response, err := c.client.CallBackground(ctx, &wire.HostBackgroundCallRequest{BackgroundToken: backgroundToken, Conversation: wire.ToWireConversation(target), Request: wire.ToWireCallRequest(request)})
+		result, decodeErr := wire.FromWireCallResult(response.GetResult())
+		if response.GetResult() == nil || decodeErr != nil {
+			return nil, firstError(transport.ResultError(false, response.GetError(), err, "caller.call"), decodeErr)
+		}
+		return &result, firstError(transport.ResultError(response.GetResult() != nil, response.GetError(), err, "caller.call"), decodeErr)
+	}
+	if invocation.GetToken() == "" {
+		return nil, sdk.NewError(sdk.CategoryPermissionDenied, "caller.call", "invocation token is required")
+	}
+	if len(request.Payload) > transport.MaxInlinePayloadSize {
+		return nil, sdk.NewError(sdk.CategoryResourceExhausted, "caller.call", "inline payload is too large")
+	}
+	response, err := c.client.Call(ctx, &wire.HostCallRequest{Invocation: invocation, Request: wire.ToWireCallRequest(request)})
 	result, decodeErr := wire.FromWireCallResult(response.GetResult())
 	if response.GetResult() == nil || decodeErr != nil {
 		return nil, firstError(transport.ResultError(false, response.GetError(), err, "caller.call"), decodeErr)

@@ -928,7 +928,8 @@ var HostSessionsService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	HostCallerService_Call_FullMethodName = "/golem.sdk.HostCallerService/Call"
+	HostCallerService_Call_FullMethodName           = "/golem.sdk.HostCallerService/Call"
+	HostCallerService_CallBackground_FullMethodName = "/golem.sdk.HostCallerService/CallBackground"
 )
 
 // HostCallerServiceClient is the client API for HostCallerService service.
@@ -939,6 +940,8 @@ const (
 type HostCallerServiceClient interface {
 	// Call 按能力名调用，由宿主选择提供者
 	Call(ctx context.Context, in *HostCallRequest, opts ...grpc.CallOption) (*HostCallResponse, error)
+	// CallBackground 使用 background.run、能力名和明确目标会话独立授权
+	CallBackground(ctx context.Context, in *HostBackgroundCallRequest, opts ...grpc.CallOption) (*HostCallResponse, error)
 }
 
 type hostCallerServiceClient struct {
@@ -959,6 +962,16 @@ func (c *hostCallerServiceClient) Call(ctx context.Context, in *HostCallRequest,
 	return out, nil
 }
 
+func (c *hostCallerServiceClient) CallBackground(ctx context.Context, in *HostBackgroundCallRequest, opts ...grpc.CallOption) (*HostCallResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HostCallResponse)
+	err := c.cc.Invoke(ctx, HostCallerService_CallBackground_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // HostCallerServiceServer is the server API for HostCallerService service.
 // All implementations must embed UnimplementedHostCallerServiceServer
 // for forward compatibility.
@@ -967,6 +980,8 @@ func (c *hostCallerServiceClient) Call(ctx context.Context, in *HostCallRequest,
 type HostCallerServiceServer interface {
 	// Call 按能力名调用，由宿主选择提供者
 	Call(context.Context, *HostCallRequest) (*HostCallResponse, error)
+	// CallBackground 使用 background.run、能力名和明确目标会话独立授权
+	CallBackground(context.Context, *HostBackgroundCallRequest) (*HostCallResponse, error)
 	mustEmbedUnimplementedHostCallerServiceServer()
 }
 
@@ -979,6 +994,9 @@ type UnimplementedHostCallerServiceServer struct{}
 
 func (UnimplementedHostCallerServiceServer) Call(context.Context, *HostCallRequest) (*HostCallResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Call not implemented")
+}
+func (UnimplementedHostCallerServiceServer) CallBackground(context.Context, *HostBackgroundCallRequest) (*HostCallResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CallBackground not implemented")
 }
 func (UnimplementedHostCallerServiceServer) mustEmbedUnimplementedHostCallerServiceServer() {}
 func (UnimplementedHostCallerServiceServer) testEmbeddedByValue()                           {}
@@ -1019,6 +1037,24 @@ func _HostCallerService_Call_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HostCallerService_CallBackground_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HostBackgroundCallRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostCallerServiceServer).CallBackground(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostCallerService_CallBackground_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostCallerServiceServer).CallBackground(ctx, req.(*HostBackgroundCallRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // HostCallerService_ServiceDesc is the grpc.ServiceDesc for HostCallerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1029,6 +1065,10 @@ var HostCallerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Call",
 			Handler:    _HostCallerService_Call_Handler,
+		},
+		{
+			MethodName: "CallBackground",
+			Handler:    _HostCallerService_CallBackground_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -108,6 +108,7 @@ message OperationResponse {
 // LifecycleRequest 插件生命周期调用请求
 message LifecycleRequest {
   string invocation_id = 1; // 关联执行的唯一标识
+  string background_token = 2; // OnEnable 签发的当前启用周期后台令牌
 }
 
 // DrainRequest 停止新准入并查询在途执行的排空请求

@@ -18,11 +18,9 @@ type CapabilitySpec struct {
 
 // CallRequest 跨插件能力调用请求
 type CallRequest struct {
-	CapabilityName string            // 目标能力名，由宿主选择提供者，不指定插件 ID
-	ContentType    string            // 载荷内容类型
-	Payload        []byte            // 内联业务载荷，缺失与显式空字节可区分
-	Actor          *sdk.Actor        // 实际发言者，无法确定或没有发言者时为空
-	Conversation   *sdk.Conversation // 所属或目标业务会话，群内所有成员共用整群会话
+	CapabilityName string // 目标能力名，由宿主选择提供者，不指定插件 ID
+	ContentType    string // 载荷内容类型
+	Payload        []byte // 内联业务载荷，缺失与显式空字节可区分
 }
 
 // CallResult 能力调用结果

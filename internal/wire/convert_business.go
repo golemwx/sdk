@@ -1,7 +1,6 @@
 package wire
 
 import (
-	"github.com/golemwx/sdk"
 	"github.com/golemwx/sdk/capability"
 	"github.com/golemwx/sdk/command"
 	"github.com/golemwx/sdk/config"
@@ -76,17 +75,10 @@ func FromWireCommandResult(value *CommandResult) (command.CommandResult, error) 
 
 // ToWireCallRequest 转换能力请求
 func ToWireCallRequest(value capability.CallRequest) *CallRequest {
-	var conversation *Conversation
-	if value.Conversation != nil {
-		conversation = ToWireConversation(*value.Conversation)
-	}
-
 	return &CallRequest{
 		CapabilityName: value.CapabilityName,
 		ContentType:    value.ContentType,
 		Payload:        toBytesValue(value.Payload),
-		Actor:          ToWireActor(value.Actor),
-		Conversation:   conversation,
 	}
 }
 
@@ -96,18 +88,10 @@ func FromWireCallRequest(value *CallRequest) capability.CallRequest {
 		return capability.CallRequest{}
 	}
 
-	var conversation *sdk.Conversation
-	if value.Conversation != nil {
-		converted := FromWireConversation(value.Conversation)
-		conversation = &converted
-	}
-
 	return capability.CallRequest{
 		CapabilityName: value.CapabilityName,
 		ContentType:    value.ContentType,
 		Payload:        fromBytesValue(value.Payload),
-		Actor:          FromWireActor(value.Actor),
-		Conversation:   conversation,
 	}
 }
 

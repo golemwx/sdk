@@ -92,7 +92,7 @@ func DecodeError(value *wire.Error, err error, operation string) error {
 
 // isWrite 判断当前已开放的目标写入操作，传输失败不能降为确定失败或只读结果
 func isWrite(operation string) bool {
-	return strings.HasPrefix(operation, "messages.send_") || operation == "messages.reply" || operation == "messages.revoke"
+	return strings.HasPrefix(operation, "messages.send_") || operation == "messages.reply" || operation == "messages.revoke" || operation == "plugin.capability" || operation == "caller.call"
 }
 
 // ResultError 拒绝没有业务结果的空成功，同时保留部分结果对应的原业务错误

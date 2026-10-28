@@ -758,10 +758,11 @@ func (x *OperationResponse) GetError() *Error {
 
 // LifecycleRequest 插件生命周期调用请求
 type LifecycleRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	InvocationId  string                 `protobuf:"bytes,1,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"` // 关联执行的唯一标识
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	InvocationId    string                 `protobuf:"bytes,1,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`          // 关联执行的唯一标识
+	BackgroundToken string                 `protobuf:"bytes,2,opt,name=background_token,json=backgroundToken,proto3" json:"background_token,omitempty"` // OnEnable 签发的当前启用周期后台令牌
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *LifecycleRequest) Reset() {
@@ -797,6 +798,13 @@ func (*LifecycleRequest) Descriptor() ([]byte, []int) {
 func (x *LifecycleRequest) GetInvocationId() string {
 	if x != nil {
 		return x.InvocationId
+	}
+	return ""
+}
+
+func (x *LifecycleRequest) GetBackgroundToken() string {
+	if x != nil {
+		return x.BackgroundToken
 	}
 	return ""
 }
@@ -1418,9 +1426,10 @@ const file_golem_sdk_plugin_proto_rawDesc = "" +
 	"\x13instance_generation\x18\x06 \x01(\x04R\x12instanceGeneration\x12#\n" +
 	"\raccount_epoch\x18\a \x01(\x04R\faccountEpoch\";\n" +
 	"\x11OperationResponse\x12&\n" +
-	"\x05error\x18\x01 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"7\n" +
+	"\x05error\x18\x01 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"b\n" +
 	"\x10LifecycleRequest\x12#\n" +
-	"\rinvocation_id\x18\x01 \x01(\tR\finvocationId\"d\n" +
+	"\rinvocation_id\x18\x01 \x01(\tR\finvocationId\x12)\n" +
+	"\x10background_token\x18\x02 \x01(\tR\x0fbackgroundToken\"d\n" +
 	"\fDrainRequest\x12#\n" +
 	"\rcontrol_token\x18\x01 \x01(\tR\fcontrolToken\x12/\n" +
 	"\x13instance_generation\x18\x02 \x01(\x04R\x12instanceGeneration\"k\n" +

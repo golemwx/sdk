@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"github.com/golemwx/sdk"
 	"github.com/golemwx/sdk/internal/contract"
@@ -148,7 +149,7 @@ func (s *controlServer) Initialize(ctx context.Context, request *wire.Initialize
 				controlCancel()
 			}
 		}()
-		host.startTasks(controlContext)
+		host.startTasks(controlContext, "")
 		host.stopTasks()
 		s.executionMu.Lock()
 		s.host, s.binding = host, binding
@@ -164,7 +165,7 @@ func (s *controlServer) Initialize(ctx context.Context, request *wire.Initialize
 }
 
 // lifecycle 在初始化之后串行执行可选生命周期，并保持原调用上下文
-func (s *controlServer) lifecycle(ctx context.Context, method, id string) (*wire.OperationResponse, error) {
+func (s *controlServer) lifecycle(ctx context.Context, method, id, backgroundToken string) (*wire.OperationResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	defer func() {
@@ -208,20 +209,20 @@ func (s *controlServer) lifecycle(ctx context.Context, method, id string) (*wire
 			}
 			s.executionMu.Lock()
 			epoch := s.admissionEpoch
-			cancelTasks := s.host.startTasks(s.controlContext)
+			cancelTasks := s.host.startTasks(s.controlContext, backgroundToken)
 			s.executionMu.Unlock()
-			succeeded := false
+			var succeeded atomic.Bool
 			// 启用回调忽略取消时，也立即撤销尚未提交的后台周期
 			stopCancel := context.AfterFunc(ctx, func() {
 				s.executionMu.Lock()
 				defer s.executionMu.Unlock()
-				if !succeeded {
+				if !succeeded.Load() {
 					cancelTasks()
 				}
 			})
 			defer stopCancel()
 			defer func() {
-				if !succeeded {
+				if !succeeded.Load() {
 					cancelTasks()
 				}
 			}()
@@ -240,7 +241,7 @@ func (s *controlServer) lifecycle(ctx context.Context, method, id string) (*wire
 			}
 			s.enabled = true
 			s.accepting = true
-			succeeded = true
+			succeeded.Store(true)
 		case "plugin.disable":
 			if !s.enabled {
 				return sdk.NewError(sdk.CategoryFailedPrecondition, method, "instance is not enabled")
@@ -279,22 +280,22 @@ func lifecycleContext(ctx context.Context, id string) (context.Context, error) {
 
 // OnLoad 调用可选加载接口，Base 已在 Initialize 中自动绑定 Host
 func (s *controlServer) OnLoad(ctx context.Context, request *wire.LifecycleRequest) (*wire.OperationResponse, error) {
-	return s.lifecycle(ctx, "plugin.load", request.GetInvocationId())
+	return s.lifecycle(ctx, "plugin.load", request.GetInvocationId(), "")
 }
 
 // OnEnable 调用可选启用接口
 func (s *controlServer) OnEnable(ctx context.Context, request *wire.LifecycleRequest) (*wire.OperationResponse, error) {
-	return s.lifecycle(ctx, "plugin.enable", request.GetInvocationId())
+	return s.lifecycle(ctx, "plugin.enable", request.GetInvocationId(), request.GetBackgroundToken())
 }
 
 // OnDisable 调用可选禁用接口
 func (s *controlServer) OnDisable(ctx context.Context, request *wire.LifecycleRequest) (*wire.OperationResponse, error) {
-	return s.lifecycle(ctx, "plugin.disable", request.GetInvocationId())
+	return s.lifecycle(ctx, "plugin.disable", request.GetInvocationId(), "")
 }
 
 // OnUnload 调用可选卸载接口并关闭反向连接
 func (s *controlServer) OnUnload(ctx context.Context, request *wire.LifecycleRequest) (*wire.OperationResponse, error) {
-	return s.lifecycle(ctx, "plugin.unload", request.GetInvocationId())
+	return s.lifecycle(ctx, "plugin.unload", request.GetInvocationId(), "")
 }
 
 // Drain 原子关闭业务准入并查询真实执行记录，控制操作不等待用户 handler

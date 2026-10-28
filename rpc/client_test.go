@@ -499,7 +499,7 @@ func TestAutomaticHostLifecycle(t *testing.T) {
 	if err := client.Disable(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if err := client.lifecycle(t.Context(), LifecycleUnload); err != nil {
+	if err := client.lifecycle(t.Context(), LifecycleUnload, ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := waitForMarker(t.Context(), filepath.Join(options.DataDir, "host-released-unload")); err != nil {

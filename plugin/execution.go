@@ -104,8 +104,8 @@ func (s *controlServer) activeExecutions() []string {
 
 // businessContext 只绑定宿主签发的凭据，继续继承父调用的取消和 deadline
 func businessContext(ctx context.Context, id, token string) (context.Context, error) {
-	if token == "" {
-		return nil, sdk.NewError(sdk.CategoryInvalidArgument, "plugin.execute", "missing invocation token")
+	if id == "" || token == "" {
+		return nil, sdk.NewError(sdk.CategoryPermissionDenied, "plugin.execute", "missing invocation identity")
 	}
 	return transport.WithInvocation(ctx, id, token), nil
 }

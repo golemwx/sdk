@@ -3,6 +3,7 @@ package plugin
 
 import (
 	"context"
+	"crypto/subtle"
 	"sync"
 
 	"github.com/golemwx/sdk"
@@ -107,6 +108,8 @@ type Host struct {
 	DataDir string // 宿主分配的插件数据目录
 
 	taskContext context.Context    // 与插件当前启用周期绑定的后台任务上下文
+	taskEpoch   uint64             // SDK 内部启用周期序号，用于拒绝旧 context
+	taskToken   string             // 宿主签发的不可预测后台令牌，插件不能构造或延长
 	taskMu      sync.RWMutex       // 保护启用周期上下文的并发读取与替换
 	taskCancel  context.CancelFunc // 结束当前启用周期
 }
@@ -138,14 +141,39 @@ func (h *Host) TaskContext() context.Context {
 }
 
 // startTasks 创建不携带用户身份的新启用周期，返回仅取消本轮的句柄
-func (h *Host) startTasks(parent context.Context) context.CancelFunc {
+func (h *Host) startTasks(parent context.Context, backgroundToken string) context.CancelFunc {
 	h.taskMu.Lock()
 	defer h.taskMu.Unlock()
 	if h.taskCancel != nil {
 		h.taskCancel()
 	}
 	h.taskContext, h.taskCancel = context.WithCancel(parent)
+	h.taskEpoch++
+	h.taskToken = backgroundToken
+	h.taskContext = context.WithValue(h.taskContext, backgroundCycleKey{}, backgroundCycle{epoch: h.taskEpoch, token: backgroundToken})
 	return h.taskCancel
+}
+
+// backgroundCycle 只在 SDK 内部绑定当前启用周期
+type backgroundCycle struct {
+	epoch uint64 // 拒绝重启用后的旧 context
+	token string // 宿主签发的不可预测后台令牌
+}
+
+// backgroundCycleKey 隔离当前启用周期的私有上下文值
+type backgroundCycleKey struct{}
+
+// backgroundToken 核对派生后台上下文是否仍属于当前启用周期
+func (h *Host) backgroundToken(ctx context.Context) (string, bool) {
+	cycle, ok := ctx.Value(backgroundCycleKey{}).(backgroundCycle)
+	if !ok || cycle.epoch == 0 || cycle.token == "" {
+		return "", false
+	}
+	h.taskMu.RLock()
+	defer h.taskMu.RUnlock()
+	valid := cycle.epoch == h.taskEpoch && subtle.ConstantTimeCompare([]byte(cycle.token), []byte(h.taskToken)) == 1 &&
+		h.taskContext != nil && h.taskContext.Err() == nil && ctx.Err() == nil
+	return cycle.token, valid
 }
 
 // stopTasks 立即撤销后台周期，保留已取消的上下文供插件观察
@@ -158,6 +186,7 @@ func (h *Host) stopTasks() {
 	if h.taskCancel != nil {
 		h.taskCancel()
 	}
+	h.taskToken = ""
 }
 
 // Plugin 插件基础契约

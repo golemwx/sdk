@@ -19,6 +19,10 @@ type businessServer struct {
 func (b *businessServer) HandleEvent(ctx context.Context, request *wire.EventRequest) (*wire.EventResponse, error) {
 	response := &wire.EventResponse{}
 	err := protect("plugin.event", func() error {
+		ctx, err := businessContext(ctx, request.GetInvocationId(), request.GetInvocationToken())
+		if err != nil {
+			return err
+		}
 		handler, ok := b.state.implementation.(EventHandler)
 		if !ok {
 			return sdk.NewError(sdk.CategoryUnimplemented, "plugin.event", "event handler is not implemented")
@@ -29,10 +33,6 @@ func (b *businessServer) HandleEvent(ctx context.Context, request *wire.EventReq
 		}
 		if value == nil {
 			return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.event", "missing event")
-		}
-		ctx, err = businessContext(ctx, request.GetInvocationId(), request.GetInvocationToken())
-		if err != nil {
-			return err
 		}
 		if err := b.state.beginExecution(ctx, request.InvocationId, executionBusiness); err != nil {
 			return err
@@ -52,6 +52,10 @@ func (b *businessServer) HandleEvent(ctx context.Context, request *wire.EventReq
 func (b *businessServer) HandleCommand(ctx context.Context, request *wire.CommandRequest) (*wire.CommandResponse, error) {
 	response := &wire.CommandResponse{}
 	err := protect("plugin.command", func() error {
+		ctx, err := businessContext(ctx, request.GetInvocationId(), request.GetInvocationToken())
+		if err != nil {
+			return err
+		}
 		handler, ok := b.state.implementation.(CommandHandler)
 		if !ok {
 			return sdk.NewError(sdk.CategoryUnimplemented, "plugin.command", "command handler is not implemented")
@@ -62,10 +66,6 @@ func (b *businessServer) HandleCommand(ctx context.Context, request *wire.Comman
 		}
 		if value == nil {
 			return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.command", "missing command")
-		}
-		ctx, err = businessContext(ctx, request.GetInvocationId(), request.GetInvocationToken())
-		if err != nil {
-			return err
 		}
 		if err := b.state.beginExecution(ctx, request.InvocationId, executionBusiness); err != nil {
 			return err
@@ -85,16 +85,19 @@ func (b *businessServer) HandleCommand(ctx context.Context, request *wire.Comman
 func (b *businessServer) HandleCapability(ctx context.Context, request *wire.CapabilityRequest) (*wire.CapabilityResponse, error) {
 	response := &wire.CapabilityResponse{}
 	err := protect("plugin.capability", func() error {
+		ctx, err := businessContext(ctx, request.GetInvocationId(), request.GetInvocationToken())
+		if err != nil {
+			return err
+		}
 		handler, ok := b.state.implementation.(CapabilityHandler)
 		if !ok {
 			return sdk.NewError(sdk.CategoryUnimplemented, "plugin.capability", "capability handler is not implemented")
 		}
-		if request.GetRequest() == nil || len(request.GetRequest().GetPayload().GetValue()) > transport.MaxInlinePayloadSize {
-			return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.capability", "missing request or oversized inline payload")
+		if request.GetRequest() == nil {
+			return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.capability", "missing request")
 		}
-		ctx, err := businessContext(ctx, request.GetInvocationId(), request.GetInvocationToken())
-		if err != nil {
-			return err
+		if len(request.GetRequest().GetPayload().GetValue()) > transport.MaxInlinePayloadSize {
+			return sdk.NewError(sdk.CategoryResourceExhausted, "plugin.capability", "inline payload is too large")
 		}
 		if err := b.state.beginExecution(ctx, request.InvocationId, executionCapability); err != nil {
 			return err
