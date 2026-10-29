@@ -264,7 +264,7 @@ func (c *remoteMessages) Download(ctx context.Context, media sdk.MediaRef) (io.R
 		return nil, transport.DecodeError(nil, err, "messages.download")
 	}
 	reader := &remoteMediaReader{
-		stream: stream, cancel: cancel, pending: append([]byte(nil), first.GetData()...),
+		ctx: ctx, stream: stream, cancel: cancel, pending: append([]byte(nil), first.GetData()...),
 		expected: media.SizeBytes, limit: media.SizeBytes,
 	}
 	if sizeLimit, ok := transport.MediaSizeLimit(media.Kind); ok {
@@ -331,6 +331,7 @@ func (c *remoteMessages) SendNameCard(ctx context.Context, conversation sdk.Conv
 
 // remoteMediaReader 将 gRPC 分块流包装成可取消和可关闭的有界 Reader
 type remoteMediaReader struct {
+	ctx      context.Context                             // 调用方上下文
 	stream   grpc.ServerStreamingClient[wire.MediaChunk] // 宿主下载流
 	cancel   context.CancelFunc                          // Close 立即取消底层传输
 	pending  []byte                                      // 预取的首块或上次未读完的块
@@ -338,6 +339,9 @@ type remoteMediaReader struct {
 	expected int64                                       // 引用声明字节数
 	limit    int64                                       // 本地总量上限
 	terminal error                                       // 已确认的终态
+	mu       sync.Mutex                                  // 保护状态字段
+	readMu   sync.Mutex                                  // 串行化底层 Recv
+	closed   bool                                        // 是否已经关闭
 	once     sync.Once                                   // 取消只执行一次
 }
 
@@ -346,28 +350,66 @@ func (r *remoteMediaReader) Read(destination []byte) (int, error) {
 	if len(destination) == 0 {
 		return 0, nil
 	}
-	for len(r.pending) == 0 && r.terminal == nil {
-		chunk, err := r.stream.Recv()
-		if errors.Is(err, io.EOF) {
-			if r.expected >= 0 && r.total != r.expected {
-				r.terminal = sdk.NewError(sdk.CategoryInternal, "messages.download", "download size does not match reference")
-			} else {
-				r.terminal = io.EOF
-			}
-			break
+	r.readMu.Lock()
+	defer r.readMu.Unlock()
+
+	r.mu.Lock()
+	if r.closed {
+		err := r.terminal
+		if err == nil {
+			err = io.ErrClosedPipe
 		}
-		if err != nil {
+		r.mu.Unlock()
+		return 0, err
+	}
+	if r.ctx != nil {
+		if err := r.ctx.Err(); err != nil {
 			r.terminal = transport.DecodeError(nil, err, "messages.download")
-			break
-		}
-		r.pending = append(r.pending[:0], chunk.GetData()...)
-		if err := r.validateChunk(r.pending); err != nil {
-			r.terminal = err
-			r.pending = nil
+			err = r.terminal
+			r.mu.Unlock()
+			return 0, err
 		}
 	}
-	if len(r.pending) == 0 {
+	if len(r.pending) != 0 {
+		n := copy(destination, r.pending)
+		r.pending = r.pending[n:]
+		r.mu.Unlock()
+		return n, nil
+	}
+	if r.terminal != nil {
+		err := r.terminal
+		r.mu.Unlock()
+		return 0, err
+	}
+	r.mu.Unlock()
+
+	chunk, err := r.stream.Recv()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.closed {
+		if r.terminal != nil {
+			return 0, r.terminal
+		}
+		return 0, io.ErrClosedPipe
+	}
+	if errors.Is(err, io.EOF) {
+		if r.expected >= 0 && r.total != r.expected {
+			r.terminal = sdk.NewError(sdk.CategoryInternal, "messages.download", "download size does not match reference")
+		} else {
+			r.terminal = io.EOF
+		}
 		return 0, r.terminal
+	}
+	if err != nil {
+		r.terminal = transport.DecodeError(nil, err, "messages.download")
+		return 0, r.terminal
+	}
+	r.pending = append(r.pending[:0], chunk.GetData()...)
+	if err := r.validateChunkLocked(r.pending); err != nil {
+		r.terminal = err
+		r.pending = nil
+		return 0, err
 	}
 	n := copy(destination, r.pending)
 	r.pending = r.pending[n:]
@@ -376,6 +418,13 @@ func (r *remoteMediaReader) Read(destination []byte) (int, error) {
 
 // validateChunk 在交给插件前累计并校验宿主分块
 func (r *remoteMediaReader) validateChunk(data []byte) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.validateChunkLocked(data)
+}
+
+// validateChunkLocked 在持有状态锁时校验宿主分块
+func (r *remoteMediaReader) validateChunkLocked(data []byte) error {
 	if len(data) == 0 || len(data) > transport.MaxMediaChunkSize {
 		return sdk.NewError(sdk.CategoryInternal, "messages.download", "invalid media chunk")
 	}
@@ -388,8 +437,20 @@ func (r *remoteMediaReader) validateChunk(data []byte) error {
 
 // Close 取消底层下载并释放连接额度
 func (r *remoteMediaReader) Close() error {
-	r.once.Do(r.cancel)
+	r.mu.Lock()
+	if r.closed {
+		r.mu.Unlock()
+		return nil
+	}
+	r.closed = true
 	r.pending = nil
+	if r.terminal == nil {
+		r.terminal = io.ErrClosedPipe
+	}
+	r.mu.Unlock()
+	if r.cancel != nil {
+		r.once.Do(r.cancel)
+	}
 	return nil
 }
 

@@ -20,6 +20,7 @@ type downloadStreamFixture struct {
 	ctx    context.Context    // 人工流上下文
 	chunks []*wire.MediaChunk // 待回放分块
 	wait   bool               // 分块结束后等待上下文取消
+	start  chan<- struct{}    // 首次进入等待时通知测试
 }
 
 // Recv 回放分块并在需要时等待取消
@@ -30,6 +31,9 @@ func (s *downloadStreamFixture) Recv() (*wire.MediaChunk, error) {
 		return value, nil
 	}
 	if s.wait {
+		if s.start != nil {
+			s.start <- struct{}{}
+		}
 		<-s.ctx.Done()
 		return nil, s.ctx.Err()
 	}
@@ -54,6 +58,40 @@ func TestRemoteMediaReaderBoundsAndClose(t *testing.T) {
 	case <-ctx.Done():
 	case <-time.After(time.Second):
 		t.Fatal("Close 未取消下载流")
+	}
+}
+
+// TestRemoteMediaReaderCloseUnblocksRead 验证阻塞读取期间 Close 能解除等待并拒绝后续读取
+func TestRemoteMediaReaderCloseUnblocksRead(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	started := make(chan struct{}, 1)
+	reader := &remoteMediaReader{
+		ctx: ctx, stream: &downloadStreamFixture{ctx: ctx, wait: true, start: started},
+		cancel: cancel, expected: -1, limit: transport.MaxDefaultMediaSize,
+	}
+	done := make(chan error, 1)
+	go func() {
+		_, err := reader.Read(make([]byte, 1))
+		done <- err
+	}()
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("下载读取未进入等待")
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-done:
+		if !errors.Is(err, io.ErrClosedPipe) {
+			t.Fatalf("Close 未返回关闭错误: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Close 后下载仍阻塞")
+	}
+	if _, err := reader.Read(make([]byte, 1)); !errors.Is(err, io.ErrClosedPipe) {
+		t.Fatalf("Close 后仍可读取: %v", err)
 	}
 }
 
