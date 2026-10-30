@@ -190,14 +190,48 @@ const (
 	PermissionMessageSend Permission = "message.send"
 	// PermissionMessageRead 读取消息及下载授权媒体权限
 	PermissionMessageRead Permission = "message.read"
+	// PermissionMessageRaw 使用原始消息 XML 或消息 ID 发送、撤回、下载和转写权限
+	PermissionMessageRaw Permission = "message.raw"
 	// PermissionContactRead 读取联系人资料权限
 	PermissionContactRead Permission = "contact.read"
 	// PermissionContactWrite 显式刷新联系人资料等写入口权限
 	PermissionContactWrite Permission = "contact.write"
+	// PermissionContactManage 好友申请、验证、备注、黑名单和删除联系人权限
+	PermissionContactManage Permission = "contact.manage"
 	// PermissionChatroomRead 读取群资料和成员权限
 	PermissionChatroomRead Permission = "chatroom.read"
 	// PermissionChatroomWrite 显式刷新群资料等写入口权限
 	PermissionChatroomWrite Permission = "chatroom.write"
+	// PermissionChatroomManage 建群、成员、管理员和群资料管理权限
+	PermissionChatroomManage Permission = "chatroom.manage"
+	// PermissionLabelRead 读取联系人标签权限
+	PermissionLabelRead Permission = "label.read"
+	// PermissionLabelWrite 创建、修改、删除标签及设置联系人标签权限
+	PermissionLabelWrite Permission = "label.write"
+	// PermissionFavoriteRead 读取收藏容量、条目和同步变更权限
+	PermissionFavoriteRead Permission = "favorite.read"
+	// PermissionFavoriteWrite 删除、分享和检查收藏资源权限
+	PermissionFavoriteWrite Permission = "favorite.write"
+	// PermissionMomentsRead 读取朋友圈时间线、详情和同步变更权限
+	PermissionMomentsRead Permission = "moments.read"
+	// PermissionMomentsWrite 发布、互动、删除和设置朋友圈可见性权限
+	PermissionMomentsWrite Permission = "moments.write"
+	// PermissionMiniappUse 使用小程序登录、会话、数据和手机号能力权限
+	PermissionMiniappUse Permission = "miniapp.use"
+	// PermissionOfficialRead 读取公众号授权、文章和 JSAPI 信息权限
+	PermissionOfficialRead Permission = "official.read"
+	// PermissionOfficialWrite 关注、取关和点赞公众号文章权限
+	PermissionOfficialWrite Permission = "official.write"
+	// PermissionPaymentUse 查询支付信息、接收转账和处理红包权限
+	PermissionPaymentUse Permission = "payment.use"
+	// PermissionUserRead 读取当前用户资料、二维码和安全设备权限
+	PermissionUserRead Permission = "user.read"
+	// PermissionUserWrite 修改当前用户资料、头像、隐私、别名和设备状态权限
+	PermissionUserWrite Permission = "user.write"
+	// PermissionCDNUse 使用 core 的 CDN 上传、下载和资源检查能力权限
+	PermissionCDNUse Permission = "cdn.use"
+	// PermissionLoginManage 管理当前 core 账号登录生命周期权限
+	PermissionLoginManage Permission = "login.manage"
 	// PermissionSessionAcquire 申请、续期和释放自身会话租约权限
 	PermissionSessionAcquire Permission = "session.acquire"
 	// PermissionCapabilityCall 按能力名调用其他插件权限
@@ -207,3 +241,40 @@ const (
 	// PermissionBackgroundRun 在宿主授权范围内执行后台任务权限
 	PermissionBackgroundRun Permission = "background.run"
 )
+
+// SensitivePermission 判断新接入的高风险权限是否必须由管理员显式授予。
+// 旧版已发布权限保持原有自动声明授予行为，避免破坏现有插件升级。
+func SensitivePermission(permission Permission) bool {
+	switch permission {
+	case PermissionMessageRaw, PermissionContactManage, PermissionChatroomManage,
+		PermissionLabelRead, PermissionLabelWrite,
+		PermissionFavoriteRead, PermissionFavoriteWrite,
+		PermissionMomentsRead, PermissionMomentsWrite,
+		PermissionMiniappUse, PermissionOfficialRead, PermissionOfficialWrite,
+		PermissionPaymentUse, PermissionUserRead, PermissionUserWrite,
+		PermissionCDNUse, PermissionLoginManage:
+		return true
+	default:
+		return false
+	}
+}
+
+// KnownPermission 判断权限是否属于当前公共契约。
+func KnownPermission(permission Permission) bool {
+	switch permission {
+	case PermissionMessageSend, PermissionMessageRead, PermissionMessageRaw,
+		PermissionContactRead, PermissionContactWrite, PermissionContactManage,
+		PermissionChatroomRead, PermissionChatroomWrite, PermissionChatroomManage,
+		PermissionLabelRead, PermissionLabelWrite,
+		PermissionFavoriteRead, PermissionFavoriteWrite,
+		PermissionMomentsRead, PermissionMomentsWrite,
+		PermissionMiniappUse, PermissionOfficialRead, PermissionOfficialWrite,
+		PermissionPaymentUse, PermissionUserRead, PermissionUserWrite,
+		PermissionCDNUse, PermissionLoginManage,
+		PermissionSessionAcquire, PermissionCapabilityCall,
+		PermissionConfigSelfWrite, PermissionBackgroundRun:
+		return true
+	default:
+		return false
+	}
+}

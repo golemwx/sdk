@@ -1525,6 +1525,114 @@ var HostAccountService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	HostCoreService_Invoke_FullMethodName = "/golem.sdk.HostCoreService/Invoke"
+)
+
+// HostCoreServiceClient is the client API for HostCoreService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// HostCoreService 宿主当前 core 公共 API 的稳定扩展入口
+type HostCoreServiceClient interface {
+	// Invoke 按显式声明的方法名调用当前 core 已接入的扩展业务
+	Invoke(ctx context.Context, in *CoreInvokeRequest, opts ...grpc.CallOption) (*CoreInvokeResponse, error)
+}
+
+type hostCoreServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewHostCoreServiceClient(cc grpc.ClientConnInterface) HostCoreServiceClient {
+	return &hostCoreServiceClient{cc}
+}
+
+func (c *hostCoreServiceClient) Invoke(ctx context.Context, in *CoreInvokeRequest, opts ...grpc.CallOption) (*CoreInvokeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CoreInvokeResponse)
+	err := c.cc.Invoke(ctx, HostCoreService_Invoke_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// HostCoreServiceServer is the server API for HostCoreService service.
+// All implementations must embed UnimplementedHostCoreServiceServer
+// for forward compatibility.
+//
+// HostCoreService 宿主当前 core 公共 API 的稳定扩展入口
+type HostCoreServiceServer interface {
+	// Invoke 按显式声明的方法名调用当前 core 已接入的扩展业务
+	Invoke(context.Context, *CoreInvokeRequest) (*CoreInvokeResponse, error)
+	mustEmbedUnimplementedHostCoreServiceServer()
+}
+
+// UnimplementedHostCoreServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedHostCoreServiceServer struct{}
+
+func (UnimplementedHostCoreServiceServer) Invoke(context.Context, *CoreInvokeRequest) (*CoreInvokeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Invoke not implemented")
+}
+func (UnimplementedHostCoreServiceServer) mustEmbedUnimplementedHostCoreServiceServer() {}
+func (UnimplementedHostCoreServiceServer) testEmbeddedByValue()                         {}
+
+// UnsafeHostCoreServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to HostCoreServiceServer will
+// result in compilation errors.
+type UnsafeHostCoreServiceServer interface {
+	mustEmbedUnimplementedHostCoreServiceServer()
+}
+
+func RegisterHostCoreServiceServer(s grpc.ServiceRegistrar, srv HostCoreServiceServer) {
+	// If the following call panics, it indicates UnimplementedHostCoreServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&HostCoreService_ServiceDesc, srv)
+}
+
+func _HostCoreService_Invoke_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CoreInvokeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostCoreServiceServer).Invoke(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostCoreService_Invoke_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostCoreServiceServer).Invoke(ctx, req.(*CoreInvokeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// HostCoreService_ServiceDesc is the grpc.ServiceDesc for HostCoreService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var HostCoreService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "golem.sdk.HostCoreService",
+	HandlerType: (*HostCoreServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Invoke",
+			Handler:    _HostCoreService_Invoke_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "golem/sdk/host.proto",
+}
+
+const (
 	HostControlService_ReverseReady_FullMethodName       = "/golem.sdk.HostControlService/ReverseReady"
 	HostControlService_ExecutionCompleted_FullMethodName = "/golem.sdk.HostControlService/ExecutionCompleted"
 )

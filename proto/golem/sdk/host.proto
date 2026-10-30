@@ -302,6 +302,19 @@ message AccountResponse {
   Error error = 2; // 业务错误，成功时为空；部分成功仍保留逐项结果
 }
 
+// CoreInvokeRequest 经宿主白名单路由的 core 扩展业务调用请求
+message CoreInvokeRequest {
+  Invocation invocation = 1; // 本次反向调用绑定的执行身份凭据
+  string method = 2; // 已声明的稳定业务方法名
+  bytes request = 3; // 方法对应的 JSON 请求体，不包含宿主路径或凭据
+}
+
+// CoreInvokeResponse core 扩展业务调用响应
+message CoreInvokeResponse {
+  bytes response = 1; // 方法对应的 JSON 响应体，成功且无返回数据时为空
+  Error error = 2; // 业务错误，成功时为空
+}
+
 // ExecutionCompletedRequest 插件处理函数实际结束后的受控执行确认
 message ExecutionCompletedRequest {
   string control_token = 1; // 绑定插件实例的控制通道凭据，不作为业务参数暴露
@@ -392,6 +405,12 @@ service HostConfigService {
 service HostAccountService {
   // Current 读取当前账号业务快照
   rpc Current(AccountCurrentRequest) returns (AccountResponse);
+}
+
+// HostCoreService 宿主当前 core 公共 API 的稳定扩展入口
+service HostCoreService {
+  // Invoke 按显式声明的方法名调用当前 core 已接入的扩展业务
+  rpc Invoke(CoreInvokeRequest) returns (CoreInvokeResponse);
 }
 
 // HostControlService 宿主反向连接就绪及执行完成确认服务

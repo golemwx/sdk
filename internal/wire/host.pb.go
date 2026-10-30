@@ -2597,6 +2597,120 @@ func (x *AccountResponse) GetError() *Error {
 	return nil
 }
 
+// CoreInvokeRequest 经宿主白名单路由的 core 扩展业务调用请求
+type CoreInvokeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
+	Method        string                 `protobuf:"bytes,2,opt,name=method,proto3" json:"method,omitempty"`         // 已声明的稳定业务方法名
+	Request       []byte                 `protobuf:"bytes,3,opt,name=request,proto3" json:"request,omitempty"`       // 方法对应的 JSON 请求体，不包含宿主路径或凭据
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CoreInvokeRequest) Reset() {
+	*x = CoreInvokeRequest{}
+	mi := &file_golem_sdk_host_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CoreInvokeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CoreInvokeRequest) ProtoMessage() {}
+
+func (x *CoreInvokeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CoreInvokeRequest.ProtoReflect.Descriptor instead.
+func (*CoreInvokeRequest) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *CoreInvokeRequest) GetInvocation() *Invocation {
+	if x != nil {
+		return x.Invocation
+	}
+	return nil
+}
+
+func (x *CoreInvokeRequest) GetMethod() string {
+	if x != nil {
+		return x.Method
+	}
+	return ""
+}
+
+func (x *CoreInvokeRequest) GetRequest() []byte {
+	if x != nil {
+		return x.Request
+	}
+	return nil
+}
+
+// CoreInvokeResponse core 扩展业务调用响应
+type CoreInvokeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Response      []byte                 `protobuf:"bytes,1,opt,name=response,proto3" json:"response,omitempty"` // 方法对应的 JSON 响应体，成功且无返回数据时为空
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`       // 业务错误，成功时为空
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CoreInvokeResponse) Reset() {
+	*x = CoreInvokeResponse{}
+	mi := &file_golem_sdk_host_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CoreInvokeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CoreInvokeResponse) ProtoMessage() {}
+
+func (x *CoreInvokeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CoreInvokeResponse.ProtoReflect.Descriptor instead.
+func (*CoreInvokeResponse) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *CoreInvokeResponse) GetResponse() []byte {
+	if x != nil {
+		return x.Response
+	}
+	return nil
+}
+
+func (x *CoreInvokeResponse) GetError() *Error {
+	if x != nil {
+		return x.Error
+	}
+	return nil
+}
+
 // ExecutionCompletedRequest 插件处理函数实际结束后的受控执行确认
 type ExecutionCompletedRequest struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
@@ -2609,7 +2723,7 @@ type ExecutionCompletedRequest struct {
 
 func (x *ExecutionCompletedRequest) Reset() {
 	*x = ExecutionCompletedRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[43]
+	mi := &file_golem_sdk_host_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2621,7 +2735,7 @@ func (x *ExecutionCompletedRequest) String() string {
 func (*ExecutionCompletedRequest) ProtoMessage() {}
 
 func (x *ExecutionCompletedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[43]
+	mi := &file_golem_sdk_host_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2634,7 +2748,7 @@ func (x *ExecutionCompletedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecutionCompletedRequest.ProtoReflect.Descriptor instead.
 func (*ExecutionCompletedRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{43}
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *ExecutionCompletedRequest) GetControlToken() string {
@@ -2668,7 +2782,7 @@ type ReverseReadyRequest struct {
 
 func (x *ReverseReadyRequest) Reset() {
 	*x = ReverseReadyRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[44]
+	mi := &file_golem_sdk_host_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2680,7 +2794,7 @@ func (x *ReverseReadyRequest) String() string {
 func (*ReverseReadyRequest) ProtoMessage() {}
 
 func (x *ReverseReadyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[44]
+	mi := &file_golem_sdk_host_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2693,7 +2807,7 @@ func (x *ReverseReadyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReverseReadyRequest.ProtoReflect.Descriptor instead.
 func (*ReverseReadyRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{44}
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *ReverseReadyRequest) GetControlToken() string {
@@ -2918,6 +3032,15 @@ const file_golem_sdk_host_proto_rawDesc = "" +
 	"invocation\"g\n" +
 	"\x0fAccountResponse\x12,\n" +
 	"\aaccount\x18\x01 \x01(\v2\x12.golem.sdk.AccountR\aaccount\x12&\n" +
+	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"|\n" +
+	"\x11CoreInvokeRequest\x125\n" +
+	"\n" +
+	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
+	"invocation\x12\x16\n" +
+	"\x06method\x18\x02 \x01(\tR\x06method\x12\x18\n" +
+	"\arequest\x18\x03 \x01(\fR\arequest\"X\n" +
+	"\x12CoreInvokeResponse\x12\x1a\n" +
+	"\bresponse\x18\x01 \x01(\fR\bresponse\x12&\n" +
 	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"\x96\x01\n" +
 	"\x19ExecutionCompletedRequest\x12#\n" +
 	"\rcontrol_token\x18\x01 \x01(\tR\fcontrolToken\x12#\n" +
@@ -2958,7 +3081,9 @@ const file_golem_sdk_host_proto_rawDesc = "" +
 	"\bSnapshot\x12 .golem.sdk.ConfigSnapshotRequest\x1a!.golem.sdk.ConfigSnapshotResponse\x12C\n" +
 	"\x04Save\x12\x1c.golem.sdk.ConfigSaveRequest\x1a\x1d.golem.sdk.ConfigSaveResponse2]\n" +
 	"\x12HostAccountService\x12G\n" +
-	"\aCurrent\x12 .golem.sdk.AccountCurrentRequest\x1a\x1a.golem.sdk.AccountResponse2\xbc\x01\n" +
+	"\aCurrent\x12 .golem.sdk.AccountCurrentRequest\x1a\x1a.golem.sdk.AccountResponse2X\n" +
+	"\x0fHostCoreService\x12E\n" +
+	"\x06Invoke\x12\x1c.golem.sdk.CoreInvokeRequest\x1a\x1d.golem.sdk.CoreInvokeResponse2\xbc\x01\n" +
 	"\x12HostControlService\x12L\n" +
 	"\fReverseReady\x12\x1e.golem.sdk.ReverseReadyRequest\x1a\x1c.golem.sdk.OperationResponse\x12X\n" +
 	"\x12ExecutionCompleted\x12$.golem.sdk.ExecutionCompletedRequest\x1a\x1c.golem.sdk.OperationResponseB+Z)github.com/golemwx/sdk/internal/wire;wireb\x06proto3"
@@ -2975,7 +3100,7 @@ func file_golem_sdk_host_proto_rawDescGZIP() []byte {
 	return file_golem_sdk_host_proto_rawDescData
 }
 
-var file_golem_sdk_host_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
+var file_golem_sdk_host_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
 var file_golem_sdk_host_proto_goTypes = []any{
 	(*Invocation)(nil),                // 0: golem.sdk.Invocation
 	(*SendTextRequest)(nil),           // 1: golem.sdk.SendTextRequest
@@ -3020,178 +3145,184 @@ var file_golem_sdk_host_proto_goTypes = []any{
 	(*ConfigSaveResponse)(nil),        // 40: golem.sdk.ConfigSaveResponse
 	(*AccountCurrentRequest)(nil),     // 41: golem.sdk.AccountCurrentRequest
 	(*AccountResponse)(nil),           // 42: golem.sdk.AccountResponse
-	(*ExecutionCompletedRequest)(nil), // 43: golem.sdk.ExecutionCompletedRequest
-	(*ReverseReadyRequest)(nil),       // 44: golem.sdk.ReverseReadyRequest
-	(*Conversation)(nil),              // 45: golem.sdk.Conversation
-	(*Quote)(nil),                     // 46: golem.sdk.Quote
-	(*SendReceipt)(nil),               // 47: golem.sdk.SendReceipt
-	(*Error)(nil),                     // 48: golem.sdk.Error
-	(*RevokeRef)(nil),                 // 49: golem.sdk.RevokeRef
-	(MediaKind)(0),                    // 50: golem.sdk.MediaKind
-	(*MediaRef)(nil),                  // 51: golem.sdk.MediaRef
-	(*VoiceOptions)(nil),              // 52: golem.sdk.VoiceOptions
-	(*ForwardRef)(nil),                // 53: golem.sdk.ForwardRef
-	(*PageRequest)(nil),               // 54: golem.sdk.PageRequest
-	(*Contact)(nil),                   // 55: golem.sdk.Contact
-	(*ContactPage)(nil),               // 56: golem.sdk.ContactPage
-	(*ContactBatchResult)(nil),        // 57: golem.sdk.ContactBatchResult
-	(*Room)(nil),                      // 58: golem.sdk.Room
-	(*Member)(nil),                    // 59: golem.sdk.Member
-	(*MemberPage)(nil),                // 60: golem.sdk.MemberPage
-	(*ChatroomRefreshResult)(nil),     // 61: golem.sdk.ChatroomRefreshResult
-	(*durationpb.Duration)(nil),       // 62: google.protobuf.Duration
-	(*Lease)(nil),                     // 63: golem.sdk.Lease
-	(*CallRequest)(nil),               // 64: golem.sdk.CallRequest
-	(*CallResult)(nil),                // 65: golem.sdk.CallResult
-	(*ConfigSnapshot)(nil),            // 66: golem.sdk.ConfigSnapshot
-	(*BytesValue)(nil),                // 67: golem.sdk.BytesValue
-	(*ConfigSaveResult)(nil),          // 68: golem.sdk.ConfigSaveResult
-	(*Account)(nil),                   // 69: golem.sdk.Account
-	(*OperationResponse)(nil),         // 70: golem.sdk.OperationResponse
-	(*MediaChunk)(nil),                // 71: golem.sdk.MediaChunk
+	(*CoreInvokeRequest)(nil),         // 43: golem.sdk.CoreInvokeRequest
+	(*CoreInvokeResponse)(nil),        // 44: golem.sdk.CoreInvokeResponse
+	(*ExecutionCompletedRequest)(nil), // 45: golem.sdk.ExecutionCompletedRequest
+	(*ReverseReadyRequest)(nil),       // 46: golem.sdk.ReverseReadyRequest
+	(*Conversation)(nil),              // 47: golem.sdk.Conversation
+	(*Quote)(nil),                     // 48: golem.sdk.Quote
+	(*SendReceipt)(nil),               // 49: golem.sdk.SendReceipt
+	(*Error)(nil),                     // 50: golem.sdk.Error
+	(*RevokeRef)(nil),                 // 51: golem.sdk.RevokeRef
+	(MediaKind)(0),                    // 52: golem.sdk.MediaKind
+	(*MediaRef)(nil),                  // 53: golem.sdk.MediaRef
+	(*VoiceOptions)(nil),              // 54: golem.sdk.VoiceOptions
+	(*ForwardRef)(nil),                // 55: golem.sdk.ForwardRef
+	(*PageRequest)(nil),               // 56: golem.sdk.PageRequest
+	(*Contact)(nil),                   // 57: golem.sdk.Contact
+	(*ContactPage)(nil),               // 58: golem.sdk.ContactPage
+	(*ContactBatchResult)(nil),        // 59: golem.sdk.ContactBatchResult
+	(*Room)(nil),                      // 60: golem.sdk.Room
+	(*Member)(nil),                    // 61: golem.sdk.Member
+	(*MemberPage)(nil),                // 62: golem.sdk.MemberPage
+	(*ChatroomRefreshResult)(nil),     // 63: golem.sdk.ChatroomRefreshResult
+	(*durationpb.Duration)(nil),       // 64: google.protobuf.Duration
+	(*Lease)(nil),                     // 65: golem.sdk.Lease
+	(*CallRequest)(nil),               // 66: golem.sdk.CallRequest
+	(*CallResult)(nil),                // 67: golem.sdk.CallResult
+	(*ConfigSnapshot)(nil),            // 68: golem.sdk.ConfigSnapshot
+	(*BytesValue)(nil),                // 69: golem.sdk.BytesValue
+	(*ConfigSaveResult)(nil),          // 70: golem.sdk.ConfigSaveResult
+	(*Account)(nil),                   // 71: golem.sdk.Account
+	(*OperationResponse)(nil),         // 72: golem.sdk.OperationResponse
+	(*MediaChunk)(nil),                // 73: golem.sdk.MediaChunk
 }
 var file_golem_sdk_host_proto_depIdxs = []int32{
 	0,   // 0: golem.sdk.SendTextRequest.invocation:type_name -> golem.sdk.Invocation
-	45,  // 1: golem.sdk.SendTextRequest.conversation:type_name -> golem.sdk.Conversation
+	47,  // 1: golem.sdk.SendTextRequest.conversation:type_name -> golem.sdk.Conversation
 	0,   // 2: golem.sdk.ReplyRequest.invocation:type_name -> golem.sdk.Invocation
-	45,  // 3: golem.sdk.ReplyRequest.conversation:type_name -> golem.sdk.Conversation
-	46,  // 4: golem.sdk.ReplyRequest.quote:type_name -> golem.sdk.Quote
-	47,  // 5: golem.sdk.SendReceiptResponse.receipt:type_name -> golem.sdk.SendReceipt
-	48,  // 6: golem.sdk.SendReceiptResponse.error:type_name -> golem.sdk.Error
+	47,  // 3: golem.sdk.ReplyRequest.conversation:type_name -> golem.sdk.Conversation
+	48,  // 4: golem.sdk.ReplyRequest.quote:type_name -> golem.sdk.Quote
+	49,  // 5: golem.sdk.SendReceiptResponse.receipt:type_name -> golem.sdk.SendReceipt
+	50,  // 6: golem.sdk.SendReceiptResponse.error:type_name -> golem.sdk.Error
 	0,   // 7: golem.sdk.RevokeRequest.invocation:type_name -> golem.sdk.Invocation
-	49,  // 8: golem.sdk.RevokeRequest.ref:type_name -> golem.sdk.RevokeRef
+	51,  // 8: golem.sdk.RevokeRequest.ref:type_name -> golem.sdk.RevokeRef
 	0,   // 9: golem.sdk.SendMediaMetadata.invocation:type_name -> golem.sdk.Invocation
-	45,  // 10: golem.sdk.SendMediaMetadata.conversation:type_name -> golem.sdk.Conversation
-	50,  // 11: golem.sdk.SendMediaMetadata.kind:type_name -> golem.sdk.MediaKind
-	51,  // 12: golem.sdk.SendMediaMetadata.ref:type_name -> golem.sdk.MediaRef
-	52,  // 13: golem.sdk.SendMediaMetadata.voice:type_name -> golem.sdk.VoiceOptions
+	47,  // 10: golem.sdk.SendMediaMetadata.conversation:type_name -> golem.sdk.Conversation
+	52,  // 11: golem.sdk.SendMediaMetadata.kind:type_name -> golem.sdk.MediaKind
+	53,  // 12: golem.sdk.SendMediaMetadata.ref:type_name -> golem.sdk.MediaRef
+	54,  // 13: golem.sdk.SendMediaMetadata.voice:type_name -> golem.sdk.VoiceOptions
 	5,   // 14: golem.sdk.SendMediaRequest.metadata:type_name -> golem.sdk.SendMediaMetadata
 	0,   // 15: golem.sdk.DownloadRequest.invocation:type_name -> golem.sdk.Invocation
-	51,  // 16: golem.sdk.DownloadRequest.media:type_name -> golem.sdk.MediaRef
+	53,  // 16: golem.sdk.DownloadRequest.media:type_name -> golem.sdk.MediaRef
 	0,   // 17: golem.sdk.StoreMediaMetadata.invocation:type_name -> golem.sdk.Invocation
-	50,  // 18: golem.sdk.StoreMediaMetadata.kind:type_name -> golem.sdk.MediaKind
-	52,  // 19: golem.sdk.StoreMediaMetadata.voice:type_name -> golem.sdk.VoiceOptions
+	52,  // 18: golem.sdk.StoreMediaMetadata.kind:type_name -> golem.sdk.MediaKind
+	54,  // 19: golem.sdk.StoreMediaMetadata.voice:type_name -> golem.sdk.VoiceOptions
 	8,   // 20: golem.sdk.StoreMediaRequest.metadata:type_name -> golem.sdk.StoreMediaMetadata
-	51,  // 21: golem.sdk.MediaRefResponse.media:type_name -> golem.sdk.MediaRef
-	48,  // 22: golem.sdk.MediaRefResponse.error:type_name -> golem.sdk.Error
+	53,  // 21: golem.sdk.MediaRefResponse.media:type_name -> golem.sdk.MediaRef
+	50,  // 22: golem.sdk.MediaRefResponse.error:type_name -> golem.sdk.Error
 	0,   // 23: golem.sdk.ForwardRequest.invocation:type_name -> golem.sdk.Invocation
-	45,  // 24: golem.sdk.ForwardRequest.conversation:type_name -> golem.sdk.Conversation
-	53,  // 25: golem.sdk.ForwardRequest.ref:type_name -> golem.sdk.ForwardRef
+	47,  // 24: golem.sdk.ForwardRequest.conversation:type_name -> golem.sdk.Conversation
+	55,  // 25: golem.sdk.ForwardRequest.ref:type_name -> golem.sdk.ForwardRef
 	0,   // 26: golem.sdk.SendLinkRequest.invocation:type_name -> golem.sdk.Invocation
-	45,  // 27: golem.sdk.SendLinkRequest.conversation:type_name -> golem.sdk.Conversation
+	47,  // 27: golem.sdk.SendLinkRequest.conversation:type_name -> golem.sdk.Conversation
 	0,   // 28: golem.sdk.SendLocationRequest.invocation:type_name -> golem.sdk.Invocation
-	45,  // 29: golem.sdk.SendLocationRequest.conversation:type_name -> golem.sdk.Conversation
+	47,  // 29: golem.sdk.SendLocationRequest.conversation:type_name -> golem.sdk.Conversation
 	0,   // 30: golem.sdk.SendNameCardRequest.invocation:type_name -> golem.sdk.Invocation
-	45,  // 31: golem.sdk.SendNameCardRequest.conversation:type_name -> golem.sdk.Conversation
+	47,  // 31: golem.sdk.SendNameCardRequest.conversation:type_name -> golem.sdk.Conversation
 	0,   // 32: golem.sdk.ContactGetRequest.invocation:type_name -> golem.sdk.Invocation
 	0,   // 33: golem.sdk.ContactFindRequest.invocation:type_name -> golem.sdk.Invocation
-	54,  // 34: golem.sdk.ContactFindRequest.page:type_name -> golem.sdk.PageRequest
+	56,  // 34: golem.sdk.ContactFindRequest.page:type_name -> golem.sdk.PageRequest
 	0,   // 35: golem.sdk.ContactListRequest.invocation:type_name -> golem.sdk.Invocation
-	54,  // 36: golem.sdk.ContactListRequest.page:type_name -> golem.sdk.PageRequest
+	56,  // 36: golem.sdk.ContactListRequest.page:type_name -> golem.sdk.PageRequest
 	0,   // 37: golem.sdk.ContactRefreshRequest.invocation:type_name -> golem.sdk.Invocation
-	55,  // 38: golem.sdk.ContactResponse.contact:type_name -> golem.sdk.Contact
-	48,  // 39: golem.sdk.ContactResponse.error:type_name -> golem.sdk.Error
-	56,  // 40: golem.sdk.ContactPageResponse.page:type_name -> golem.sdk.ContactPage
-	48,  // 41: golem.sdk.ContactPageResponse.error:type_name -> golem.sdk.Error
-	57,  // 42: golem.sdk.ContactBatchResponse.result:type_name -> golem.sdk.ContactBatchResult
-	48,  // 43: golem.sdk.ContactBatchResponse.error:type_name -> golem.sdk.Error
+	57,  // 38: golem.sdk.ContactResponse.contact:type_name -> golem.sdk.Contact
+	50,  // 39: golem.sdk.ContactResponse.error:type_name -> golem.sdk.Error
+	58,  // 40: golem.sdk.ContactPageResponse.page:type_name -> golem.sdk.ContactPage
+	50,  // 41: golem.sdk.ContactPageResponse.error:type_name -> golem.sdk.Error
+	59,  // 42: golem.sdk.ContactBatchResponse.result:type_name -> golem.sdk.ContactBatchResult
+	50,  // 43: golem.sdk.ContactBatchResponse.error:type_name -> golem.sdk.Error
 	0,   // 44: golem.sdk.ChatroomGetRequest.invocation:type_name -> golem.sdk.Invocation
 	0,   // 45: golem.sdk.ChatroomMembersRequest.invocation:type_name -> golem.sdk.Invocation
-	54,  // 46: golem.sdk.ChatroomMembersRequest.page:type_name -> golem.sdk.PageRequest
+	56,  // 46: golem.sdk.ChatroomMembersRequest.page:type_name -> golem.sdk.PageRequest
 	0,   // 47: golem.sdk.ChatroomMemberRequest.invocation:type_name -> golem.sdk.Invocation
 	0,   // 48: golem.sdk.ChatroomRefreshRequest.invocation:type_name -> golem.sdk.Invocation
-	58,  // 49: golem.sdk.RoomResponse.room:type_name -> golem.sdk.Room
-	48,  // 50: golem.sdk.RoomResponse.error:type_name -> golem.sdk.Error
-	59,  // 51: golem.sdk.MemberResponse.member:type_name -> golem.sdk.Member
-	48,  // 52: golem.sdk.MemberResponse.error:type_name -> golem.sdk.Error
-	60,  // 53: golem.sdk.MemberPageResponse.page:type_name -> golem.sdk.MemberPage
-	48,  // 54: golem.sdk.MemberPageResponse.error:type_name -> golem.sdk.Error
-	61,  // 55: golem.sdk.ChatroomRefreshResponse.result:type_name -> golem.sdk.ChatroomRefreshResult
-	48,  // 56: golem.sdk.ChatroomRefreshResponse.error:type_name -> golem.sdk.Error
+	60,  // 49: golem.sdk.RoomResponse.room:type_name -> golem.sdk.Room
+	50,  // 50: golem.sdk.RoomResponse.error:type_name -> golem.sdk.Error
+	61,  // 51: golem.sdk.MemberResponse.member:type_name -> golem.sdk.Member
+	50,  // 52: golem.sdk.MemberResponse.error:type_name -> golem.sdk.Error
+	62,  // 53: golem.sdk.MemberPageResponse.page:type_name -> golem.sdk.MemberPage
+	50,  // 54: golem.sdk.MemberPageResponse.error:type_name -> golem.sdk.Error
+	63,  // 55: golem.sdk.ChatroomRefreshResponse.result:type_name -> golem.sdk.ChatroomRefreshResult
+	50,  // 56: golem.sdk.ChatroomRefreshResponse.error:type_name -> golem.sdk.Error
 	0,   // 57: golem.sdk.SessionAcquireRequest.invocation:type_name -> golem.sdk.Invocation
-	45,  // 58: golem.sdk.SessionAcquireRequest.conversation:type_name -> golem.sdk.Conversation
+	47,  // 58: golem.sdk.SessionAcquireRequest.conversation:type_name -> golem.sdk.Conversation
 	0,   // 59: golem.sdk.SessionRenewRequest.invocation:type_name -> golem.sdk.Invocation
-	62,  // 60: golem.sdk.SessionRenewRequest.ttl:type_name -> google.protobuf.Duration
+	64,  // 60: golem.sdk.SessionRenewRequest.ttl:type_name -> google.protobuf.Duration
 	0,   // 61: golem.sdk.SessionReleaseRequest.invocation:type_name -> golem.sdk.Invocation
-	63,  // 62: golem.sdk.LeaseResponse.lease:type_name -> golem.sdk.Lease
-	48,  // 63: golem.sdk.LeaseResponse.error:type_name -> golem.sdk.Error
+	65,  // 62: golem.sdk.LeaseResponse.lease:type_name -> golem.sdk.Lease
+	50,  // 63: golem.sdk.LeaseResponse.error:type_name -> golem.sdk.Error
 	0,   // 64: golem.sdk.HostCallRequest.invocation:type_name -> golem.sdk.Invocation
-	64,  // 65: golem.sdk.HostCallRequest.request:type_name -> golem.sdk.CallRequest
-	65,  // 66: golem.sdk.HostCallResponse.result:type_name -> golem.sdk.CallResult
-	48,  // 67: golem.sdk.HostCallResponse.error:type_name -> golem.sdk.Error
-	45,  // 68: golem.sdk.HostBackgroundCallRequest.conversation:type_name -> golem.sdk.Conversation
-	64,  // 69: golem.sdk.HostBackgroundCallRequest.request:type_name -> golem.sdk.CallRequest
+	66,  // 65: golem.sdk.HostCallRequest.request:type_name -> golem.sdk.CallRequest
+	67,  // 66: golem.sdk.HostCallResponse.result:type_name -> golem.sdk.CallResult
+	50,  // 67: golem.sdk.HostCallResponse.error:type_name -> golem.sdk.Error
+	47,  // 68: golem.sdk.HostBackgroundCallRequest.conversation:type_name -> golem.sdk.Conversation
+	66,  // 69: golem.sdk.HostBackgroundCallRequest.request:type_name -> golem.sdk.CallRequest
 	0,   // 70: golem.sdk.ConfigSnapshotRequest.invocation:type_name -> golem.sdk.Invocation
-	66,  // 71: golem.sdk.ConfigSnapshotResponse.snapshot:type_name -> golem.sdk.ConfigSnapshot
-	48,  // 72: golem.sdk.ConfigSnapshotResponse.error:type_name -> golem.sdk.Error
+	68,  // 71: golem.sdk.ConfigSnapshotResponse.snapshot:type_name -> golem.sdk.ConfigSnapshot
+	50,  // 72: golem.sdk.ConfigSnapshotResponse.error:type_name -> golem.sdk.Error
 	0,   // 73: golem.sdk.ConfigSaveRequest.invocation:type_name -> golem.sdk.Invocation
-	67,  // 74: golem.sdk.ConfigSaveRequest.data:type_name -> golem.sdk.BytesValue
-	68,  // 75: golem.sdk.ConfigSaveResponse.result:type_name -> golem.sdk.ConfigSaveResult
-	48,  // 76: golem.sdk.ConfigSaveResponse.error:type_name -> golem.sdk.Error
+	69,  // 74: golem.sdk.ConfigSaveRequest.data:type_name -> golem.sdk.BytesValue
+	70,  // 75: golem.sdk.ConfigSaveResponse.result:type_name -> golem.sdk.ConfigSaveResult
+	50,  // 76: golem.sdk.ConfigSaveResponse.error:type_name -> golem.sdk.Error
 	0,   // 77: golem.sdk.AccountCurrentRequest.invocation:type_name -> golem.sdk.Invocation
-	69,  // 78: golem.sdk.AccountResponse.account:type_name -> golem.sdk.Account
-	48,  // 79: golem.sdk.AccountResponse.error:type_name -> golem.sdk.Error
-	1,   // 80: golem.sdk.HostMessagesService.SendText:input_type -> golem.sdk.SendTextRequest
-	6,   // 81: golem.sdk.HostMessagesService.SendMedia:input_type -> golem.sdk.SendMediaRequest
-	9,   // 82: golem.sdk.HostMessagesService.StoreMedia:input_type -> golem.sdk.StoreMediaRequest
-	2,   // 83: golem.sdk.HostMessagesService.Reply:input_type -> golem.sdk.ReplyRequest
-	11,  // 84: golem.sdk.HostMessagesService.Forward:input_type -> golem.sdk.ForwardRequest
-	12,  // 85: golem.sdk.HostMessagesService.SendLink:input_type -> golem.sdk.SendLinkRequest
-	13,  // 86: golem.sdk.HostMessagesService.SendLocation:input_type -> golem.sdk.SendLocationRequest
-	14,  // 87: golem.sdk.HostMessagesService.SendNameCard:input_type -> golem.sdk.SendNameCardRequest
-	4,   // 88: golem.sdk.HostMessagesService.Revoke:input_type -> golem.sdk.RevokeRequest
-	7,   // 89: golem.sdk.HostMessagesService.Download:input_type -> golem.sdk.DownloadRequest
-	15,  // 90: golem.sdk.HostContactsService.Get:input_type -> golem.sdk.ContactGetRequest
-	16,  // 91: golem.sdk.HostContactsService.Find:input_type -> golem.sdk.ContactFindRequest
-	17,  // 92: golem.sdk.HostContactsService.List:input_type -> golem.sdk.ContactListRequest
-	18,  // 93: golem.sdk.HostContactsService.Refresh:input_type -> golem.sdk.ContactRefreshRequest
-	22,  // 94: golem.sdk.HostChatroomsService.Get:input_type -> golem.sdk.ChatroomGetRequest
-	23,  // 95: golem.sdk.HostChatroomsService.Members:input_type -> golem.sdk.ChatroomMembersRequest
-	24,  // 96: golem.sdk.HostChatroomsService.Member:input_type -> golem.sdk.ChatroomMemberRequest
-	25,  // 97: golem.sdk.HostChatroomsService.Refresh:input_type -> golem.sdk.ChatroomRefreshRequest
-	30,  // 98: golem.sdk.HostSessionsService.Acquire:input_type -> golem.sdk.SessionAcquireRequest
-	31,  // 99: golem.sdk.HostSessionsService.Renew:input_type -> golem.sdk.SessionRenewRequest
-	32,  // 100: golem.sdk.HostSessionsService.Release:input_type -> golem.sdk.SessionReleaseRequest
-	34,  // 101: golem.sdk.HostCallerService.Call:input_type -> golem.sdk.HostCallRequest
-	36,  // 102: golem.sdk.HostCallerService.CallBackground:input_type -> golem.sdk.HostBackgroundCallRequest
-	37,  // 103: golem.sdk.HostConfigService.Snapshot:input_type -> golem.sdk.ConfigSnapshotRequest
-	39,  // 104: golem.sdk.HostConfigService.Save:input_type -> golem.sdk.ConfigSaveRequest
-	41,  // 105: golem.sdk.HostAccountService.Current:input_type -> golem.sdk.AccountCurrentRequest
-	44,  // 106: golem.sdk.HostControlService.ReverseReady:input_type -> golem.sdk.ReverseReadyRequest
-	43,  // 107: golem.sdk.HostControlService.ExecutionCompleted:input_type -> golem.sdk.ExecutionCompletedRequest
-	3,   // 108: golem.sdk.HostMessagesService.SendText:output_type -> golem.sdk.SendReceiptResponse
-	3,   // 109: golem.sdk.HostMessagesService.SendMedia:output_type -> golem.sdk.SendReceiptResponse
-	10,  // 110: golem.sdk.HostMessagesService.StoreMedia:output_type -> golem.sdk.MediaRefResponse
-	3,   // 111: golem.sdk.HostMessagesService.Reply:output_type -> golem.sdk.SendReceiptResponse
-	3,   // 112: golem.sdk.HostMessagesService.Forward:output_type -> golem.sdk.SendReceiptResponse
-	3,   // 113: golem.sdk.HostMessagesService.SendLink:output_type -> golem.sdk.SendReceiptResponse
-	3,   // 114: golem.sdk.HostMessagesService.SendLocation:output_type -> golem.sdk.SendReceiptResponse
-	3,   // 115: golem.sdk.HostMessagesService.SendNameCard:output_type -> golem.sdk.SendReceiptResponse
-	70,  // 116: golem.sdk.HostMessagesService.Revoke:output_type -> golem.sdk.OperationResponse
-	71,  // 117: golem.sdk.HostMessagesService.Download:output_type -> golem.sdk.MediaChunk
-	19,  // 118: golem.sdk.HostContactsService.Get:output_type -> golem.sdk.ContactResponse
-	20,  // 119: golem.sdk.HostContactsService.Find:output_type -> golem.sdk.ContactPageResponse
-	20,  // 120: golem.sdk.HostContactsService.List:output_type -> golem.sdk.ContactPageResponse
-	21,  // 121: golem.sdk.HostContactsService.Refresh:output_type -> golem.sdk.ContactBatchResponse
-	26,  // 122: golem.sdk.HostChatroomsService.Get:output_type -> golem.sdk.RoomResponse
-	28,  // 123: golem.sdk.HostChatroomsService.Members:output_type -> golem.sdk.MemberPageResponse
-	27,  // 124: golem.sdk.HostChatroomsService.Member:output_type -> golem.sdk.MemberResponse
-	29,  // 125: golem.sdk.HostChatroomsService.Refresh:output_type -> golem.sdk.ChatroomRefreshResponse
-	33,  // 126: golem.sdk.HostSessionsService.Acquire:output_type -> golem.sdk.LeaseResponse
-	33,  // 127: golem.sdk.HostSessionsService.Renew:output_type -> golem.sdk.LeaseResponse
-	70,  // 128: golem.sdk.HostSessionsService.Release:output_type -> golem.sdk.OperationResponse
-	35,  // 129: golem.sdk.HostCallerService.Call:output_type -> golem.sdk.HostCallResponse
-	35,  // 130: golem.sdk.HostCallerService.CallBackground:output_type -> golem.sdk.HostCallResponse
-	38,  // 131: golem.sdk.HostConfigService.Snapshot:output_type -> golem.sdk.ConfigSnapshotResponse
-	40,  // 132: golem.sdk.HostConfigService.Save:output_type -> golem.sdk.ConfigSaveResponse
-	42,  // 133: golem.sdk.HostAccountService.Current:output_type -> golem.sdk.AccountResponse
-	70,  // 134: golem.sdk.HostControlService.ReverseReady:output_type -> golem.sdk.OperationResponse
-	70,  // 135: golem.sdk.HostControlService.ExecutionCompleted:output_type -> golem.sdk.OperationResponse
-	108, // [108:136] is the sub-list for method output_type
-	80,  // [80:108] is the sub-list for method input_type
-	80,  // [80:80] is the sub-list for extension type_name
-	80,  // [80:80] is the sub-list for extension extendee
-	0,   // [0:80] is the sub-list for field type_name
+	71,  // 78: golem.sdk.AccountResponse.account:type_name -> golem.sdk.Account
+	50,  // 79: golem.sdk.AccountResponse.error:type_name -> golem.sdk.Error
+	0,   // 80: golem.sdk.CoreInvokeRequest.invocation:type_name -> golem.sdk.Invocation
+	50,  // 81: golem.sdk.CoreInvokeResponse.error:type_name -> golem.sdk.Error
+	1,   // 82: golem.sdk.HostMessagesService.SendText:input_type -> golem.sdk.SendTextRequest
+	6,   // 83: golem.sdk.HostMessagesService.SendMedia:input_type -> golem.sdk.SendMediaRequest
+	9,   // 84: golem.sdk.HostMessagesService.StoreMedia:input_type -> golem.sdk.StoreMediaRequest
+	2,   // 85: golem.sdk.HostMessagesService.Reply:input_type -> golem.sdk.ReplyRequest
+	11,  // 86: golem.sdk.HostMessagesService.Forward:input_type -> golem.sdk.ForwardRequest
+	12,  // 87: golem.sdk.HostMessagesService.SendLink:input_type -> golem.sdk.SendLinkRequest
+	13,  // 88: golem.sdk.HostMessagesService.SendLocation:input_type -> golem.sdk.SendLocationRequest
+	14,  // 89: golem.sdk.HostMessagesService.SendNameCard:input_type -> golem.sdk.SendNameCardRequest
+	4,   // 90: golem.sdk.HostMessagesService.Revoke:input_type -> golem.sdk.RevokeRequest
+	7,   // 91: golem.sdk.HostMessagesService.Download:input_type -> golem.sdk.DownloadRequest
+	15,  // 92: golem.sdk.HostContactsService.Get:input_type -> golem.sdk.ContactGetRequest
+	16,  // 93: golem.sdk.HostContactsService.Find:input_type -> golem.sdk.ContactFindRequest
+	17,  // 94: golem.sdk.HostContactsService.List:input_type -> golem.sdk.ContactListRequest
+	18,  // 95: golem.sdk.HostContactsService.Refresh:input_type -> golem.sdk.ContactRefreshRequest
+	22,  // 96: golem.sdk.HostChatroomsService.Get:input_type -> golem.sdk.ChatroomGetRequest
+	23,  // 97: golem.sdk.HostChatroomsService.Members:input_type -> golem.sdk.ChatroomMembersRequest
+	24,  // 98: golem.sdk.HostChatroomsService.Member:input_type -> golem.sdk.ChatroomMemberRequest
+	25,  // 99: golem.sdk.HostChatroomsService.Refresh:input_type -> golem.sdk.ChatroomRefreshRequest
+	30,  // 100: golem.sdk.HostSessionsService.Acquire:input_type -> golem.sdk.SessionAcquireRequest
+	31,  // 101: golem.sdk.HostSessionsService.Renew:input_type -> golem.sdk.SessionRenewRequest
+	32,  // 102: golem.sdk.HostSessionsService.Release:input_type -> golem.sdk.SessionReleaseRequest
+	34,  // 103: golem.sdk.HostCallerService.Call:input_type -> golem.sdk.HostCallRequest
+	36,  // 104: golem.sdk.HostCallerService.CallBackground:input_type -> golem.sdk.HostBackgroundCallRequest
+	37,  // 105: golem.sdk.HostConfigService.Snapshot:input_type -> golem.sdk.ConfigSnapshotRequest
+	39,  // 106: golem.sdk.HostConfigService.Save:input_type -> golem.sdk.ConfigSaveRequest
+	41,  // 107: golem.sdk.HostAccountService.Current:input_type -> golem.sdk.AccountCurrentRequest
+	43,  // 108: golem.sdk.HostCoreService.Invoke:input_type -> golem.sdk.CoreInvokeRequest
+	46,  // 109: golem.sdk.HostControlService.ReverseReady:input_type -> golem.sdk.ReverseReadyRequest
+	45,  // 110: golem.sdk.HostControlService.ExecutionCompleted:input_type -> golem.sdk.ExecutionCompletedRequest
+	3,   // 111: golem.sdk.HostMessagesService.SendText:output_type -> golem.sdk.SendReceiptResponse
+	3,   // 112: golem.sdk.HostMessagesService.SendMedia:output_type -> golem.sdk.SendReceiptResponse
+	10,  // 113: golem.sdk.HostMessagesService.StoreMedia:output_type -> golem.sdk.MediaRefResponse
+	3,   // 114: golem.sdk.HostMessagesService.Reply:output_type -> golem.sdk.SendReceiptResponse
+	3,   // 115: golem.sdk.HostMessagesService.Forward:output_type -> golem.sdk.SendReceiptResponse
+	3,   // 116: golem.sdk.HostMessagesService.SendLink:output_type -> golem.sdk.SendReceiptResponse
+	3,   // 117: golem.sdk.HostMessagesService.SendLocation:output_type -> golem.sdk.SendReceiptResponse
+	3,   // 118: golem.sdk.HostMessagesService.SendNameCard:output_type -> golem.sdk.SendReceiptResponse
+	72,  // 119: golem.sdk.HostMessagesService.Revoke:output_type -> golem.sdk.OperationResponse
+	73,  // 120: golem.sdk.HostMessagesService.Download:output_type -> golem.sdk.MediaChunk
+	19,  // 121: golem.sdk.HostContactsService.Get:output_type -> golem.sdk.ContactResponse
+	20,  // 122: golem.sdk.HostContactsService.Find:output_type -> golem.sdk.ContactPageResponse
+	20,  // 123: golem.sdk.HostContactsService.List:output_type -> golem.sdk.ContactPageResponse
+	21,  // 124: golem.sdk.HostContactsService.Refresh:output_type -> golem.sdk.ContactBatchResponse
+	26,  // 125: golem.sdk.HostChatroomsService.Get:output_type -> golem.sdk.RoomResponse
+	28,  // 126: golem.sdk.HostChatroomsService.Members:output_type -> golem.sdk.MemberPageResponse
+	27,  // 127: golem.sdk.HostChatroomsService.Member:output_type -> golem.sdk.MemberResponse
+	29,  // 128: golem.sdk.HostChatroomsService.Refresh:output_type -> golem.sdk.ChatroomRefreshResponse
+	33,  // 129: golem.sdk.HostSessionsService.Acquire:output_type -> golem.sdk.LeaseResponse
+	33,  // 130: golem.sdk.HostSessionsService.Renew:output_type -> golem.sdk.LeaseResponse
+	72,  // 131: golem.sdk.HostSessionsService.Release:output_type -> golem.sdk.OperationResponse
+	35,  // 132: golem.sdk.HostCallerService.Call:output_type -> golem.sdk.HostCallResponse
+	35,  // 133: golem.sdk.HostCallerService.CallBackground:output_type -> golem.sdk.HostCallResponse
+	38,  // 134: golem.sdk.HostConfigService.Snapshot:output_type -> golem.sdk.ConfigSnapshotResponse
+	40,  // 135: golem.sdk.HostConfigService.Save:output_type -> golem.sdk.ConfigSaveResponse
+	42,  // 136: golem.sdk.HostAccountService.Current:output_type -> golem.sdk.AccountResponse
+	44,  // 137: golem.sdk.HostCoreService.Invoke:output_type -> golem.sdk.CoreInvokeResponse
+	72,  // 138: golem.sdk.HostControlService.ReverseReady:output_type -> golem.sdk.OperationResponse
+	72,  // 139: golem.sdk.HostControlService.ExecutionCompleted:output_type -> golem.sdk.OperationResponse
+	111, // [111:140] is the sub-list for method output_type
+	82,  // [82:111] is the sub-list for method input_type
+	82,  // [82:82] is the sub-list for extension type_name
+	82,  // [82:82] is the sub-list for extension extendee
+	0,   // [0:82] is the sub-list for field type_name
 }
 
 func init() { file_golem_sdk_host_proto_init() }
@@ -3216,9 +3347,9 @@ func file_golem_sdk_host_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_golem_sdk_host_proto_rawDesc), len(file_golem_sdk_host_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   45,
+			NumMessages:   47,
 			NumExtensions: 0,
-			NumServices:   8,
+			NumServices:   9,
 		},
 		GoTypes:           file_golem_sdk_host_proto_goTypes,
 		DependencyIndexes: file_golem_sdk_host_proto_depIdxs,

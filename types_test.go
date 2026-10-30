@@ -51,3 +51,27 @@ func TestErrorSupportsErrorsAs(t *testing.T) {
 		t.Fatal("errors.As did not recover *sdk.Error")
 	}
 }
+
+// TestNewExtensionPermissionsRequireExplicitGrant 固定新增敏感权限集合及拼写校验。
+func TestNewExtensionPermissionsRequireExplicitGrant(t *testing.T) {
+	permissions := []Permission{
+		PermissionMessageRaw, PermissionContactManage, PermissionChatroomManage,
+		PermissionLabelRead, PermissionLabelWrite, PermissionFavoriteRead, PermissionFavoriteWrite,
+		PermissionMomentsRead, PermissionMomentsWrite, PermissionMiniappUse,
+		PermissionOfficialRead, PermissionOfficialWrite, PermissionPaymentUse,
+		PermissionUserRead, PermissionUserWrite, PermissionCDNUse, PermissionLoginManage,
+	}
+	for _, permission := range permissions {
+		if !KnownPermission(permission) || !SensitivePermission(permission) {
+			t.Fatalf("permission %q is not a known sensitive permission", permission)
+		}
+	}
+	for _, permission := range []Permission{PermissionMessageSend, PermissionContactRead, PermissionChatroomRead, PermissionBackgroundRun} {
+		if !KnownPermission(permission) || SensitivePermission(permission) {
+			t.Fatalf("existing permission %q changed sensitivity", permission)
+		}
+	}
+	if KnownPermission(Permission("extension.unknown")) || SensitivePermission(Permission("extension.unknown")) {
+		t.Fatal("unknown permission was accepted")
+	}
+}

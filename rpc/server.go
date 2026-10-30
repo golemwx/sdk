@@ -9,6 +9,7 @@ import (
 
 	"github.com/golemwx/sdk"
 	"github.com/golemwx/sdk/capability"
+	"github.com/golemwx/sdk/coreapi"
 	"github.com/golemwx/sdk/internal/transport"
 	"github.com/golemwx/sdk/internal/wire"
 	"github.com/golemwx/sdk/message"
@@ -353,7 +354,7 @@ func (s *replayServerStream) RecvMsg(target any) error {
 	}
 }
 
-// registerHost 将七类 Host 服务及控制确认注册到同一安全连接
+// registerHost 将全部 Host 服务及控制确认注册到同一安全连接
 func registerHost(server *grpc.Server, services HostServices, control *hostControl) {
 	host := services.Host
 	if host == nil {
@@ -395,6 +396,29 @@ func registerHost(server *grpc.Server, services HostServices, control *hostContr
 	} else {
 		wire.RegisterHostAccountServiceServer(server, &wire.UnimplementedHostAccountServiceServer{})
 	}
+	if host.Core != nil {
+		wire.RegisterHostCoreServiceServer(server, &hostCore{client: host.Core})
+	} else {
+		wire.RegisterHostCoreServiceServer(server, &wire.UnimplementedHostCoreServiceServer{})
+	}
+}
+
+// hostCore 只转发 SDK 已声明的业务方法，未知方法和二级授权均由宿主实现拒绝。
+type hostCore struct {
+	wire.UnimplementedHostCoreServiceServer
+
+	client *coreapi.Client
+}
+
+// Invoke 保持上下文授权、期限和取消，返回有界 JSON 或稳定业务错误。
+func (s *hostCore) Invoke(ctx context.Context, request *wire.CoreInvokeRequest) (*wire.CoreInvokeResponse, error) {
+	if request == nil {
+		return &wire.CoreInvokeResponse{Error: wire.ToWireError(sdk.NewError(
+			sdk.CategoryInvalidArgument, "core.invoke", "missing core request",
+		))}, nil
+	}
+	data, err := s.client.Invoke(ctx, coreapi.Method(request.GetMethod()), request.GetRequest())
+	return &wire.CoreInvokeResponse{Response: data, Error: transport.EncodeError(err, "core.invoke")}, nil
 }
 
 // hostMessages 消息 RPC 的业务适配

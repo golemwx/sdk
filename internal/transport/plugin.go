@@ -18,8 +18,8 @@ const (
 	MagicCookieValue = "golem-sdk-grpc"
 	// PluginKey 宿主和插件唯一的 PluginSet 键
 	PluginKey = "golem"
-	// MaxMessageSize 单次一元 RPC 的消息字节上限
-	MaxMessageSize = 4 << 20
+	// MaxMessageSize 单次一元 RPC 的消息字节上限；容纳 core 16 MiB 结果及 protobuf 编码开销
+	MaxMessageSize = 20 << 20
 	// MaxInlinePayloadSize 普通能力内联请求及结果的字节上限
 	MaxInlinePayloadSize = 256 << 10
 )

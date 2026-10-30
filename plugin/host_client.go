@@ -12,6 +12,7 @@ import (
 	"github.com/golemwx/sdk/chatroom"
 	"github.com/golemwx/sdk/config"
 	"github.com/golemwx/sdk/contact"
+	"github.com/golemwx/sdk/coreapi"
 	"github.com/golemwx/sdk/internal/transport"
 	"github.com/golemwx/sdk/internal/wire"
 	"github.com/golemwx/sdk/message"
@@ -20,7 +21,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
-// newRemoteHost 在唯一反向连接上构造七类类型化客户端
+// newRemoteHost 在唯一反向连接上构造全部类型化客户端
 func newRemoteHost(conn *grpc.ClientConn, dataDir string) *Host {
 	host := NewHost(
 		&remoteMessages{wire.NewHostMessagesServiceClient(conn)},
@@ -32,7 +33,32 @@ func newRemoteHost(conn *grpc.ClientConn, dataDir string) *Host {
 		&remoteAccount{wire.NewHostAccountServiceClient(conn)}, dataDir, nil,
 	)
 	host.Caller = &remoteCaller{client: wire.NewHostCallerServiceClient(conn), host: host}
+	host.Core = coreapi.New(&remoteCore{client: wire.NewHostCoreServiceClient(conn)})
 	return host
+}
+
+// remoteCore 将类型化客户端编码后的业务请求转发到宿主白名单入口。
+type remoteCore struct {
+	client wire.HostCoreServiceClient
+}
+
+// Invoke 保留调用上下文和宿主执行身份，不把 core HTTP 地址或凭据暴露给插件。
+func (c *remoteCore) Invoke(ctx context.Context, method coreapi.Method, request []byte) ([]byte, error) {
+	response, err := c.client.Invoke(ctx, &wire.CoreInvokeRequest{
+		Invocation: transport.InvocationFromContext(ctx),
+		Method:     string(method),
+		Request:    request,
+	})
+	if err != nil {
+		return nil, transport.DecodeError(nil, err, "core.invoke")
+	}
+	if response == nil {
+		return nil, transport.DecodeError(nil, nil, "core.invoke")
+	}
+	if err := transport.DecodeError(response.GetError(), nil, "core.invoke"); err != nil {
+		return nil, err
+	}
+	return append([]byte(nil), response.GetResponse()...), nil
 }
 
 // remoteMessages 复用反向连接的消息客户端

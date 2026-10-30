@@ -224,16 +224,7 @@ func asciiLetterOrDigit(value byte) bool {
 
 // knownPermission 校验空权限或首期冻结的权限标识
 func knownPermission(permission sdk.Permission) bool {
-	switch permission {
-	case "", sdk.PermissionMessageSend, sdk.PermissionMessageRead,
-		sdk.PermissionContactRead, sdk.PermissionContactWrite,
-		sdk.PermissionChatroomRead, sdk.PermissionChatroomWrite,
-		sdk.PermissionSessionAcquire, sdk.PermissionCapabilityCall,
-		sdk.PermissionConfigSelfWrite, sdk.PermissionBackgroundRun:
-		return true
-	default:
-		return false
-	}
+	return permission == "" || sdk.KnownPermission(permission)
 }
 
 // invalidSpec 创建命令声明错误

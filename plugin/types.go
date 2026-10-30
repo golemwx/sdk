@@ -12,6 +12,7 @@ import (
 	"github.com/golemwx/sdk/command"
 	"github.com/golemwx/sdk/config"
 	"github.com/golemwx/sdk/contact"
+	"github.com/golemwx/sdk/coreapi"
 	"github.com/golemwx/sdk/event"
 	"github.com/golemwx/sdk/internal/contract"
 	"github.com/golemwx/sdk/message"
@@ -69,14 +70,48 @@ const (
 	PermissionMessageSend = sdk.PermissionMessageSend
 	// PermissionMessageRead 读取消息及下载授权媒体权限
 	PermissionMessageRead = sdk.PermissionMessageRead
+	// PermissionMessageRaw 使用原始消息 XML 或消息 ID 发送、撤回、下载和转写权限
+	PermissionMessageRaw = sdk.PermissionMessageRaw
 	// PermissionContactRead 读取联系人资料权限
 	PermissionContactRead = sdk.PermissionContactRead
 	// PermissionContactWrite 显式刷新联系人资料等写入口权限
 	PermissionContactWrite = sdk.PermissionContactWrite
+	// PermissionContactManage 好友申请、验证、备注、黑名单和删除联系人权限
+	PermissionContactManage = sdk.PermissionContactManage
 	// PermissionChatroomRead 读取群资料和成员权限
 	PermissionChatroomRead = sdk.PermissionChatroomRead
 	// PermissionChatroomWrite 显式刷新群资料等写入口权限
 	PermissionChatroomWrite = sdk.PermissionChatroomWrite
+	// PermissionChatroomManage 建群、成员、管理员和群资料管理权限
+	PermissionChatroomManage = sdk.PermissionChatroomManage
+	// PermissionLabelRead 读取联系人标签权限
+	PermissionLabelRead = sdk.PermissionLabelRead
+	// PermissionLabelWrite 管理联系人标签权限
+	PermissionLabelWrite = sdk.PermissionLabelWrite
+	// PermissionFavoriteRead 读取收藏能力权限
+	PermissionFavoriteRead = sdk.PermissionFavoriteRead
+	// PermissionFavoriteWrite 管理收藏能力权限
+	PermissionFavoriteWrite = sdk.PermissionFavoriteWrite
+	// PermissionMomentsRead 读取朋友圈能力权限
+	PermissionMomentsRead = sdk.PermissionMomentsRead
+	// PermissionMomentsWrite 管理朋友圈能力权限
+	PermissionMomentsWrite = sdk.PermissionMomentsWrite
+	// PermissionMiniappUse 使用小程序能力权限
+	PermissionMiniappUse = sdk.PermissionMiniappUse
+	// PermissionOfficialRead 读取公众号能力权限
+	PermissionOfficialRead = sdk.PermissionOfficialRead
+	// PermissionOfficialWrite 管理公众号能力权限
+	PermissionOfficialWrite = sdk.PermissionOfficialWrite
+	// PermissionPaymentUse 使用支付和红包能力权限
+	PermissionPaymentUse = sdk.PermissionPaymentUse
+	// PermissionUserRead 读取当前用户能力权限
+	PermissionUserRead = sdk.PermissionUserRead
+	// PermissionUserWrite 修改当前用户能力权限
+	PermissionUserWrite = sdk.PermissionUserWrite
+	// PermissionCDNUse 使用 CDN 能力权限
+	PermissionCDNUse = sdk.PermissionCDNUse
+	// PermissionLoginManage 管理登录生命周期权限
+	PermissionLoginManage = sdk.PermissionLoginManage
 	// PermissionSessionAcquire 申请、续期和释放自身会话租约权限
 	PermissionSessionAcquire = sdk.PermissionSessionAcquire
 	// PermissionCapabilityCall 按能力名调用其他插件权限
@@ -104,6 +139,7 @@ type Host struct {
 	Caller    CallerClient    // 宿主按能力名路由的跨插件调用客户端
 	Config    ConfigClient    // 宿主提供的插件自身业务配置客户端
 	Account   AccountClient   // 宿主当前账号业务快照客户端
+	Core      *coreapi.Client // 当前 core 公共 API 的类型化客户端集合
 
 	DataDir string // 宿主分配的插件数据目录
 
