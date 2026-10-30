@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  GOWORK: "off"
+  GOFLAGS: ""
+  CGO_ENABLED: "0"
+
+jobs:
+  public:
+    name: SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verify formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Install Task
+        run: go install github.com/go-task/task/v3/cmd/task@v3.54.0
+      - name: Verify generation and SDK
+        run: task ci
+      - name: Verify generated files are committed
+        run: git diff --exit-code -- internal/wire proto
+
+  race:
+    name: SDK race
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install Task
+        run: go install github.com/go-task/task/v3/cmd/task@v3.54.0
+      - name: Run race detector
+        run: task test:race

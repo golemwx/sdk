@@ -4,12 +4,48 @@ vars:
   BUF_VERSION: v1.75.0
 
 tasks:
-  proto:
-    desc: 格式化、检查并生成 Proto 后运行 wire 测试
+  default:
+    desc: 执行 SDK 生成链和公开模块检查
     cmds:
-      - go run github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}} format -w
-      - go run github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}} format --diff --exit-code
-      - go run github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}} lint
-      - go run github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}} generate
-      - go run ./internal/cmd/protocheck
-      - go test ./internal/wire
+      - task: check
+  proto:
+    desc: 格式化、检查并生成 Proto 后核对生成结果
+    cmds:
+      - GOWORK=off GOFLAGS= go run github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}} format -w
+      - GOWORK=off GOFLAGS= go run github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}} format --diff --exit-code
+      - GOWORK=off GOFLAGS= go run github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}} lint
+      - GOWORK=off GOFLAGS= go run github.com/bufbuild/buf/cmd/buf@{{.BUF_VERSION}} generate
+      - GOWORK=off GOFLAGS= go run ./internal/cmd/protocheck
+      - GOWORK=off GOFLAGS= go test -count=1 ./internal/wire
+  deps:check:
+    desc: 检查 go.mod 和 go.sum 是否已整理
+    cmds:
+      - GOWORK=off GOFLAGS= go mod tidy -diff
+  test:
+    desc: 测试 SDK 全部模块
+    cmds:
+      - GOWORK=off GOFLAGS= go test -count=1 ./...
+  test:race:
+    desc: 对 SDK 执行 race 检查，需要 CGO 和 C 编译器
+    cmds:
+      - CGO_ENABLED=1 GOWORK=off GOFLAGS= go test -race -count=1 ./...
+  lint:
+    desc: 对 SDK 执行静态检查
+    cmds:
+      - GOWORK=off GOFLAGS= go vet ./...
+  build:
+    desc: 以正式 CGO 配置编译 SDK
+    cmds:
+      - GOWORK=off GOFLAGS= CGO_ENABLED=0 go build ./...
+  check:
+    desc: 执行生成链、依赖检查、测试、静态检查和构建
+    cmds:
+      - task: proto
+      - task: deps:check
+      - task: test
+      - task: lint
+      - task: build
+  ci:
+    desc: CI 使用的完整 SDK 检查入口
+    cmds:
+      - task: check

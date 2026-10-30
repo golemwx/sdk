@@ -25,6 +25,12 @@ profile.cov
 go.work
 go.work.sum
 
+# Local agent and build output
+.agent_context/
+build/
+dist/
+bin/
+
 # env file
 .env
 

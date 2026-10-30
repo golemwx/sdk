@@ -1,68 +1,65 @@
 # Golem SDK
 
-Golem 插件 SDK 定义插件与 frame 之间的稳定业务模型、RPC 协议和宿主能力接口。
+Golem 插件 SDK 定义插件与 frame 之间的稳定业务模型、RPC 协议、生命周期接口和宿主能力。
+SDK 只定义公共契约，不依赖 `github.com/golemwx/core`。
 
 ## 包结构
 
 - `plugin`：插件描述、生命周期、业务处理接口与自动绑定 Host 的 `Base`
-- `event`、`command`、`capability`：事件、命令和跨插件能力契约；`command` 提供 schema 与输入校验
-- `message`、`contact`、`chatroom`、`session`、`config`：领域模型及类型化宿主客户端
-- `rpc`：共享配对配置、真实插件启动、生命周期控制及实例绑定的反向宿主服务
-- `internal/wire`：由 Proto 生成的传输类型和业务类型转换，不属于插件公共 API
+- `event`、`command`、`capability`：事件、命令和跨插件能力契约
+- `message`、`contact`、`chatroom`、`session`、`config`：领域模型和类型化 Host 客户端
+- `rpc`：共享配对配置、真实插件启动、控制 RPC 和反向 Host 服务
+- `internal/wire`：Proto 生成类型和转换，不属于插件公共 API
 - `proto/golem/sdk`：唯一 Proto 协议源，不设置版本子目录
+
+## 快速使用
+
+```powershell
+$env:GOWORK = "off"
+$env:GOFLAGS = ""
+task proto
+task test
+task lint
+task build
+```
+
+插件入口调用 `plugin.Serve(implementation)`；需要宿主能力时嵌入零值 `plugin.Base`。
+SDK 会在反向连接初始化后、`OnLoad` 之前自动绑定 `p.Host`。Host 字段仅供初始化后的
+回调读取，不得改写；卸载或断连后旧句柄不可用。
+
+配对配置由 SDK 唯一定义：`ProtocolVersion=1`、`MagicCookieKey=GOLEM_PLUGIN_MAGIC_COOKIE`、
+`MagicCookieValue=golem-sdk-grpc`、PluginSet 键为 `golem`。普通发布和兼容的 Proto
+新增字段保持这些值不变；只有不兼容的通信或业务语义变更才提高唯一协议版本。
+
+## 中文文档
+
+- [快速开始](docs/快速开始.md)：创建独立插件 module 和本地构建
+- [开发指南](docs/开发指南.md)：生成链、版本、测试和模块边界
+- [插件通信](docs/插件通信.md)：握手、生命周期、Host 绑定和资源所有权
+- [公共契约](docs/公共契约.md)：字段存在性、错误类别和业务结果
+- [宿主能力与安全](docs/宿主能力与安全.md)：权限、配置、资料目录和取消
+- [故障排查](docs/故障排查.md)：生成、依赖、race 和 Host 问题
 
 ## 生成与验证
 
-生成工具和插件均固定版本，不使用 `latest`：
+生成工具固定版本，不使用 `latest`：
 
-```powershell
-task proto
-gofmt -w <本次修改的 Go 文件>
-go test ./...
+```text
+Buf                 1.75.0
+protoc-gen-go       1.36.12
+protoc-gen-go-grpc  1.6.2
 ```
 
-`task proto` 使用 Buf 1.75.0、`protoc-gen-go` 1.36.12 和
-`protoc-gen-go-grpc` 1.6.2，依次执行格式化、格式检查、lint、生成、临时目录重复生成差异核对和 wire 测试。
+`task proto` 依次执行格式化、格式检查、lint、生成、临时目录重复生成差异核对和 wire
+测试。正式命令显式 `GOWORK=off GOFLAGS=`；`task ci` 额外执行 tidy 检查、全量测试、
+vet 和 `CGO_ENABLED=0` 构建。race 通过独立的 `task test:race` 执行，需要 CGO 和 C
+编译器。
 
-## 错误约定
+## 错误与安全
 
-跨进程错误使用 `*sdk.Error`。调用方只按 `Category` 和写操作的 `Outcome`
-判断，不匹配 `Reason` 文本；未实现的方法返回 `CategoryUnimplemented`，不能返回空成功。
+跨进程错误使用 `*sdk.Error`。调用方只按 `Category` 和写操作的 `Outcome` 判断，不匹配
+`Reason` 文本；未实现的方法返回 `CategoryUnimplemented`，不能返回空成功。所有 Host
+回调都必须经过显式授权，缺少授权默认拒绝；`OutcomeUnknown` 的写操作不得自动重试。
 
 插件业务签名只使用公开领域类型。frame 通过 `sdk/rpc` 接线，不直接导入
-`internal/wire`；SDK 不依赖 `github.com/golemwx/core`。
-
-## 插件通信
-
-插件入口调用 `plugin.Serve(implementation)`；宿主通过 `rpc.Start(ctx, options)`
-启动实例，启动成功后必须显式 `Close`，或调用会同时回收资源的 `Unload`。
-初始化按握手、Describe、宿主校验、反向服务、Initialize、反向就绪确认、OnLoad 的顺序执行。
-
-需要宿主能力的插件嵌入零值 `plugin.Base`，以指针交给 Serve。SDK 在反向就绪确认后、
-OnLoad 之前自动绑定实例 Host，通过 `p.Host` 读取；即使不实现 Loader 也会绑定。
-Loader 的签名为 `OnLoad(ctx context.Context) error`，只处理业务初始化。
-Host 字段仅供初始化后的回调读取，不得改写；SDK 不在失效时清空字段，避免并发读写。
-禁用保留绑定；卸载回调结束或连接失效后关闭连接并取消后台上下文，保留的 Host 句柄已不可用。
-Base 不得复用到其他连接。单测可通过
-`plugin.NewBase(fakeHost)` 构造本地替身，正式启动使用零值 Base。
-
-配对配置由 SDK 唯一定义：`ProtocolVersion=1`、`MagicCookieKey=GOLEM_PLUGIN_MAGIC_COOKIE`、
-`MagicCookieValue=golem-sdk-grpc`、PluginSet 键为 `golem`。普通发布与兼容的 Proto 新增字段
-保持这些值不变；只有不兼容的通信或业务语义变更才提高唯一协议版本。
-
-固定使用 `github.com/hashicorp/go-plugin v1.8.0`，仅启用 gRPC、AutoMTLS 和 SkipHostEnv。
-七类 Host 服务共用一条反向连接，所有宿主回调都必须经过显式授权，缺少授权默认拒绝。
-调用命令的 `Env` 只提供明确允许的变量，不会自动继承宿主环境。
-
-命令声明通过 `command.ValidateSpec` 校验，词法解析后的命名参数通过
-`command.ValidateArgs` 复制、补默认并校验。SDK 会在插件 `Describe` 及宿主启动的可信边界
-重复校验每条命令，同一 Descriptor 的重复完整路径返回 `AlreadyExists`。插件可用
-`command.Bind(spec, supplied, &target)` 将命名参数绑定到带 `command:"参数名"` 标签的导出
-字段；只使用普通反射和可写导出字段，不使用 unsafe，也不提供全局注册器。普通字段在缺失时
-写零值，指针字段用 nil 保留可选参数缺失，并在显式空值或默认值存在时指向对应值。
-
-详细用法、资源所有权和阶段边界见 [插件通信](docs/插件通信.md)。
-T08 已接入事件、命令与能力 handler、invocation 自动透传、启用周期 `TaskContext`、
-实际执行额度、`Drain` 和独立完成确认。业务 RPC 返回会撤销调用权限，handler 忽略取消时
-仍占用实际执行额度。T26/T27 已接入有界媒体上传、暂存引用、下载、引用发送、撤回、转发及
-结构化链接、位置和名片消息；公共 API 不公开宿主路径、原始 XML 或 CDN 解密材料。
+`internal/wire`；公共 API 不公开宿主路径、原始 XML 或 CDN 解密材料。
