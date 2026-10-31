@@ -23,15 +23,19 @@ import (
 
 // newRemoteHost 在唯一反向连接上构造全部类型化客户端
 func newRemoteHost(conn *grpc.ClientConn, dataDir string) *Host {
+	messages := &remoteMessages{client: wire.NewHostMessagesServiceClient(conn)}
+	account := &remoteAccount{client: wire.NewHostAccountServiceClient(conn)}
 	host := NewHost(
-		&remoteMessages{wire.NewHostMessagesServiceClient(conn)},
+		messages,
 		&remoteContacts{wire.NewHostContactsServiceClient(conn)},
 		&remoteChatrooms{wire.NewHostChatroomsServiceClient(conn)},
 		&remoteSessions{wire.NewHostSessionsServiceClient(conn)},
 		&remoteCaller{client: wire.NewHostCallerServiceClient(conn)},
 		&remoteConfig{wire.NewHostConfigServiceClient(conn)},
-		&remoteAccount{wire.NewHostAccountServiceClient(conn)}, dataDir, nil,
+		account, dataDir, nil,
 	)
+	messages.host = host
+	account.host = host
 	host.Caller = &remoteCaller{client: wire.NewHostCallerServiceClient(conn), host: host}
 	host.Core = coreapi.New(&remoteCore{client: wire.NewHostCoreServiceClient(conn)})
 	return host
@@ -64,11 +68,27 @@ func (c *remoteCore) Invoke(ctx context.Context, method coreapi.Method, request 
 // remoteMessages 复用反向连接的消息客户端
 type remoteMessages struct {
 	client wire.HostMessagesServiceClient // 消息服务传输入口
+	host   *Host                          // 启用期后台令牌所有者
 }
 
 // SendText 保留调用上下文并发送文本
 func (c *remoteMessages) SendText(ctx context.Context, conversation sdk.Conversation, text string, mentions []string) (*message.SendReceipt, error) {
-	response, err := c.client.SendText(ctx, &wire.SendTextRequest{Invocation: transport.InvocationFromContext(ctx), Conversation: wire.ToWireConversation(conversation), Text: text, Mentions: mentions})
+	if ctx == nil {
+		return nil, sdk.NewError(sdk.CategoryPermissionDenied, "messages.send_text", "调用上下文不可用")
+	}
+	invocation := transport.InvocationFromContext(ctx)
+	request := &wire.SendTextRequest{Invocation: invocation, Conversation: wire.ToWireConversation(conversation), Text: text, Mentions: mentions}
+	if invocation.GetId() == "" {
+		if c.host == nil {
+			return nil, sdk.NewError(sdk.CategoryPermissionDenied, "messages.send_text", "后台宿主不可用")
+		}
+		token, ok := c.host.backgroundToken(ctx)
+		if !ok {
+			return nil, sdk.NewError(sdk.CategoryPermissionDenied, "messages.send_text", "后台上下文不属于当前启用周期")
+		}
+		request.BackgroundToken = token
+	}
+	response, err := c.client.SendText(ctx, request)
 	return receiptResult(response, err, "messages.send_text")
 }
 
@@ -601,6 +621,9 @@ type remoteCaller struct {
 
 // Call 按能力名调用，不接受插件目标身份
 func (c *remoteCaller) Call(ctx context.Context, request capability.CallRequest) (*capability.CallResult, error) {
+	if ctx == nil {
+		return nil, sdk.NewError(sdk.CategoryPermissionDenied, "caller.call", "调用上下文不可用")
+	}
 	invocation := transport.InvocationFromContext(ctx)
 	if invocation.GetId() == "" {
 		target, exists := capability.BackgroundTarget(ctx)
@@ -668,11 +691,27 @@ func (c *remoteConfig) Save(ctx context.Context, revision uint64, data []byte) (
 // remoteAccount 复用反向连接的账号客户端
 type remoteAccount struct {
 	client wire.HostAccountServiceClient // 当前账号传输入口
+	host   *Host                         // 启用期后台令牌所有者
 }
 
 // Current 读取当前账号业务快照
 func (c *remoteAccount) Current(ctx context.Context) (*sdk.Account, error) {
-	response, err := c.client.Current(ctx, &wire.AccountCurrentRequest{Invocation: transport.InvocationFromContext(ctx)})
+	if ctx == nil {
+		return nil, sdk.NewError(sdk.CategoryPermissionDenied, "account.current", "调用上下文不可用")
+	}
+	invocation := transport.InvocationFromContext(ctx)
+	request := &wire.AccountCurrentRequest{Invocation: invocation}
+	if invocation.GetId() == "" {
+		if c.host == nil {
+			return nil, sdk.NewError(sdk.CategoryPermissionDenied, "account.current", "后台宿主不可用")
+		}
+		token, ok := c.host.backgroundToken(ctx)
+		if !ok {
+			return nil, sdk.NewError(sdk.CategoryPermissionDenied, "account.current", "后台上下文不属于当前启用周期")
+		}
+		request.BackgroundToken = token
+	}
+	response, err := c.client.Current(ctx, request)
 	if err := transport.ResultError(response.GetAccount() != nil, response.GetError(), err, "account.current"); err != nil {
 		return nil, err
 	}

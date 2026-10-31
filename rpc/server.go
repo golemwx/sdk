@@ -197,13 +197,24 @@ func hostInterceptor(services HostServices, control *hostControl) grpc.UnaryServ
 		if value, ok := request.(interface{ GetInvocation() *wire.Invocation }); ok {
 			invocation.ID, invocation.Token = value.GetInvocation().GetId(), value.GetInvocation().GetToken()
 		}
-		_, background := request.(*wire.HostBackgroundCallRequest)
-		if background {
-			value := request.(*wire.HostBackgroundCallRequest)
+		background := false
+		switch value := request.(type) {
+		case *wire.HostBackgroundCallRequest:
 			if value.GetBackgroundToken() == "" {
 				return nil, transport.RPCError(sdk.NewError(sdk.CategoryPermissionDenied, info.FullMethod, "invalid background invocation"), info.FullMethod)
 			}
 			ctx = transport.WithBackgroundToken(ctx, value.GetBackgroundToken())
+			background = true
+		case *wire.SendTextRequest:
+			if value.GetBackgroundToken() != "" {
+				ctx = transport.WithBackgroundToken(ctx, value.GetBackgroundToken())
+				background = true
+			}
+		case *wire.AccountCurrentRequest:
+			if value.GetBackgroundToken() != "" {
+				ctx = transport.WithBackgroundToken(ctx, value.GetBackgroundToken())
+				background = true
+			}
 		}
 		authority := control
 		if background {
@@ -714,6 +725,9 @@ func mediaStoreProtocolError(reason string) *sdk.Error {
 
 // SendText 将文本请求转换为公开业务类型
 func (s *hostMessages) SendText(ctx context.Context, r *wire.SendTextRequest) (*wire.SendReceiptResponse, error) {
+	if r.GetBackgroundToken() != "" {
+		ctx = transport.WithBackgroundConversation(ctx, wire.FromWireConversation(r.GetConversation()))
+	}
 	value, err := s.client.SendText(ctx, wire.FromWireConversation(r.GetConversation()), r.GetText(), r.GetMentions())
 	result, conversion := wire.ToWireSendReceipt(value)
 	return &wire.SendReceiptResponse{Receipt: result, Error: hostResultError(result != nil, err, conversion, "messages.send_text")}, nil
@@ -965,6 +979,11 @@ type hostCaller struct {
 // BackgroundConversation 返回反向服务端验证前的后台目标，业务层仍须独立授权
 func BackgroundConversation(ctx context.Context) (sdk.Conversation, bool) {
 	return transport.BackgroundConversation(ctx)
+}
+
+// WithBackgroundConversation 在宿主边界测试中模拟已提取的后台目标
+func WithBackgroundConversation(ctx context.Context, target sdk.Conversation) context.Context {
+	return transport.WithBackgroundConversation(ctx, target)
 }
 
 // BackgroundToken 返回后台启用令牌，仅供宿主二次绑定校验

@@ -77,13 +77,14 @@ func (x *Invocation) GetToken() string {
 
 // SendTextRequest 文本消息发送请求
 type SendTextRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`     // 本次反向调用绑定的执行身份凭据
-	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"` // 所属或目标业务会话，群内所有成员共用整群会话
-	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`                 // 待发送的文本内容
-	Mentions      []string               `protobuf:"bytes,4,rep,name=mentions,proto3" json:"mentions,omitempty"`         // 被提及者的微信 username 列表
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Invocation      *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                                  // 本次反向调用绑定的执行身份凭据
+	Conversation    *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`                              // 所属或目标业务会话，群内所有成员共用整群会话
+	Text            string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`                                              // 待发送的文本内容
+	Mentions        []string               `protobuf:"bytes,4,rep,name=mentions,proto3" json:"mentions,omitempty"`                                      // 被提及者的微信 username 列表
+	BackgroundToken string                 `protobuf:"bytes,5,opt,name=background_token,json=backgroundToken,proto3" json:"background_token,omitempty"` // 启用期后台发送令牌，与 invocation 二选一
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SendTextRequest) Reset() {
@@ -142,6 +143,13 @@ func (x *SendTextRequest) GetMentions() []string {
 		return x.Mentions
 	}
 	return nil
+}
+
+func (x *SendTextRequest) GetBackgroundToken() string {
+	if x != nil {
+		return x.BackgroundToken
+	}
+	return ""
 }
 
 // ReplyRequest 引用回复请求
@@ -2501,10 +2509,11 @@ func (x *ConfigSaveResponse) GetError() *Error {
 
 // AccountCurrentRequest 当前账号业务快照查询请求
 type AccountCurrentRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Invocation      *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                                  // 本次反向调用绑定的执行身份凭据
+	BackgroundToken string                 `protobuf:"bytes,2,opt,name=background_token,json=backgroundToken,proto3" json:"background_token,omitempty"` // 启用期后台查询令牌，与 invocation 二选一
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *AccountCurrentRequest) Reset() {
@@ -2542,6 +2551,13 @@ func (x *AccountCurrentRequest) GetInvocation() *Invocation {
 		return x.Invocation
 	}
 	return nil
+}
+
+func (x *AccountCurrentRequest) GetBackgroundToken() string {
+	if x != nil {
+		return x.BackgroundToken
+	}
+	return ""
 }
 
 // AccountResponse 当前账号业务快照响应
@@ -2825,14 +2841,15 @@ const file_golem_sdk_host_proto_rawDesc = "" +
 	"\n" +
 	"Invocation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token\"\xb5\x01\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"\xe0\x01\n" +
 	"\x0fSendTextRequest\x125\n" +
 	"\n" +
 	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
 	"invocation\x12;\n" +
 	"\fconversation\x18\x02 \x01(\v2\x17.golem.sdk.ConversationR\fconversation\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\x12\x1a\n" +
-	"\bmentions\x18\x04 \x03(\tR\bmentions\"\xbe\x01\n" +
+	"\bmentions\x18\x04 \x03(\tR\bmentions\x12)\n" +
+	"\x10background_token\x18\x05 \x01(\tR\x0fbackgroundToken\"\xbe\x01\n" +
 	"\fReplyRequest\x125\n" +
 	"\n" +
 	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
@@ -3025,11 +3042,12 @@ const file_golem_sdk_host_proto_rawDesc = "" +
 	"\x04data\x18\x03 \x01(\v2\x15.golem.sdk.BytesValueR\x04data\"q\n" +
 	"\x12ConfigSaveResponse\x123\n" +
 	"\x06result\x18\x01 \x01(\v2\x1b.golem.sdk.ConfigSaveResultR\x06result\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"N\n" +
+	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"y\n" +
 	"\x15AccountCurrentRequest\x125\n" +
 	"\n" +
 	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\"g\n" +
+	"invocation\x12)\n" +
+	"\x10background_token\x18\x02 \x01(\tR\x0fbackgroundToken\"g\n" +
 	"\x0fAccountResponse\x12,\n" +
 	"\aaccount\x18\x01 \x01(\v2\x12.golem.sdk.AccountR\aaccount\x12&\n" +
 	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"|\n" +

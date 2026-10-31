@@ -36,6 +36,9 @@ func WithInvocation(ctx context.Context, id, token string) context.Context {
 
 // InvocationFromContext 复制当前用户调用凭据；独立后台入口不使用该字段
 func InvocationFromContext(ctx context.Context) *wire.Invocation {
+	if ctx == nil {
+		return nil
+	}
 	value, ok := ctx.Value(invocationKey{}).(invocationValue)
 	if !ok {
 		return nil
@@ -50,6 +53,9 @@ func WithBackgroundConversation(ctx context.Context, target sdk.Conversation) co
 
 // BackgroundConversation 返回宿主服务端已转换的后台目标会话
 func BackgroundConversation(ctx context.Context) (sdk.Conversation, bool) {
+	if ctx == nil {
+		return sdk.Conversation{}, false
+	}
 	target, ok := ctx.Value(backgroundConversationKey{}).(sdk.Conversation)
 	return target, ok
 }
@@ -61,6 +67,9 @@ func WithBackgroundToken(ctx context.Context, token string) context.Context {
 
 // BackgroundToken 返回宿主服务端从后台请求中提取的令牌
 func BackgroundToken(ctx context.Context) (string, bool) {
+	if ctx == nil {
+		return "", false
+	}
 	token, ok := ctx.Value(backgroundTokenKey{}).(string)
 	return token, ok && token != ""
 }

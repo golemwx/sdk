@@ -21,6 +21,7 @@ message SendTextRequest {
   Conversation conversation = 2; // 所属或目标业务会话，群内所有成员共用整群会话
   string text = 3; // 待发送的文本内容
   repeated string mentions = 4; // 被提及者的微信 username 列表
+  string background_token = 5; // 启用期后台发送令牌，与 invocation 二选一
 }
 
 // ReplyRequest 引用回复请求
@@ -294,6 +295,7 @@ message ConfigSaveResponse {
 // AccountCurrentRequest 当前账号业务快照查询请求
 message AccountCurrentRequest {
   Invocation invocation = 1; // 本次反向调用绑定的执行身份凭据
+  string background_token = 2; // 启用期后台查询令牌，与 invocation 二选一
 }
 
 // AccountResponse 当前账号业务快照响应

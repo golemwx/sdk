@@ -201,6 +201,9 @@ type backgroundCycleKey struct{}
 
 // backgroundToken 核对派生后台上下文是否仍属于当前启用周期
 func (h *Host) backgroundToken(ctx context.Context) (string, bool) {
+	if ctx == nil {
+		return "", false
+	}
 	cycle, ok := ctx.Value(backgroundCycleKey{}).(backgroundCycle)
 	if !ok || cycle.epoch == 0 || cycle.token == "" {
 		return "", false

@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/golemwx/sdk"
 	"github.com/golemwx/sdk/capability"
 	"github.com/golemwx/sdk/internal/transport"
 	"github.com/golemwx/sdk/internal/wire"
+	"github.com/golemwx/sdk/message"
 	"google.golang.org/grpc"
 )
 
@@ -17,6 +19,43 @@ type backgroundCallerClient struct {
 	wire.HostCallerServiceClient
 
 	request *wire.HostBackgroundCallRequest
+}
+
+// backgroundMessagesClient 记录后台文本发送请求
+type backgroundMessagesClient struct {
+	wire.HostMessagesServiceClient
+
+	request *wire.SendTextRequest
+}
+
+// backgroundAccountClient 记录后台账号查询请求
+type backgroundAccountClient struct {
+	wire.HostAccountServiceClient
+
+	request *wire.AccountCurrentRequest
+}
+
+// Current 返回只含业务字段的当前账号快照
+func (c *backgroundAccountClient) Current(_ context.Context, request *wire.AccountCurrentRequest, _ ...grpc.CallOption) (*wire.AccountResponse, error) {
+	c.request = request
+	account, err := wire.ToWireAccount(&sdk.Account{Username: "account", Online: true, Status: sdk.AccountStatusOnline, UpdatedAt: time.Now().UTC()})
+	if err != nil {
+		return nil, err
+	}
+	return &wire.AccountResponse{Account: account}, nil
+}
+
+// SendText 返回完整成功回执，证明后台令牌经过同一消息 RPC
+func (c *backgroundMessagesClient) SendText(_ context.Context, request *wire.SendTextRequest, _ ...grpc.CallOption) (*wire.SendReceiptResponse, error) {
+	c.request = request
+	receipt, err := wire.ToWireSendReceipt(&message.SendReceipt{
+		MessageID: "background", Conversation: wire.FromWireConversation(request.GetConversation()),
+		SentAt: time.Now().UTC(), Outcome: sdk.OutcomeSucceeded,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &wire.SendReceiptResponse{Receipt: receipt}, nil
 }
 
 // Call 普通业务调用不应出现在后台测试
@@ -39,6 +78,9 @@ func TestRemoteCallerBackgroundContext(t *testing.T) {
 	target := sdk.Conversation{AccountUsername: "account", Kind: sdk.ConversationKindDirect, ID: "alice"}
 	if _, err := host.Caller.Call(context.Background(), request); !categoryOf(err, sdk.CategoryPermissionDenied) {
 		t.Fatalf("无目标后台调用未拒绝: %v", err)
+	}
+	if _, err := host.Caller.Call(nil, request); !categoryOf(err, sdk.CategoryPermissionDenied) {
+		t.Fatalf("空后台调用上下文未拒绝: %v", err)
 	}
 	if _, err := host.Caller.Call(capability.WithBackgroundTarget(context.Background(), target), request); !categoryOf(err, sdk.CategoryPermissionDenied) {
 		t.Fatalf("非 TaskContext 后台调用未拒绝: %v", err)
@@ -72,6 +114,80 @@ func TestRemoteCallerBackgroundContext(t *testing.T) {
 	ctx = capability.WithBackgroundTarget(host.TaskContext(), target)
 	if _, err := host.Caller.Call(ctx, request); err != nil || client.request.GetBackgroundToken() != "background-token-2" {
 		t.Fatalf("重启用未签发新令牌: %+v %v", client.request, err)
+	}
+}
+
+// TestRemoteMessagesBackgroundContext 验证后台文本只从当前启用周期取得令牌
+func TestRemoteMessagesBackgroundContext(t *testing.T) {
+	client := &backgroundMessagesClient{}
+	host := &Host{}
+	messages := &remoteMessages{client: client, host: host}
+	target := sdk.Conversation{AccountUsername: "account", Kind: sdk.ConversationKindDirect, ID: "alice"}
+	if _, err := messages.SendText(context.Background(), target, "denied", nil); !categoryOf(err, sdk.CategoryPermissionDenied) {
+		t.Fatalf("无启用周期的后台文本未拒绝: %v", err)
+	}
+	if _, err := messages.SendText(nil, target, "nil-context", nil); !categoryOf(err, sdk.CategoryPermissionDenied) {
+		t.Fatalf("空后台文本上下文未拒绝: %v", err)
+	}
+	cancel := host.startTasks(t.Context(), "background-message-token")
+	if _, err := messages.SendText(host.TaskContext(), target, "scheduled", nil); err != nil {
+		t.Fatal(err)
+	}
+	if client.request.GetBackgroundToken() != "background-message-token" ||
+		client.request.GetInvocation().GetId() != "" || wire.FromWireConversation(client.request.GetConversation()) != target {
+		t.Fatalf("后台文本请求=%+v", client.request)
+	}
+	ordinary := transport.WithInvocation(host.TaskContext(), "ordinary-id", "ordinary-token")
+	if _, err := messages.SendText(ordinary, target, "ordinary", nil); err != nil {
+		t.Fatal(err)
+	}
+	if client.request.GetBackgroundToken() != "" || client.request.GetInvocation().GetId() != "ordinary-id" ||
+		client.request.GetInvocation().GetToken() != "ordinary-token" {
+		t.Fatalf("普通文本请求混入后台令牌=%+v", client.request)
+	}
+	cancel()
+	if _, err := messages.SendText(host.TaskContext(), target, "stale", nil); !categoryOf(err, sdk.CategoryPermissionDenied) {
+		t.Fatalf("取消后的后台文本未拒绝: %v", err)
+	}
+	host.startTasks(t.Context(), "next-background-token")
+	if _, err := messages.SendText(host.TaskContext(), target, "next", nil); err != nil || client.request.GetBackgroundToken() != "next-background-token" {
+		t.Fatalf("重启用后台文本令牌=%q err=%v", client.request.GetBackgroundToken(), err)
+	}
+}
+
+// TestRemoteAccountBackgroundContext 验证后台账号查询只从当前启用周期取得令牌
+func TestRemoteAccountBackgroundContext(t *testing.T) {
+	client := &backgroundAccountClient{}
+	host := &Host{}
+	account := &remoteAccount{client: client, host: host}
+	if _, err := account.Current(context.Background()); !categoryOf(err, sdk.CategoryPermissionDenied) {
+		t.Fatalf("无启用周期的后台账号查询未拒绝: %v", err)
+	}
+	if _, err := account.Current(nil); !categoryOf(err, sdk.CategoryPermissionDenied) {
+		t.Fatalf("空后台账号上下文未拒绝: %v", err)
+	}
+	cancel := host.startTasks(t.Context(), "background-account-token")
+	value, err := account.Current(host.TaskContext())
+	if err != nil || value == nil || value.Username != "account" {
+		t.Fatalf("后台账号查询结果=%+v err=%v", value, err)
+	}
+	if client.request.GetBackgroundToken() != "background-account-token" || client.request.GetInvocation().GetId() != "" {
+		t.Fatalf("后台账号查询请求=%+v", client.request)
+	}
+	ordinary := transport.WithInvocation(host.TaskContext(), "ordinary-account", "ordinary-token")
+	if _, err := account.Current(ordinary); err != nil {
+		t.Fatal(err)
+	}
+	if client.request.GetBackgroundToken() != "" || client.request.GetInvocation().GetId() != "ordinary-account" {
+		t.Fatalf("普通账号查询混入后台令牌=%+v", client.request)
+	}
+	cancel()
+	if _, err := account.Current(host.TaskContext()); !categoryOf(err, sdk.CategoryPermissionDenied) {
+		t.Fatalf("取消后的后台账号查询未拒绝: %v", err)
+	}
+	host.startTasks(t.Context(), "next-account-token")
+	if _, err := account.Current(host.TaskContext()); err != nil || client.request.GetBackgroundToken() != "next-account-token" {
+		t.Fatalf("重启用后台账号令牌=%q err=%v", client.request.GetBackgroundToken(), err)
 	}
 }
 
