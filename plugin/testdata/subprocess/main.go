@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golemwx/sdk"
+	"github.com/golemwx/sdk/command"
 	"github.com/golemwx/sdk/event"
 	"github.com/golemwx/sdk/plugin"
 )
@@ -37,14 +38,20 @@ func mark(value string) {
 
 type fixture struct {
 	*plugin.Base
+	*plugin.Config[fixtureConfig]
 
 	mode string
 }
 
+type fixtureConfig struct {
+	Enabled bool `toml:"enabled"`
+}
+
 func New() *fixture {
 	return &fixture{
-		Base: plugin.NewBase(),
-		mode: os.Getenv(fixtureModeEnv),
+		Base:   plugin.NewBase(),
+		Config: plugin.NewConfig(fixtureConfig{Enabled: true}),
+		mode:   os.Getenv(fixtureModeEnv),
 	}
 }
 
@@ -54,6 +61,26 @@ func (*fixture) Metadata() plugin.Metadata {
 
 func (*fixture) Subscriptions() []event.Subscription {
 	return []event.Subscription{{Topic: event.Message, Mode: event.Consume}}
+}
+
+func (*fixture) Commands() any {
+	return &fixtureCommands{}
+}
+
+type fixtureCommands struct {
+	Config fixtureConfigCommand `cmd:"" name:"config" scope:"owner" help:"修改配置"`
+}
+
+type fixtureConfigCommand struct {
+	Enabled bool `name:"enabled" help:"是否启用"`
+}
+
+func (c fixtureConfigCommand) Run(ctx context.Context, p *fixture, _ command.Reply) error {
+	return p.Config.Update(ctx, func(next *fixtureConfig) error {
+		mark("config-mutate")
+		next.Enabled = c.Enabled
+		return nil
+	})
 }
 
 func (p *fixture) OnLoad(context.Context) error {
@@ -103,6 +130,11 @@ func (*fixture) OnStop(context.Context) error {
 
 func (*fixture) OnUnload(context.Context) error {
 	mark("unload")
+	return nil
+}
+
+func (*fixture) OnConfigChanged(context.Context, fixtureConfig, fixtureConfig) error {
+	mark("config-changed")
 	return nil
 }
 

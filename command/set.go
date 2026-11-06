@@ -121,6 +121,17 @@ func (c *Call) Help() string {
 	return c.help
 }
 
+// RequiresOwner 报告 selected 命令路径是否要求 owner 权限。
+//
+// 该方法供 SDK 在配置待修复或应用失败时只放行 owner 修复命令；权限本身
+// 仍由 Parse 在参数解析前和解析后校验。
+func (c *Call) RequiresOwner() bool {
+	if c == nil || c.context == nil {
+		return false
+	}
+	return pathRequiresOwner(c.context)
+}
+
 // Run 调用 selected 命令的 Run 方法。ctx 和显式绑定会注入 Run 参数，
 // command.Reply 同时按接口类型绑定。
 func (c *Call) Run(ctx context.Context, bindings ...any) error {

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/golemwx/sdk"
+	"github.com/golemwx/sdk/command"
 	"github.com/golemwx/sdk/event"
 )
 
@@ -26,6 +27,30 @@ type subprocessAccount struct {
 func (a *subprocessAccount) Current(context.Context) (*sdk.Account, error) {
 	a.calls.Add(1)
 	return &sdk.Account{Username: "wxid_owner", Nickname: "Owner", Online: true}, nil
+}
+
+type subprocessConfig struct {
+	mu   sync.Mutex
+	data []byte
+}
+
+func (c *subprocessConfig) Read(context.Context) ([]byte, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]byte(nil), c.data...), nil
+}
+
+func (c *subprocessConfig) Save(_ context.Context, data []byte) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.data = append([]byte(nil), data...)
+	return nil
+}
+
+func (c *subprocessConfig) contents() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return string(c.data)
 }
 
 type subprocessStart struct {
@@ -273,6 +298,104 @@ func TestSubprocessHostDisconnectInvalidatesInstance(t *testing.T) {
 	}
 }
 
+func TestSubprocessConfigUpdateKeepsProcessAlive(t *testing.T) {
+	binary := buildSubprocessFixture(t)
+	installDir := t.TempDir()
+	markerPath := filepath.Join(t.TempDir(), "config-update.log")
+	client, err := startSubprocessFixture(t, binary, installDir, markerPath, "normal")
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	if err := client.Load(t.Context()); err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if err := client.Start(t.Context()); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+
+	pid := client.PID()
+	if pid == "" {
+		t.Fatal("PID() is empty")
+	}
+	if err := client.SetConfig(t.Context(), []byte("enabled = false\n")); err != nil {
+		t.Fatalf("SetConfig() error = %v", err)
+	}
+	if got := client.PID(); got != pid {
+		t.Fatalf("PID changed after config update: %q -> %q", pid, got)
+	}
+	if client.Exited() {
+		t.Fatal("config update restarted or exited the plugin process")
+	}
+	waitForMarker(t, markerPath, "config-changed")
+	if got := markerCount(t, markerPath, "start"); got != 1 {
+		t.Fatalf("start marker count = %d, want 1", got)
+	}
+	if err := client.Unload(t.Context()); err != nil {
+		t.Fatalf("Unload() error = %v", err)
+	}
+}
+
+func TestSubprocessOwnerConfigUpdateKeepsProcessAlive(t *testing.T) {
+	binary := buildSubprocessFixture(t)
+	installDir := t.TempDir()
+	markerPath := filepath.Join(t.TempDir(), "config-owner-update.log")
+	config := &subprocessConfig{}
+	client, err := startSubprocessFixtureWithConfig(t, binary, installDir, markerPath, "normal", config)
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	if err := client.Load(t.Context()); err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if err := client.Start(t.Context()); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+
+	pid := client.PID()
+	if pid == "" {
+		t.Fatal("PID() is empty")
+	}
+	commandMessage := ownerMessage()
+	commandMessage.Timestamp = time.Now()
+	invocation := command.Invocation{
+		Tokens:  []string{"config", "--enabled=false"},
+		Owner:   true,
+		Message: commandMessage,
+	}
+	if err := client.HandleCommand(t.Context(), invocation); err != nil {
+		t.Fatalf("HandleCommand() error = %v", err)
+	}
+	if got := client.PID(); got != pid {
+		t.Fatalf("PID changed after owner config update: %q -> %q", pid, got)
+	}
+	if client.Exited() {
+		t.Fatal("owner config update restarted or exited the plugin process")
+	}
+	waitForMarker(t, markerPath, "config-changed")
+	if got := markerCount(t, markerPath, "config-mutate"); got != 1 {
+		t.Fatalf("config mutate marker count = %d, want 1", got)
+	}
+	if got := markerCount(t, markerPath, "start"); got != 1 {
+		t.Fatalf("start marker count = %d, want 1", got)
+	}
+	if saved := config.contents(); !strings.Contains(saved, "enabled = false") {
+		t.Fatalf("saved config = %q, want enabled = false", saved)
+	}
+
+	invocation.Owner = false
+	if err := client.HandleCommand(t.Context(), invocation); err == nil {
+		t.Fatal("non-owner config command was accepted")
+	}
+	if got := markerCount(t, markerPath, "config-mutate"); got != 1 {
+		t.Fatalf("non-owner command mutated config: count = %d", got)
+	}
+	if err := client.Unload(t.Context()); err != nil {
+		t.Fatalf("Unload() error = %v", err)
+	}
+}
+
 func buildSubprocessFixture(t *testing.T) string {
 	t.Helper()
 	_, sourceFile, _, ok := goruntime.Caller(0)
@@ -296,6 +419,10 @@ func buildSubprocessFixture(t *testing.T) string {
 }
 
 func startSubprocessFixture(t *testing.T, binary, installDir, markerPath, mode string) (*Client, error) {
+	return startSubprocessFixtureWithConfig(t, binary, installDir, markerPath, mode, nil)
+}
+
+func startSubprocessFixtureWithConfig(t *testing.T, binary, installDir, markerPath, mode string, config ConfigClient) (*Client, error) {
 	t.Helper()
 	command := exec.Command(binary)
 	command.Env = append(os.Environ(),
@@ -306,10 +433,11 @@ func startSubprocessFixture(t *testing.T, binary, installDir, markerPath, mode s
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
 	return Start(ctx, ClientOptions{
-		Command:  command,
-		PluginID: subprocessFixtureID,
-		Host:     NewHost(&subprocessAccount{}, nil, nil, nil, nil, nil, nil),
-		DataRoot: filepath.Join(installDir, "plugins", "data", subprocessFixtureID),
+		Command:      command,
+		PluginID:     subprocessFixtureID,
+		Host:         NewHost(&subprocessAccount{}, &configTestMessages{}, nil, nil, nil, nil, nil),
+		ConfigClient: config,
+		DataRoot:     filepath.Join(installDir, "plugins", "data", subprocessFixtureID),
 	})
 }
 

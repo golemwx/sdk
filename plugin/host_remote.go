@@ -101,6 +101,12 @@ func newRemoteHost(state *remoteHostState) *Host {
 		unsupportedData{},
 	)
 	host.state = state
+	if conn != nil {
+		host.configClient = &remoteConfig{
+			state:  state,
+			client: wire.NewHostConfigServiceClient(conn),
+		}
+	}
 	return host
 }
 
@@ -110,6 +116,37 @@ func (h *Host) setActive(active bool) {
 		return
 	}
 	h.state.setActive(active)
+}
+
+type remoteConfig struct {
+	state  *remoteHostState
+	client wire.HostConfigServiceClient
+}
+
+func (c *remoteConfig) Read(ctx context.Context) ([]byte, error) {
+	const operation = "config.read"
+	if err := c.state.check(ctx, operation); err != nil {
+		return nil, err
+	}
+	response, err := c.client.Read(ctx, &emptypb.Empty{})
+	if err := transport.DecodeError(response.GetError(), err, operation); err != nil {
+		return nil, err
+	}
+	return wire.FromWireBytes(response.GetConfig()), nil
+}
+
+func (c *remoteConfig) Save(ctx context.Context, config []byte) error {
+	const operation = "config.save"
+	if err := c.state.check(ctx, operation); err != nil {
+		return err
+	}
+	response, err := c.client.Save(ctx, &wire.SaveConfigRequest{Config: wire.ToWireBytes(config)})
+	if err != nil {
+		failure := transport.NormalizeError(err, operation)
+		failure.Outcome = sdk.OutcomeUnknown
+		return failure
+	}
+	return transport.DecodeError(response.GetError(), nil, operation)
 }
 
 type remoteAccount struct {

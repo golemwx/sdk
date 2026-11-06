@@ -8,6 +8,7 @@ require (
 	github.com/gofrs/flock v0.13.1
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-plugin v1.8.0
+	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/robfig/cron/v3 v3.0.1
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12

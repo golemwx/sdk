@@ -42,8 +42,10 @@ type runtime struct {
 	accepting   bool
 	unloaded    bool
 	failed      *sdk.Error
+	businessErr *sdk.Error
 
 	host        *Host
+	config      configHandle
 	cycle       context.Context
 	cancelCycle context.CancelFunc
 	handlerWait sync.WaitGroup
@@ -65,7 +67,16 @@ func newRuntime(implementation Plugin) (*runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &runtime{implementation: implementation, metadata: metadata}, nil
+	config, err := discoverConfig(implementation)
+	if err != nil {
+		return nil, err
+	}
+	instance := &runtime{implementation: implementation, metadata: metadata, config: config}
+	if config != nil {
+		config.setOwner(implementation)
+		config.setStatusListener(instance.configStatusChanged)
+	}
+	return instance, nil
 }
 
 func readMetadata(implementation Plugin) (metadata Metadata, err error) {
@@ -127,6 +138,14 @@ func (r *runtime) Describe(ctx context.Context) (*Descriptor, error) {
 			if commands != nil {
 				value.Commands = commands.Schema()
 			}
+			if r.config != nil {
+				defaultConfig, err := r.config.defaultTOML()
+				if err != nil {
+					return err
+				}
+				value.HasConfig = true
+				value.DefaultConfig = defaultConfig
+			}
 			snapshot, err := toWireDescriptor(value)
 			if err != nil {
 				return err
@@ -147,8 +166,8 @@ func (r *runtime) Describe(ctx context.Context) (*Descriptor, error) {
 
 // Initialize 绑定当前实例唯一的 Host。
 //
-// R03 只发布 Host；Config 和 DataDir 由 R05/R06 消费，当前不会读取配置或
-// 创建数据目录。
+// Initialize 绑定 Host，并通过 Host 内部配置通道装载当前配置。DataDir 由
+// R06 消费，当前不会创建数据目录。
 func (r *runtime) Initialize(ctx context.Context, options InitializeOptions) error {
 	r.lifecycleMu.Lock()
 	defer r.lifecycleMu.Unlock()
@@ -157,23 +176,36 @@ func (r *runtime) Initialize(ctx context.Context, options InitializeOptions) err
 		return err
 	}
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	if r.initialized || r.unloaded {
+		r.mu.Unlock()
 		return sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.initialize", "plugin instance is already initialized")
 	}
 	if options.Host == nil {
+		r.mu.Unlock()
 		return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.initialize", "host is nil")
 	}
 	if strings.TrimSpace(options.DataDir) == "" {
+		r.mu.Unlock()
 		return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.initialize", "data root is empty")
+	}
+	r.mu.Unlock()
+	if r.config != nil {
+		r.config.setClient(options.Host.configClient)
+		if err := r.config.loadInitial(ctx, options.Config); err != nil {
+			return err
+		}
+	} else if len(options.Config) > 0 {
+		return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.initialize", "插件未声明配置，不能接收配置")
 	}
 	if binder, ok := r.implementation.(interface{ bindHost(*Host) error }); ok {
 		if err := binder.bindHost(options.Host); err != nil {
 			return err
 		}
 	}
+	r.mu.Lock()
 	r.host = options.Host
 	r.initialized = true
+	r.mu.Unlock()
 	return nil
 }
 
@@ -184,6 +216,9 @@ func (r *runtime) Load(ctx context.Context) error {
 
 	if err := contextError(ctx, "plugin.load"); err != nil {
 		return err
+	}
+	if status := r.configStatus(); status != StatusReady {
+		return sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.load", "插件配置待修复或应用失败")
 	}
 	r.mu.Lock()
 	if !r.initialized || r.loaded || r.started || r.starting || r.unloaded {
@@ -219,6 +254,9 @@ func (r *runtime) Start(ctx context.Context) error {
 
 	if err := contextError(ctx, "plugin.start"); err != nil {
 		return err
+	}
+	if status := r.configStatus(); status != StatusReady {
+		return sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.start", "插件配置待修复或应用失败")
 	}
 	r.mu.Lock()
 	if !r.loaded || r.started || r.starting || r.unloaded {
@@ -330,6 +368,9 @@ func (r *runtime) Unload(ctx context.Context) error {
 	r.lifecycleMu.Lock()
 	defer r.lifecycleMu.Unlock()
 
+	if err := contextError(ctx, "plugin.unload"); err != nil {
+		return err
+	}
 	r.mu.Lock()
 	if r.unloaded {
 		r.mu.Unlock()
@@ -339,17 +380,20 @@ func (r *runtime) Unload(ctx context.Context) error {
 		r.mu.Unlock()
 		return sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.unload", "plugin instance is not initialized")
 	}
-	r.mu.Unlock()
-
-	if err := contextError(ctx, "plugin.unload"); err != nil {
-		return err
-	}
-	var stopErr error
-	r.mu.Lock()
+	r.stopping = true
+	r.accepting = false
 	started := r.started || r.starting
 	r.mu.Unlock()
+
+	var stopErr error
 	if started {
 		stopErr = r.stopLocked(ctx)
+		r.mu.Lock()
+		r.stopping = true
+		r.accepting = false
+		r.mu.Unlock()
+	} else {
+		r.handlerWait.Wait()
 	}
 
 	r.mu.Lock()
@@ -378,20 +422,36 @@ func (r *runtime) Unload(ctx context.Context) error {
 	return errors.Join(stopErr, unloadErr)
 }
 
-// ValidateConfig 在 R05 提供严格 TOML 解码和标签校验前明确不可用。
-func (r *runtime) ValidateConfig(ctx context.Context, _ []byte) error {
+// ValidateConfig 严格解码并校验候选配置，不修改当前状态。
+func (r *runtime) ValidateConfig(ctx context.Context, data []byte) error {
 	if err := contextError(ctx, "plugin.config.validate"); err != nil {
 		return err
 	}
-	return sdk.NewError(sdk.CategoryUnimplemented, "plugin.config.validate", "configuration validation is not implemented before R05")
+	if r.config == nil {
+		return sdk.NewError(sdk.CategoryUnimplemented, "plugin.config.validate", "插件未声明配置")
+	}
+	return r.config.validateTOML(ctx, data)
 }
 
-// SetConfig 在 R05 提供发布和回调前明确不可用。
-func (r *runtime) SetConfig(ctx context.Context, _ []byte) error {
+// SetConfig 接收宿主下发的配置，校验后发布并触发可选变更回调。
+func (r *runtime) SetConfig(ctx context.Context, data []byte) error {
 	if err := contextError(ctx, "plugin.config.set"); err != nil {
 		return err
 	}
-	return sdk.NewError(sdk.CategoryUnimplemented, "plugin.config.set", "configuration updates are not implemented before R05")
+	if r.config == nil {
+		return sdk.NewError(sdk.CategoryUnimplemented, "plugin.config.set", "插件未声明配置")
+	}
+	r.mu.Lock()
+	initialized := r.initialized
+	unloaded := r.unloaded
+	r.mu.Unlock()
+	if unloaded {
+		return sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.config.set", "插件实例已卸载")
+	}
+	if !initialized {
+		return sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.config.set", "插件实例尚未初始化")
+	}
+	return r.config.SetConfig(ctx, data)
 }
 
 // HandleEvent 在启用周期内同步执行事件处理器。
@@ -437,7 +497,7 @@ func (r *runtime) HandleCommand(ctx context.Context, invocation command.Invocati
 	if err != nil {
 		return err
 	}
-	handlerCtx, release, err := r.beginHandler(ctx, "plugin.command")
+	handlerCtx, release, err := r.beginCommand(ctx, "plugin.command")
 	if err != nil {
 		return err
 	}
@@ -446,8 +506,12 @@ func (r *runtime) HandleCommand(ctx context.Context, invocation command.Invocati
 	if err != nil {
 		return err
 	}
+	handlerCtx = command.WithAuthorization(handlerCtx, command.Authorization{Owner: invocation.Owner})
 	if help := call.Help(); help != "" {
 		return protectError("plugin.command", func() error { return reply.Text(handlerCtx, help) })
+	}
+	if r.configStatus() != StatusReady && !call.RequiresOwner() {
+		return sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.command", "配置待修复，仅允许 owner 命令")
 	}
 	return protectError("plugin.command", func() error {
 		return call.Run(handlerCtx, r.implementation, reply)
@@ -484,10 +548,20 @@ func (r *runtime) beginHandler(ctx context.Context, operation string) (context.C
 	if err := contextError(ctx, operation); err != nil {
 		return nil, nil, err
 	}
+	status := r.configStatus()
 	r.mu.Lock()
 	if !r.initialized || !r.started || !r.accepting || r.stopping || r.unloaded {
 		r.mu.Unlock()
 		return nil, nil, sdk.NewError(sdk.CategoryFailedPrecondition, operation, "plugin instance is not accepting work")
+	}
+	if r.businessErr != nil {
+		failure := cloneBusinessError(r.businessErr)
+		r.mu.Unlock()
+		return nil, nil, failure
+	}
+	if status != StatusReady {
+		r.mu.Unlock()
+		return nil, nil, sdk.NewError(sdk.CategoryFailedPrecondition, operation, "插件配置待修复或应用失败")
 	}
 	if r.failed != nil {
 		failure := cloneBusinessError(r.failed)
@@ -506,6 +580,63 @@ func (r *runtime) beginHandler(ctx context.Context, operation string) (context.C
 		r.handlerWait.Done()
 	}
 	return handlerCtx, release, nil
+}
+
+// beginCommand 允许待配置或应用失败的插件继续执行 owner 修复命令。
+func (r *runtime) beginCommand(ctx context.Context, operation string) (context.Context, func(), error) {
+	if err := contextError(ctx, operation); err != nil {
+		return nil, nil, err
+	}
+	status := r.configStatus()
+	repair := status != StatusReady
+	r.mu.Lock()
+	if !r.initialized || r.unloaded || r.stopping {
+		r.mu.Unlock()
+		return nil, nil, sdk.NewError(sdk.CategoryFailedPrecondition, operation, "plugin instance is not accepting work")
+	}
+	if r.failed != nil {
+		failure := cloneBusinessError(r.failed)
+		r.mu.Unlock()
+		return nil, nil, failure
+	}
+	if !repair && (!r.started || !r.accepting) {
+		r.mu.Unlock()
+		return nil, nil, sdk.NewError(sdk.CategoryFailedPrecondition, operation, "plugin instance is not accepting work")
+	}
+	cycle := r.cycle
+	r.handlerWait.Add(1)
+	r.mu.Unlock()
+
+	handlerCtx, cancel := context.WithCancel(ctx)
+	var stopCancellation func() bool
+	if !repair && cycle != nil {
+		stopCancellation = context.AfterFunc(cycle, cancel)
+	}
+	release := func() {
+		if stopCancellation != nil {
+			stopCancellation()
+		}
+		cancel()
+		r.handlerWait.Done()
+	}
+	return handlerCtx, release, nil
+}
+
+func (r *runtime) configStatus() Status {
+	if r.config == nil {
+		return StatusReady
+	}
+	return r.config.configStatus()
+}
+
+func (r *runtime) configStatusChanged(status Status) {
+	r.mu.Lock()
+	if status == StatusApplyFailed {
+		r.businessErr = sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.config", "插件配置已保存，但应用失败，等待 owner 修复")
+	} else {
+		r.businessErr = nil
+	}
+	r.mu.Unlock()
 }
 
 // hostLost 在反向连接失效时取消启用周期并永久关闭该实例的业务准入。

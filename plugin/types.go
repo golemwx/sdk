@@ -115,7 +115,8 @@ type Host struct {
 	Caller   capability.Client
 	Data     Data
 
-	state *remoteHostState
+	state        *remoteHostState
+	configClient ConfigClient
 }
 
 // NewHost 构造一组显式注入的宿主能力，供 frame 运行时和测试使用。
