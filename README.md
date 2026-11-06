@@ -6,7 +6,7 @@ Golem 插件 SDK 定义 frame 与插件共享的公共模型、通信契约和�
 ## 当前状态
 
 本修订包含 GOLEM-39 / R02 冻结契约、GOLEM-40 / R03 实例运行时、GOLEM-41 / R04 命令系统、
-GOLEM-42 / R05 配置系统和 GOLEM-43 / R06 数据目录：
+GOLEM-42 / R05 配置系统、GOLEM-43 / R06 数据目录和 GOLEM-44 / R07 日志桥接：
 
 - 消息、联系人、群、事件、命令、配置、租约、能力和运行时公共签名已冻结
 - Proto 是唯一 wire 来源，生成代码只存在于 `internal/wire`
@@ -18,7 +18,8 @@ GOLEM-42 / R05 配置系统和 GOLEM-43 / R06 数据目录：
 - `Config[T]` 默认值上报、严格 TOML、标签/业务校验、深拷贝、保存、SetConfig、
   待配置状态和变更回调已实现
 - 实例级 `Host.Data` 惰性目录、相对路径/盘符/`..`/符号链接边界和重启读回已实现
-- 日志桥接仍由 R07 实现
+- 插件 `log/slog` 经 hclog JSON stderr 进入 go-plugin，再由宿主 slog 输出；等级、属性、
+  group 和可信 `plugin_id`/`plugin_name` 均保留
 
 未实现行为必须返回 `CategoryUnimplemented`，不能伪装成功。最终跨仓库符合性由 R25
 独立核对。
@@ -110,3 +111,5 @@ task build
 - [R03 验收记录](docs/R03验收记录.md)：实例运行时、锁、子进程和未验证项
 - [R04 验收记录](docs/R04验收记录.md)：命令树、lexer、校验、帮助和未验证项
 - [R05 验收记录](docs/R05验收记录.md)：配置默认值、校验、保存、回调和未验证项
+- [R06 验收记录](docs/R06验收记录.md)：数据目录惰性创建、路径边界和未验证项
+- [R07 验收记录](docs/R07验收记录.md)：slog 桥接、可信身份、启动失败日志和未验证项

@@ -150,7 +150,7 @@ type InitializeOptions struct {
 // Runtime 是插件运行时必须提供的最小实例契约。
 //
 // R03 实现生命周期和进程级单实例锁；R04 实现 Kong 命令，R05 实现配置，R06
-// 实现数据目录，R07 实现日志桥接。尚未实现的入口必须返回 Unimplemented。
+// 实现数据目录，R07 实现日志桥接。
 type Runtime interface {
 	Describe(ctx context.Context) (*Descriptor, error)
 	Initialize(ctx context.Context, options InitializeOptions) error

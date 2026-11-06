@@ -3,6 +3,8 @@ package plugin
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"os/exec"
 	"strings"
 	"sync"
@@ -34,6 +36,9 @@ type ClientOptions struct {
 	Config       []byte
 	DataRoot     string
 	StartTimeout time.Duration
+	// Logger 接收插件 stderr 上的结构化日志。frame 应传入其启动时配置的
+	// slog logger；nil 表示丢弃插件日志。
+	Logger *slog.Logger
 }
 
 // Client 拥有一个真实插件子进程及其唯一反向 Host 服务。
@@ -80,6 +85,23 @@ func Start(ctx context.Context, options ClientOptions) (_ *Client, err error) {
 	startCtx, cancel := context.WithTimeout(ctx, options.StartTimeout)
 	defer cancel()
 
+	var logIdentity *logIdentity
+	clientLogger := hclog.NewNullLogger()
+	var syncStdout, syncStderr io.Writer
+	if options.Logger != nil {
+		logIdentity = newLogIdentity(options.PluginID, "")
+		handler := &identityHandler{next: options.Logger.Handler(), identity: logIdentity}
+		clientLogger = newHclogSlogLogger(slog.New(handler))
+		syncStderr = newStreamLogWriter(
+			clientLogger.With("stream", "stderr"),
+			hclog.Warn,
+		)
+		syncStdout = newStreamLogWriter(
+			clientLogger.With("stream", "stdout"),
+			hclog.Error,
+		)
+	}
+
 	client := &Client{process: hplugin.NewClient(&hplugin.ClientConfig{
 		HandshakeConfig:  transport.Handshake(),
 		Plugins:          transport.PluginSet(nil),
@@ -87,7 +109,9 @@ func Start(ctx context.Context, options ClientOptions) (_ *Client, err error) {
 		AllowedProtocols: []hplugin.Protocol{hplugin.ProtocolGRPC},
 		AutoMTLS:         true,
 		StartTimeout:     options.StartTimeout,
-		Logger:           hclog.NewNullLogger(),
+		Logger:           clientLogger,
+		SyncStdout:       syncStdout,
+		SyncStderr:       syncStderr,
 		GRPCDialOptions:  transport.DialOptions(),
 	})}
 	defer func() {
@@ -120,6 +144,9 @@ func Start(ctx context.Context, options ClientOptions) (_ *Client, err error) {
 	client.descriptor = described.GetDescriptor_()
 	if client.descriptor.GetMetadata().GetId() != options.PluginID {
 		return nil, sdk.NewError(sdk.CategoryFailedPrecondition, "plugin.describe", "plugin descriptor ID does not match expected ID")
+	}
+	if logIdentity != nil {
+		logIdentity.SetName(client.descriptor.GetMetadata().GetName())
 	}
 
 	brokerID := endpoint.Broker.NextId()

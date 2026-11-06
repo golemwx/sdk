@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -423,6 +424,19 @@ func startSubprocessFixture(t *testing.T, binary, installDir, markerPath, mode s
 }
 
 func startSubprocessFixtureWithConfig(t *testing.T, binary, installDir, markerPath, mode string, config ConfigClient) (*Client, error) {
+	return startSubprocessFixtureWithOptions(t, binary, installDir, markerPath, mode, config, nil)
+}
+
+func startSubprocessFixtureWithLogger(t *testing.T, binary, installDir, markerPath, mode string, logger *slog.Logger) (*Client, error) {
+	return startSubprocessFixtureWithOptions(t, binary, installDir, markerPath, mode, nil, logger)
+}
+
+func startSubprocessFixtureWithOptions(
+	t *testing.T,
+	binary, installDir, markerPath, mode string,
+	config ConfigClient,
+	logger *slog.Logger,
+) (*Client, error) {
 	t.Helper()
 	command := exec.Command(binary)
 	command.Env = append(os.Environ(),
@@ -438,6 +452,7 @@ func startSubprocessFixtureWithConfig(t *testing.T, binary, installDir, markerPa
 		Host:         NewHost(&subprocessAccount{}, &configTestMessages{}, nil, nil, nil, nil, nil),
 		ConfigClient: config,
 		DataRoot:     filepath.Join(installDir, "plugins", "data", subprocessFixtureID),
+		Logger:       logger,
 	})
 }
 

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
@@ -55,7 +57,10 @@ func New() *fixture {
 	}
 }
 
-func (*fixture) Metadata() plugin.Metadata {
+func (p *fixture) Metadata() plugin.Metadata {
+	if p.mode == "metadata-fail" {
+		return plugin.Metadata{ID: "invalid id", Name: "坏元数据"}
+	}
 	return plugin.Metadata{ID: "subprocess-fixture", Name: "子进程夹具"}
 }
 
@@ -90,6 +95,17 @@ func (p *fixture) OnLoad(context.Context) error {
 
 func (p *fixture) OnStart(ctx context.Context) error {
 	mark("start")
+	_, _ = fmt.Fprintln(os.Stderr, "fixture plain stderr")
+	logger := slog.With("component", "fixture")
+	logger.Debug("fixture debug", "answer", 42)
+	logger.Info("fixture info", "request", "abc")
+	logger.Warn("fixture warning")
+	logger.Error("fixture error", "code", 7)
+	logger.WithGroup("outer").Info("fixture grouped", "key", "value")
+	slog.Info("fixture identity attempt",
+		plugin.LogFieldPluginID, "spoofed",
+		plugin.LogFieldPluginName, "spoofed",
+	)
 	if p.Context() == nil || p.Context().Err() != nil {
 		mark("cycle-invalid")
 	} else {
@@ -105,6 +121,7 @@ func (p *fixture) OnStart(ctx context.Context) error {
 	go p.watchCycle(ctx)
 	if p.mode == "start-fail" {
 		mark("start-fail")
+		slog.Error("fixture start failure", "reason", "requested")
 		return sdk.NewError(sdk.CategoryInternal, "fixture.start", "requested start failure")
 	}
 	return nil
@@ -155,5 +172,8 @@ func (p *fixture) OnEvent(ctx context.Context, _ event.Event) (event.Result, err
 }
 
 func main() {
+	if os.Getenv(fixtureModeEnv) == "metadata-fail" {
+		_, _ = fmt.Fprintln(os.Stderr, "fixture pre-handshake plain stderr")
+	}
 	plugin.Serve(New())
 }
