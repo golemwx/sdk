@@ -1,89 +1,65 @@
-// Package event 定义插件事件和订阅契约
+// Package event 定义瞬时事件、订阅模式和消费结果。
 package event
 
 import (
 	"time"
 
-	"github.com/golemwx/sdk"
 	"github.com/golemwx/sdk/chatroom"
 	"github.com/golemwx/sdk/contact"
 	"github.com/golemwx/sdk/message"
-	"github.com/golemwx/sdk/session"
 )
 
-// SubscribeMode 订阅模式
-type SubscribeMode int
+// Topic 是事件主题标识。
+type Topic string
 
 const (
-	// SubscribeModeUnknown 未知订阅模式
-	SubscribeModeUnknown SubscribeMode = iota
-	// SubscribeModeRespond 参与普通响应链，可返回消费结果
-	SubscribeModeRespond
-	// SubscribeModeObserve 仅观察授权事件，不影响路由
-	SubscribeModeObserve
+	// Message 是完整消息事件主题。
+	Message Topic = "message"
+	// Contact 是联系人资料变化主题。
+	Contact Topic = "contact"
+	// Chatroom 是群资料变化主题。
+	Chatroom Topic = "chatroom"
+	// Member 是群成员资料变化主题。
+	Member Topic = "member"
+	// Account 是当前账号资料变化主题。
+	Account Topic = "account"
 )
 
-// Subscription 事件订阅声明
+// Mode 是插件对主题的订阅模式。
+type Mode uint8
+
+const (
+	// ModeUnknown 表示订阅模式未知。
+	ModeUnknown Mode = iota
+	// Observe 表示独立观察，不影响消费链和会话租约。
+	Observe
+	// Consume 表示参与消费链，可返回 Result.Consumed。
+	Consume
+)
+
+// Subscription 是插件声明的单个事件订阅。
+//
+// Priority 仅对消费者有意义：数值越小越先执行，同值按插件 ID 稳定排序。
 type Subscription struct {
-	Topic    string        // 订阅或投递的事件主题
-	Mode     SubscribeMode // 事件订阅模式，区分普通响应与观察
-	Priority int           // 订阅优先级，数值越小越优先，同值按插件 ID 稳定排序
+	Topic    Topic
+	Mode     Mode
+	Priority int
 }
 
-// ChangeDomain 变更域
-type ChangeDomain int
-
-const (
-	// ChangeDomainUnknown 未知资料变更域
-	ChangeDomainUnknown ChangeDomain = iota
-	// ChangeDomainContact 联系人资料变更
-	ChangeDomainContact
-	// ChangeDomainRoom 群资料变更
-	ChangeDomainRoom
-	// ChangeDomainRoomMember 群成员资料变更
-	ChangeDomainRoomMember
-	// ChangeDomainAccount 当前账号资料变更
-	ChangeDomainAccount
-)
-
-// ChangeAction 变更动作
-type ChangeAction int
-
-const (
-	// ChangeActionUnknown 未知变更动作
-	ChangeActionUnknown ChangeAction = iota
-	// ChangeActionCreated 业务对象已创建
-	ChangeActionCreated
-	// ChangeActionUpdated 业务对象已更新
-	ChangeActionUpdated
-	// ChangeActionDeleted 业务对象已删除
-	ChangeActionDeleted
-)
-
-// Change 归一化资料变更
-type Change struct {
-	Domain        ChangeDomain     // 资料变更所属业务域
-	Action        ChangeAction     // 资料创建、更新或删除动作
-	SubjectID     string           // 本项操作或资料变更的目标业务标识
-	ParentID      *string          // 父级业务标识，群成员变更时为群 username
-	ChangedFields []string         // 实际变更的 SDK 字段路径，更新时非空，缺失与显式空集合可区分
-	Contact       *contact.Contact // 变更或查询对应的联系人业务快照
-	Room          *chatroom.Room   // 变更或查询对应的群业务快照
-	Member        *chatroom.Member // 变更或查询对应的群成员业务快照
-	Account       *sdk.Account     // 变更或查询对应的当前账号业务快照
-}
-
-// Event 投递给插件的不可变事件
+// Event 是一次函数调用的只读输入，插件不得修改其中的共享快照。
+//
+// 单账号系统不在事件中携带 tenant、账号 username、epoch 或事件序号。
+// Account 主题不重复携带账号快照；处理器应通过 Host.Account.Current 读取。
 type Event struct {
-	Topic           string           // 订阅或投递的事件主题
-	AccountUsername string           // 所属账号的微信 username
-	Message         *message.Message // 关联的归一化业务消息
-	Change          *Change          // 关联的资料变更，非资料变更事件时为空
-	Lease           *session.Lease   // 关联的会话租约
-	OccurredAt      time.Time        // 事件发生时间，必填并按 UTC 传递
+	Topic      Topic
+	Message    *message.Message
+	Contact    *contact.Contact
+	Chatroom   *chatroom.Chatroom
+	Member     *chatroom.Member
+	OccurredAt time.Time
 }
 
-// EventResult 事件消费结果
-type EventResult struct {
-	Consumed bool // 普通响应链是否已消费事件，观察者结果不影响路由
+// Result 是消费者返回的消费结果；观察者返回值被忽略。
+type Result struct {
+	Consumed bool
 }

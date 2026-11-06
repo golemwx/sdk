@@ -22,45 +22,36 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	PluginControlService_Describe_FullMethodName       = "/golem.sdk.PluginControlService/Describe"
 	PluginControlService_Initialize_FullMethodName     = "/golem.sdk.PluginControlService/Initialize"
-	PluginControlService_OnLoad_FullMethodName         = "/golem.sdk.PluginControlService/OnLoad"
-	PluginControlService_OnEnable_FullMethodName       = "/golem.sdk.PluginControlService/OnEnable"
-	PluginControlService_OnDisable_FullMethodName      = "/golem.sdk.PluginControlService/OnDisable"
-	PluginControlService_OnUnload_FullMethodName       = "/golem.sdk.PluginControlService/OnUnload"
-	PluginControlService_Drain_FullMethodName          = "/golem.sdk.PluginControlService/Drain"
-	PluginControlService_ConfigDefaults_FullMethodName = "/golem.sdk.PluginControlService/ConfigDefaults"
-	PluginControlService_ConfigValidate_FullMethodName = "/golem.sdk.PluginControlService/ConfigValidate"
-	PluginControlService_ConfigApply_FullMethodName    = "/golem.sdk.PluginControlService/ConfigApply"
-	PluginControlService_ConfigResume_FullMethodName   = "/golem.sdk.PluginControlService/ConfigResume"
+	PluginControlService_Load_FullMethodName           = "/golem.sdk.PluginControlService/Load"
+	PluginControlService_Start_FullMethodName          = "/golem.sdk.PluginControlService/Start"
+	PluginControlService_Stop_FullMethodName           = "/golem.sdk.PluginControlService/Stop"
+	PluginControlService_Unload_FullMethodName         = "/golem.sdk.PluginControlService/Unload"
+	PluginControlService_ValidateConfig_FullMethodName = "/golem.sdk.PluginControlService/ValidateConfig"
+	PluginControlService_SetConfig_FullMethodName      = "/golem.sdk.PluginControlService/SetConfig"
 )
 
 // PluginControlServiceClient is the client API for PluginControlService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// PluginControlService 插件描述、初始化、生命周期、排空及配置控制服务
+// PluginControlService 是插件描述、初始化、配置和生命周期控制面。
 type PluginControlServiceClient interface {
-	// Describe 读取插件固定声明
+	// Describe 返回元数据、订阅、自动命令树、能力和默认配置。
 	Describe(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DescribeResponse, error)
-	// Initialize 绑定宿主反向连接、权限及实例初始化上下文
+	// Initialize 绑定唯一 Host 连接和插件数据根路径。
 	Initialize(ctx context.Context, in *InitializeRequest, opts ...grpc.CallOption) (*OperationResponse, error)
-	// OnLoad 执行插件加载初始化
-	OnLoad(ctx context.Context, in *LifecycleRequest, opts ...grpc.CallOption) (*OperationResponse, error)
-	// OnEnable 启用插件并开始当前启用周期
-	OnEnable(ctx context.Context, in *LifecycleRequest, opts ...grpc.CallOption) (*OperationResponse, error)
-	// OnDisable 禁用插件并结束当前启用周期
-	OnDisable(ctx context.Context, in *LifecycleRequest, opts ...grpc.CallOption) (*OperationResponse, error)
-	// OnUnload 卸载插件并释放实例资源
-	OnUnload(ctx context.Context, in *LifecycleRequest, opts ...grpc.CallOption) (*OperationResponse, error)
-	// Drain 停止新的业务准入并返回尚未实际结束的执行
-	Drain(ctx context.Context, in *DrainRequest, opts ...grpc.CallOption) (*DrainResponse, error)
-	// ConfigDefaults 获取插件业务默认配置
-	ConfigDefaults(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ConfigDefaultsResponse, error)
-	// ConfigValidate 纯校验候选配置，不改变当前生效配置
-	ConfigValidate(ctx context.Context, in *ConfigCandidateRequest, opts ...grpc.CallOption) (*OperationResponse, error)
-	// ConfigApply 原子应用候选配置，失败时保留此前生效配置
-	ConfigApply(ctx context.Context, in *ConfigCandidateRequest, opts ...grpc.CallOption) (*OperationResponse, error)
-	// ConfigResume 在配置应用或确定失败后恢复业务准入
-	ConfigResume(ctx context.Context, in *ConfigResumeRequest, opts ...grpc.CallOption) (*OperationResponse, error)
+	// Load 执行可选 OnLoad。
+	Load(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*OperationResponse, error)
+	// Start 执行可选 OnStart 并建立启用期 context。
+	Start(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*OperationResponse, error)
+	// Stop 执行可选 OnStop 并取消启用期 context。
+	Stop(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*OperationResponse, error)
+	// Unload 执行可选 OnUnload 并释放实例资源。
+	Unload(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*OperationResponse, error)
+	// ValidateConfig 严格解码和校验候选配置，不修改当前状态。
+	ValidateConfig(ctx context.Context, in *ValidateConfigRequest, opts ...grpc.CallOption) (*OperationResponse, error)
+	// SetConfig 校验、发布并触发配置变更通知。
+	SetConfig(ctx context.Context, in *SetConfigRequest, opts ...grpc.CallOption) (*OperationResponse, error)
 }
 
 type pluginControlServiceClient struct {
@@ -91,90 +82,60 @@ func (c *pluginControlServiceClient) Initialize(ctx context.Context, in *Initial
 	return out, nil
 }
 
-func (c *pluginControlServiceClient) OnLoad(ctx context.Context, in *LifecycleRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
+func (c *pluginControlServiceClient) Load(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*OperationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OperationResponse)
-	err := c.cc.Invoke(ctx, PluginControlService_OnLoad_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PluginControlService_Load_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *pluginControlServiceClient) OnEnable(ctx context.Context, in *LifecycleRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
+func (c *pluginControlServiceClient) Start(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*OperationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OperationResponse)
-	err := c.cc.Invoke(ctx, PluginControlService_OnEnable_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PluginControlService_Start_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *pluginControlServiceClient) OnDisable(ctx context.Context, in *LifecycleRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
+func (c *pluginControlServiceClient) Stop(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*OperationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OperationResponse)
-	err := c.cc.Invoke(ctx, PluginControlService_OnDisable_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PluginControlService_Stop_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *pluginControlServiceClient) OnUnload(ctx context.Context, in *LifecycleRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
+func (c *pluginControlServiceClient) Unload(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*OperationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OperationResponse)
-	err := c.cc.Invoke(ctx, PluginControlService_OnUnload_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PluginControlService_Unload_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *pluginControlServiceClient) Drain(ctx context.Context, in *DrainRequest, opts ...grpc.CallOption) (*DrainResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DrainResponse)
-	err := c.cc.Invoke(ctx, PluginControlService_Drain_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *pluginControlServiceClient) ConfigDefaults(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ConfigDefaultsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ConfigDefaultsResponse)
-	err := c.cc.Invoke(ctx, PluginControlService_ConfigDefaults_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *pluginControlServiceClient) ConfigValidate(ctx context.Context, in *ConfigCandidateRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
+func (c *pluginControlServiceClient) ValidateConfig(ctx context.Context, in *ValidateConfigRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OperationResponse)
-	err := c.cc.Invoke(ctx, PluginControlService_ConfigValidate_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PluginControlService_ValidateConfig_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *pluginControlServiceClient) ConfigApply(ctx context.Context, in *ConfigCandidateRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
+func (c *pluginControlServiceClient) SetConfig(ctx context.Context, in *SetConfigRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OperationResponse)
-	err := c.cc.Invoke(ctx, PluginControlService_ConfigApply_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *pluginControlServiceClient) ConfigResume(ctx context.Context, in *ConfigResumeRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(OperationResponse)
-	err := c.cc.Invoke(ctx, PluginControlService_ConfigResume_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PluginControlService_SetConfig_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -185,30 +146,24 @@ func (c *pluginControlServiceClient) ConfigResume(ctx context.Context, in *Confi
 // All implementations must embed UnimplementedPluginControlServiceServer
 // for forward compatibility.
 //
-// PluginControlService 插件描述、初始化、生命周期、排空及配置控制服务
+// PluginControlService 是插件描述、初始化、配置和生命周期控制面。
 type PluginControlServiceServer interface {
-	// Describe 读取插件固定声明
+	// Describe 返回元数据、订阅、自动命令树、能力和默认配置。
 	Describe(context.Context, *emptypb.Empty) (*DescribeResponse, error)
-	// Initialize 绑定宿主反向连接、权限及实例初始化上下文
+	// Initialize 绑定唯一 Host 连接和插件数据根路径。
 	Initialize(context.Context, *InitializeRequest) (*OperationResponse, error)
-	// OnLoad 执行插件加载初始化
-	OnLoad(context.Context, *LifecycleRequest) (*OperationResponse, error)
-	// OnEnable 启用插件并开始当前启用周期
-	OnEnable(context.Context, *LifecycleRequest) (*OperationResponse, error)
-	// OnDisable 禁用插件并结束当前启用周期
-	OnDisable(context.Context, *LifecycleRequest) (*OperationResponse, error)
-	// OnUnload 卸载插件并释放实例资源
-	OnUnload(context.Context, *LifecycleRequest) (*OperationResponse, error)
-	// Drain 停止新的业务准入并返回尚未实际结束的执行
-	Drain(context.Context, *DrainRequest) (*DrainResponse, error)
-	// ConfigDefaults 获取插件业务默认配置
-	ConfigDefaults(context.Context, *emptypb.Empty) (*ConfigDefaultsResponse, error)
-	// ConfigValidate 纯校验候选配置，不改变当前生效配置
-	ConfigValidate(context.Context, *ConfigCandidateRequest) (*OperationResponse, error)
-	// ConfigApply 原子应用候选配置，失败时保留此前生效配置
-	ConfigApply(context.Context, *ConfigCandidateRequest) (*OperationResponse, error)
-	// ConfigResume 在配置应用或确定失败后恢复业务准入
-	ConfigResume(context.Context, *ConfigResumeRequest) (*OperationResponse, error)
+	// Load 执行可选 OnLoad。
+	Load(context.Context, *emptypb.Empty) (*OperationResponse, error)
+	// Start 执行可选 OnStart 并建立启用期 context。
+	Start(context.Context, *emptypb.Empty) (*OperationResponse, error)
+	// Stop 执行可选 OnStop 并取消启用期 context。
+	Stop(context.Context, *emptypb.Empty) (*OperationResponse, error)
+	// Unload 执行可选 OnUnload 并释放实例资源。
+	Unload(context.Context, *emptypb.Empty) (*OperationResponse, error)
+	// ValidateConfig 严格解码和校验候选配置，不修改当前状态。
+	ValidateConfig(context.Context, *ValidateConfigRequest) (*OperationResponse, error)
+	// SetConfig 校验、发布并触发配置变更通知。
+	SetConfig(context.Context, *SetConfigRequest) (*OperationResponse, error)
 	mustEmbedUnimplementedPluginControlServiceServer()
 }
 
@@ -225,32 +180,23 @@ func (UnimplementedPluginControlServiceServer) Describe(context.Context, *emptyp
 func (UnimplementedPluginControlServiceServer) Initialize(context.Context, *InitializeRequest) (*OperationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Initialize not implemented")
 }
-func (UnimplementedPluginControlServiceServer) OnLoad(context.Context, *LifecycleRequest) (*OperationResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method OnLoad not implemented")
+func (UnimplementedPluginControlServiceServer) Load(context.Context, *emptypb.Empty) (*OperationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Load not implemented")
 }
-func (UnimplementedPluginControlServiceServer) OnEnable(context.Context, *LifecycleRequest) (*OperationResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method OnEnable not implemented")
+func (UnimplementedPluginControlServiceServer) Start(context.Context, *emptypb.Empty) (*OperationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Start not implemented")
 }
-func (UnimplementedPluginControlServiceServer) OnDisable(context.Context, *LifecycleRequest) (*OperationResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method OnDisable not implemented")
+func (UnimplementedPluginControlServiceServer) Stop(context.Context, *emptypb.Empty) (*OperationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Stop not implemented")
 }
-func (UnimplementedPluginControlServiceServer) OnUnload(context.Context, *LifecycleRequest) (*OperationResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method OnUnload not implemented")
+func (UnimplementedPluginControlServiceServer) Unload(context.Context, *emptypb.Empty) (*OperationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Unload not implemented")
 }
-func (UnimplementedPluginControlServiceServer) Drain(context.Context, *DrainRequest) (*DrainResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Drain not implemented")
+func (UnimplementedPluginControlServiceServer) ValidateConfig(context.Context, *ValidateConfigRequest) (*OperationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ValidateConfig not implemented")
 }
-func (UnimplementedPluginControlServiceServer) ConfigDefaults(context.Context, *emptypb.Empty) (*ConfigDefaultsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ConfigDefaults not implemented")
-}
-func (UnimplementedPluginControlServiceServer) ConfigValidate(context.Context, *ConfigCandidateRequest) (*OperationResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ConfigValidate not implemented")
-}
-func (UnimplementedPluginControlServiceServer) ConfigApply(context.Context, *ConfigCandidateRequest) (*OperationResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ConfigApply not implemented")
-}
-func (UnimplementedPluginControlServiceServer) ConfigResume(context.Context, *ConfigResumeRequest) (*OperationResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ConfigResume not implemented")
+func (UnimplementedPluginControlServiceServer) SetConfig(context.Context, *SetConfigRequest) (*OperationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetConfig not implemented")
 }
 func (UnimplementedPluginControlServiceServer) mustEmbedUnimplementedPluginControlServiceServer() {}
 func (UnimplementedPluginControlServiceServer) testEmbeddedByValue()                              {}
@@ -309,164 +255,110 @@ func _PluginControlService_Initialize_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PluginControlService_OnLoad_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LifecycleRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PluginControlServiceServer).OnLoad(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PluginControlService_OnLoad_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginControlServiceServer).OnLoad(ctx, req.(*LifecycleRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PluginControlService_OnEnable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LifecycleRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PluginControlServiceServer).OnEnable(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PluginControlService_OnEnable_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginControlServiceServer).OnEnable(ctx, req.(*LifecycleRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PluginControlService_OnDisable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LifecycleRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PluginControlServiceServer).OnDisable(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PluginControlService_OnDisable_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginControlServiceServer).OnDisable(ctx, req.(*LifecycleRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PluginControlService_OnUnload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LifecycleRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PluginControlServiceServer).OnUnload(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PluginControlService_OnUnload_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginControlServiceServer).OnUnload(ctx, req.(*LifecycleRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PluginControlService_Drain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DrainRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PluginControlServiceServer).Drain(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PluginControlService_Drain_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginControlServiceServer).Drain(ctx, req.(*DrainRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PluginControlService_ConfigDefaults_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PluginControlService_Load_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PluginControlServiceServer).ConfigDefaults(ctx, in)
+		return srv.(PluginControlServiceServer).Load(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: PluginControlService_ConfigDefaults_FullMethodName,
+		FullMethod: PluginControlService_Load_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginControlServiceServer).ConfigDefaults(ctx, req.(*emptypb.Empty))
+		return srv.(PluginControlServiceServer).Load(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PluginControlService_ConfigValidate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ConfigCandidateRequest)
+func _PluginControlService_Start_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PluginControlServiceServer).ConfigValidate(ctx, in)
+		return srv.(PluginControlServiceServer).Start(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: PluginControlService_ConfigValidate_FullMethodName,
+		FullMethod: PluginControlService_Start_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginControlServiceServer).ConfigValidate(ctx, req.(*ConfigCandidateRequest))
+		return srv.(PluginControlServiceServer).Start(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PluginControlService_ConfigApply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ConfigCandidateRequest)
+func _PluginControlService_Stop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PluginControlServiceServer).ConfigApply(ctx, in)
+		return srv.(PluginControlServiceServer).Stop(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: PluginControlService_ConfigApply_FullMethodName,
+		FullMethod: PluginControlService_Stop_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginControlServiceServer).ConfigApply(ctx, req.(*ConfigCandidateRequest))
+		return srv.(PluginControlServiceServer).Stop(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PluginControlService_ConfigResume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ConfigResumeRequest)
+func _PluginControlService_Unload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PluginControlServiceServer).ConfigResume(ctx, in)
+		return srv.(PluginControlServiceServer).Unload(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: PluginControlService_ConfigResume_FullMethodName,
+		FullMethod: PluginControlService_Unload_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginControlServiceServer).ConfigResume(ctx, req.(*ConfigResumeRequest))
+		return srv.(PluginControlServiceServer).Unload(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PluginControlService_ValidateConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ValidateConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PluginControlServiceServer).ValidateConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PluginControlService_ValidateConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PluginControlServiceServer).ValidateConfig(ctx, req.(*ValidateConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PluginControlService_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PluginControlServiceServer).SetConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PluginControlService_SetConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PluginControlServiceServer).SetConfig(ctx, req.(*SetConfigRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -487,40 +379,28 @@ var PluginControlService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PluginControlService_Initialize_Handler,
 		},
 		{
-			MethodName: "OnLoad",
-			Handler:    _PluginControlService_OnLoad_Handler,
+			MethodName: "Load",
+			Handler:    _PluginControlService_Load_Handler,
 		},
 		{
-			MethodName: "OnEnable",
-			Handler:    _PluginControlService_OnEnable_Handler,
+			MethodName: "Start",
+			Handler:    _PluginControlService_Start_Handler,
 		},
 		{
-			MethodName: "OnDisable",
-			Handler:    _PluginControlService_OnDisable_Handler,
+			MethodName: "Stop",
+			Handler:    _PluginControlService_Stop_Handler,
 		},
 		{
-			MethodName: "OnUnload",
-			Handler:    _PluginControlService_OnUnload_Handler,
+			MethodName: "Unload",
+			Handler:    _PluginControlService_Unload_Handler,
 		},
 		{
-			MethodName: "Drain",
-			Handler:    _PluginControlService_Drain_Handler,
+			MethodName: "ValidateConfig",
+			Handler:    _PluginControlService_ValidateConfig_Handler,
 		},
 		{
-			MethodName: "ConfigDefaults",
-			Handler:    _PluginControlService_ConfigDefaults_Handler,
-		},
-		{
-			MethodName: "ConfigValidate",
-			Handler:    _PluginControlService_ConfigValidate_Handler,
-		},
-		{
-			MethodName: "ConfigApply",
-			Handler:    _PluginControlService_ConfigApply_Handler,
-		},
-		{
-			MethodName: "ConfigResume",
-			Handler:    _PluginControlService_ConfigResume_Handler,
+			MethodName: "SetConfig",
+			Handler:    _PluginControlService_SetConfig_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -537,14 +417,14 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// PluginBusinessService 插件事件、命令及能力处理服务
+// PluginBusinessService 是插件业务入口。
 type PluginBusinessServiceClient interface {
-	// HandleEvent 处理一次授权事件投递
-	HandleEvent(ctx context.Context, in *EventRequest, opts ...grpc.CallOption) (*EventResponse, error)
-	// HandleCommand 处理一次已校验的命令
-	HandleCommand(ctx context.Context, in *CommandRequest, opts ...grpc.CallOption) (*CommandResponse, error)
-	// HandleCapability 处理一次按能力名路由的调用
-	HandleCapability(ctx context.Context, in *CapabilityRequest, opts ...grpc.CallOption) (*CapabilityResponse, error)
+	// HandleEvent 处理一次事件投递。
+	HandleEvent(ctx context.Context, in *HandleEventRequest, opts ...grpc.CallOption) (*EventResponse, error)
+	// HandleCommand 处理一次命令。
+	HandleCommand(ctx context.Context, in *HandleCommandRequest, opts ...grpc.CallOption) (*OperationResponse, error)
+	// HandleCapability 处理一次能力调用。
+	HandleCapability(ctx context.Context, in *HandleCapabilityRequest, opts ...grpc.CallOption) (*CapabilityResponse, error)
 }
 
 type pluginBusinessServiceClient struct {
@@ -555,7 +435,7 @@ func NewPluginBusinessServiceClient(cc grpc.ClientConnInterface) PluginBusinessS
 	return &pluginBusinessServiceClient{cc}
 }
 
-func (c *pluginBusinessServiceClient) HandleEvent(ctx context.Context, in *EventRequest, opts ...grpc.CallOption) (*EventResponse, error) {
+func (c *pluginBusinessServiceClient) HandleEvent(ctx context.Context, in *HandleEventRequest, opts ...grpc.CallOption) (*EventResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EventResponse)
 	err := c.cc.Invoke(ctx, PluginBusinessService_HandleEvent_FullMethodName, in, out, cOpts...)
@@ -565,9 +445,9 @@ func (c *pluginBusinessServiceClient) HandleEvent(ctx context.Context, in *Event
 	return out, nil
 }
 
-func (c *pluginBusinessServiceClient) HandleCommand(ctx context.Context, in *CommandRequest, opts ...grpc.CallOption) (*CommandResponse, error) {
+func (c *pluginBusinessServiceClient) HandleCommand(ctx context.Context, in *HandleCommandRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CommandResponse)
+	out := new(OperationResponse)
 	err := c.cc.Invoke(ctx, PluginBusinessService_HandleCommand_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -575,7 +455,7 @@ func (c *pluginBusinessServiceClient) HandleCommand(ctx context.Context, in *Com
 	return out, nil
 }
 
-func (c *pluginBusinessServiceClient) HandleCapability(ctx context.Context, in *CapabilityRequest, opts ...grpc.CallOption) (*CapabilityResponse, error) {
+func (c *pluginBusinessServiceClient) HandleCapability(ctx context.Context, in *HandleCapabilityRequest, opts ...grpc.CallOption) (*CapabilityResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CapabilityResponse)
 	err := c.cc.Invoke(ctx, PluginBusinessService_HandleCapability_FullMethodName, in, out, cOpts...)
@@ -589,14 +469,14 @@ func (c *pluginBusinessServiceClient) HandleCapability(ctx context.Context, in *
 // All implementations must embed UnimplementedPluginBusinessServiceServer
 // for forward compatibility.
 //
-// PluginBusinessService 插件事件、命令及能力处理服务
+// PluginBusinessService 是插件业务入口。
 type PluginBusinessServiceServer interface {
-	// HandleEvent 处理一次授权事件投递
-	HandleEvent(context.Context, *EventRequest) (*EventResponse, error)
-	// HandleCommand 处理一次已校验的命令
-	HandleCommand(context.Context, *CommandRequest) (*CommandResponse, error)
-	// HandleCapability 处理一次按能力名路由的调用
-	HandleCapability(context.Context, *CapabilityRequest) (*CapabilityResponse, error)
+	// HandleEvent 处理一次事件投递。
+	HandleEvent(context.Context, *HandleEventRequest) (*EventResponse, error)
+	// HandleCommand 处理一次命令。
+	HandleCommand(context.Context, *HandleCommandRequest) (*OperationResponse, error)
+	// HandleCapability 处理一次能力调用。
+	HandleCapability(context.Context, *HandleCapabilityRequest) (*CapabilityResponse, error)
 	mustEmbedUnimplementedPluginBusinessServiceServer()
 }
 
@@ -607,13 +487,13 @@ type PluginBusinessServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedPluginBusinessServiceServer struct{}
 
-func (UnimplementedPluginBusinessServiceServer) HandleEvent(context.Context, *EventRequest) (*EventResponse, error) {
+func (UnimplementedPluginBusinessServiceServer) HandleEvent(context.Context, *HandleEventRequest) (*EventResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method HandleEvent not implemented")
 }
-func (UnimplementedPluginBusinessServiceServer) HandleCommand(context.Context, *CommandRequest) (*CommandResponse, error) {
+func (UnimplementedPluginBusinessServiceServer) HandleCommand(context.Context, *HandleCommandRequest) (*OperationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method HandleCommand not implemented")
 }
-func (UnimplementedPluginBusinessServiceServer) HandleCapability(context.Context, *CapabilityRequest) (*CapabilityResponse, error) {
+func (UnimplementedPluginBusinessServiceServer) HandleCapability(context.Context, *HandleCapabilityRequest) (*CapabilityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method HandleCapability not implemented")
 }
 func (UnimplementedPluginBusinessServiceServer) mustEmbedUnimplementedPluginBusinessServiceServer() {}
@@ -638,7 +518,7 @@ func RegisterPluginBusinessServiceServer(s grpc.ServiceRegistrar, srv PluginBusi
 }
 
 func _PluginBusinessService_HandleEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EventRequest)
+	in := new(HandleEventRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -650,13 +530,13 @@ func _PluginBusinessService_HandleEvent_Handler(srv interface{}, ctx context.Con
 		FullMethod: PluginBusinessService_HandleEvent_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginBusinessServiceServer).HandleEvent(ctx, req.(*EventRequest))
+		return srv.(PluginBusinessServiceServer).HandleEvent(ctx, req.(*HandleEventRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _PluginBusinessService_HandleCommand_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CommandRequest)
+	in := new(HandleCommandRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -668,13 +548,13 @@ func _PluginBusinessService_HandleCommand_Handler(srv interface{}, ctx context.C
 		FullMethod: PluginBusinessService_HandleCommand_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginBusinessServiceServer).HandleCommand(ctx, req.(*CommandRequest))
+		return srv.(PluginBusinessServiceServer).HandleCommand(ctx, req.(*HandleCommandRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _PluginBusinessService_HandleCapability_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CapabilityRequest)
+	in := new(HandleCapabilityRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -686,7 +566,7 @@ func _PluginBusinessService_HandleCapability_Handler(srv interface{}, ctx contex
 		FullMethod: PluginBusinessService_HandleCapability_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginBusinessServiceServer).HandleCapability(ctx, req.(*CapabilityRequest))
+		return srv.(PluginBusinessServiceServer).HandleCapability(ctx, req.(*HandleCapabilityRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

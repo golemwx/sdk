@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -19,44 +20,140 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	HostMessagesService_SendText_FullMethodName     = "/golem.sdk.HostMessagesService/SendText"
-	HostMessagesService_SendMedia_FullMethodName    = "/golem.sdk.HostMessagesService/SendMedia"
-	HostMessagesService_StoreMedia_FullMethodName   = "/golem.sdk.HostMessagesService/StoreMedia"
-	HostMessagesService_Reply_FullMethodName        = "/golem.sdk.HostMessagesService/Reply"
-	HostMessagesService_Forward_FullMethodName      = "/golem.sdk.HostMessagesService/Forward"
-	HostMessagesService_SendLink_FullMethodName     = "/golem.sdk.HostMessagesService/SendLink"
-	HostMessagesService_SendLocation_FullMethodName = "/golem.sdk.HostMessagesService/SendLocation"
-	HostMessagesService_SendNameCard_FullMethodName = "/golem.sdk.HostMessagesService/SendNameCard"
-	HostMessagesService_Revoke_FullMethodName       = "/golem.sdk.HostMessagesService/Revoke"
-	HostMessagesService_Download_FullMethodName     = "/golem.sdk.HostMessagesService/Download"
+	HostAccountService_Current_FullMethodName = "/golem.sdk.HostAccountService/Current"
+)
+
+// HostAccountServiceClient is the client API for HostAccountService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// HostAccountService 提供当前账号快照。
+type HostAccountServiceClient interface {
+	// Current 返回当前唯一账号业务快照。
+	Current(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AccountResponse, error)
+}
+
+type hostAccountServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewHostAccountServiceClient(cc grpc.ClientConnInterface) HostAccountServiceClient {
+	return &hostAccountServiceClient{cc}
+}
+
+func (c *hostAccountServiceClient) Current(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AccountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AccountResponse)
+	err := c.cc.Invoke(ctx, HostAccountService_Current_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// HostAccountServiceServer is the server API for HostAccountService service.
+// All implementations must embed UnimplementedHostAccountServiceServer
+// for forward compatibility.
+//
+// HostAccountService 提供当前账号快照。
+type HostAccountServiceServer interface {
+	// Current 返回当前唯一账号业务快照。
+	Current(context.Context, *emptypb.Empty) (*AccountResponse, error)
+	mustEmbedUnimplementedHostAccountServiceServer()
+}
+
+// UnimplementedHostAccountServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedHostAccountServiceServer struct{}
+
+func (UnimplementedHostAccountServiceServer) Current(context.Context, *emptypb.Empty) (*AccountResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Current not implemented")
+}
+func (UnimplementedHostAccountServiceServer) mustEmbedUnimplementedHostAccountServiceServer() {}
+func (UnimplementedHostAccountServiceServer) testEmbeddedByValue()                            {}
+
+// UnsafeHostAccountServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to HostAccountServiceServer will
+// result in compilation errors.
+type UnsafeHostAccountServiceServer interface {
+	mustEmbedUnimplementedHostAccountServiceServer()
+}
+
+func RegisterHostAccountServiceServer(s grpc.ServiceRegistrar, srv HostAccountServiceServer) {
+	// If the following call panics, it indicates UnimplementedHostAccountServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&HostAccountService_ServiceDesc, srv)
+}
+
+func _HostAccountService_Current_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostAccountServiceServer).Current(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostAccountService_Current_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostAccountServiceServer).Current(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// HostAccountService_ServiceDesc is the grpc.ServiceDesc for HostAccountService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var HostAccountService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "golem.sdk.HostAccountService",
+	HandlerType: (*HostAccountServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Current",
+			Handler:    _HostAccountService_Current_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "golem/sdk/host.proto",
+}
+
+const (
+	HostMessagesService_SendText_FullMethodName  = "/golem.sdk.HostMessagesService/SendText"
+	HostMessagesService_SendApp_FullMethodName   = "/golem.sdk.HostMessagesService/SendApp"
+	HostMessagesService_SendMedia_FullMethodName = "/golem.sdk.HostMessagesService/SendMedia"
+	HostMessagesService_Forward_FullMethodName   = "/golem.sdk.HostMessagesService/Forward"
+	HostMessagesService_Revoke_FullMethodName    = "/golem.sdk.HostMessagesService/Revoke"
+	HostMessagesService_Download_FullMethodName  = "/golem.sdk.HostMessagesService/Download"
 )
 
 // HostMessagesServiceClient is the client API for HostMessagesService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// HostMessagesService 宿主消息发送、撤回及媒体下载服务
+// HostMessagesService 提供无业务引用表的消息能力。
 type HostMessagesServiceClient interface {
-	// SendText 向指定业务会话发送文本消息
-	SendText(ctx context.Context, in *SendTextRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error)
-	// SendMedia 通过首包元数据和后续字节分块发送媒体
-	SendMedia(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[SendMediaRequest, SendReceiptResponse], error)
-	// StoreMedia 通过有界流暂存媒体并签发受限引用，不产生消息发送副作用
-	StoreMedia(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[StoreMediaRequest, MediaRefResponse], error)
-	// Reply 向指定业务会话发送引用回复
-	Reply(ctx context.Context, in *ReplyRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error)
-	// Forward 使用宿主管理的源消息引用转发
-	Forward(ctx context.Context, in *ForwardRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error)
-	// SendLink 发送结构化链接消息
-	SendLink(ctx context.Context, in *SendLinkRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error)
-	// SendLocation 发送结构化位置消息
-	SendLocation(ctx context.Context, in *SendLocationRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error)
-	// SendNameCard 发送结构化联系人名片
-	SendNameCard(ctx context.Context, in *SendNameCardRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error)
-	// Revoke 使用宿主签发的撤回引用撤回消息
+	// SendText 发送文本消息。
+	SendText(ctx context.Context, in *SendTextRequest, opts ...grpc.CallOption) (*SendResultResponse, error)
+	// SendApp 发送应用消息。
+	SendApp(ctx context.Context, in *SendAppRequest, opts ...grpc.CallOption) (*SendResultResponse, error)
+	// SendMedia 通过首包元数据和后续字节分块发送媒体。
+	SendMedia(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[SendMediaRequest, SendResultResponse], error)
+	// Forward 使用完整源消息转发。
+	Forward(ctx context.Context, in *ForwardRequest, opts ...grpc.CallOption) (*SendResultResponse, error)
+	// Revoke 使用真实发送结果撤回。
 	Revoke(ctx context.Context, in *RevokeRequest, opts ...grpc.CallOption) (*OperationResponse, error)
-	// Download 按媒体引用下载有界字节分块流
-	Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MediaChunk], error)
+	// Download 按完整消息的元数据下载媒体字节流；终止业务错误位于 DownloadResponse.error。
+	Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadResponse], error)
 }
 
 type hostMessagesServiceClient struct {
@@ -67,9 +164,9 @@ func NewHostMessagesServiceClient(cc grpc.ClientConnInterface) HostMessagesServi
 	return &hostMessagesServiceClient{cc}
 }
 
-func (c *hostMessagesServiceClient) SendText(ctx context.Context, in *SendTextRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error) {
+func (c *hostMessagesServiceClient) SendText(ctx context.Context, in *SendTextRequest, opts ...grpc.CallOption) (*SendResultResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SendReceiptResponse)
+	out := new(SendResultResponse)
 	err := c.cc.Invoke(ctx, HostMessagesService_SendText_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -77,76 +174,33 @@ func (c *hostMessagesServiceClient) SendText(ctx context.Context, in *SendTextRe
 	return out, nil
 }
 
-func (c *hostMessagesServiceClient) SendMedia(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[SendMediaRequest, SendReceiptResponse], error) {
+func (c *hostMessagesServiceClient) SendApp(ctx context.Context, in *SendAppRequest, opts ...grpc.CallOption) (*SendResultResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendResultResponse)
+	err := c.cc.Invoke(ctx, HostMessagesService_SendApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hostMessagesServiceClient) SendMedia(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[SendMediaRequest, SendResultResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &HostMessagesService_ServiceDesc.Streams[0], HostMessagesService_SendMedia_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[SendMediaRequest, SendReceiptResponse]{ClientStream: stream}
+	x := &grpc.GenericClientStream[SendMediaRequest, SendResultResponse]{ClientStream: stream}
 	return x, nil
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type HostMessagesService_SendMediaClient = grpc.ClientStreamingClient[SendMediaRequest, SendReceiptResponse]
+type HostMessagesService_SendMediaClient = grpc.ClientStreamingClient[SendMediaRequest, SendResultResponse]
 
-func (c *hostMessagesServiceClient) StoreMedia(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[StoreMediaRequest, MediaRefResponse], error) {
+func (c *hostMessagesServiceClient) Forward(ctx context.Context, in *ForwardRequest, opts ...grpc.CallOption) (*SendResultResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &HostMessagesService_ServiceDesc.Streams[1], HostMessagesService_StoreMedia_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[StoreMediaRequest, MediaRefResponse]{ClientStream: stream}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type HostMessagesService_StoreMediaClient = grpc.ClientStreamingClient[StoreMediaRequest, MediaRefResponse]
-
-func (c *hostMessagesServiceClient) Reply(ctx context.Context, in *ReplyRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SendReceiptResponse)
-	err := c.cc.Invoke(ctx, HostMessagesService_Reply_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *hostMessagesServiceClient) Forward(ctx context.Context, in *ForwardRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SendReceiptResponse)
+	out := new(SendResultResponse)
 	err := c.cc.Invoke(ctx, HostMessagesService_Forward_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *hostMessagesServiceClient) SendLink(ctx context.Context, in *SendLinkRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SendReceiptResponse)
-	err := c.cc.Invoke(ctx, HostMessagesService_SendLink_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *hostMessagesServiceClient) SendLocation(ctx context.Context, in *SendLocationRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SendReceiptResponse)
-	err := c.cc.Invoke(ctx, HostMessagesService_SendLocation_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *hostMessagesServiceClient) SendNameCard(ctx context.Context, in *SendNameCardRequest, opts ...grpc.CallOption) (*SendReceiptResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SendReceiptResponse)
-	err := c.cc.Invoke(ctx, HostMessagesService_SendNameCard_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -163,13 +217,13 @@ func (c *hostMessagesServiceClient) Revoke(ctx context.Context, in *RevokeReques
 	return out, nil
 }
 
-func (c *hostMessagesServiceClient) Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MediaChunk], error) {
+func (c *hostMessagesServiceClient) Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &HostMessagesService_ServiceDesc.Streams[2], HostMessagesService_Download_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &HostMessagesService_ServiceDesc.Streams[1], HostMessagesService_Download_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[DownloadRequest, MediaChunk]{ClientStream: stream}
+	x := &grpc.GenericClientStream[DownloadRequest, DownloadResponse]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -180,34 +234,26 @@ func (c *hostMessagesServiceClient) Download(ctx context.Context, in *DownloadRe
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type HostMessagesService_DownloadClient = grpc.ServerStreamingClient[MediaChunk]
+type HostMessagesService_DownloadClient = grpc.ServerStreamingClient[DownloadResponse]
 
 // HostMessagesServiceServer is the server API for HostMessagesService service.
 // All implementations must embed UnimplementedHostMessagesServiceServer
 // for forward compatibility.
 //
-// HostMessagesService 宿主消息发送、撤回及媒体下载服务
+// HostMessagesService 提供无业务引用表的消息能力。
 type HostMessagesServiceServer interface {
-	// SendText 向指定业务会话发送文本消息
-	SendText(context.Context, *SendTextRequest) (*SendReceiptResponse, error)
-	// SendMedia 通过首包元数据和后续字节分块发送媒体
-	SendMedia(grpc.ClientStreamingServer[SendMediaRequest, SendReceiptResponse]) error
-	// StoreMedia 通过有界流暂存媒体并签发受限引用，不产生消息发送副作用
-	StoreMedia(grpc.ClientStreamingServer[StoreMediaRequest, MediaRefResponse]) error
-	// Reply 向指定业务会话发送引用回复
-	Reply(context.Context, *ReplyRequest) (*SendReceiptResponse, error)
-	// Forward 使用宿主管理的源消息引用转发
-	Forward(context.Context, *ForwardRequest) (*SendReceiptResponse, error)
-	// SendLink 发送结构化链接消息
-	SendLink(context.Context, *SendLinkRequest) (*SendReceiptResponse, error)
-	// SendLocation 发送结构化位置消息
-	SendLocation(context.Context, *SendLocationRequest) (*SendReceiptResponse, error)
-	// SendNameCard 发送结构化联系人名片
-	SendNameCard(context.Context, *SendNameCardRequest) (*SendReceiptResponse, error)
-	// Revoke 使用宿主签发的撤回引用撤回消息
+	// SendText 发送文本消息。
+	SendText(context.Context, *SendTextRequest) (*SendResultResponse, error)
+	// SendApp 发送应用消息。
+	SendApp(context.Context, *SendAppRequest) (*SendResultResponse, error)
+	// SendMedia 通过首包元数据和后续字节分块发送媒体。
+	SendMedia(grpc.ClientStreamingServer[SendMediaRequest, SendResultResponse]) error
+	// Forward 使用完整源消息转发。
+	Forward(context.Context, *ForwardRequest) (*SendResultResponse, error)
+	// Revoke 使用真实发送结果撤回。
 	Revoke(context.Context, *RevokeRequest) (*OperationResponse, error)
-	// Download 按媒体引用下载有界字节分块流
-	Download(*DownloadRequest, grpc.ServerStreamingServer[MediaChunk]) error
+	// Download 按完整消息的元数据下载媒体字节流；终止业务错误位于 DownloadResponse.error。
+	Download(*DownloadRequest, grpc.ServerStreamingServer[DownloadResponse]) error
 	mustEmbedUnimplementedHostMessagesServiceServer()
 }
 
@@ -218,34 +264,22 @@ type HostMessagesServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedHostMessagesServiceServer struct{}
 
-func (UnimplementedHostMessagesServiceServer) SendText(context.Context, *SendTextRequest) (*SendReceiptResponse, error) {
+func (UnimplementedHostMessagesServiceServer) SendText(context.Context, *SendTextRequest) (*SendResultResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendText not implemented")
 }
-func (UnimplementedHostMessagesServiceServer) SendMedia(grpc.ClientStreamingServer[SendMediaRequest, SendReceiptResponse]) error {
+func (UnimplementedHostMessagesServiceServer) SendApp(context.Context, *SendAppRequest) (*SendResultResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendApp not implemented")
+}
+func (UnimplementedHostMessagesServiceServer) SendMedia(grpc.ClientStreamingServer[SendMediaRequest, SendResultResponse]) error {
 	return status.Error(codes.Unimplemented, "method SendMedia not implemented")
 }
-func (UnimplementedHostMessagesServiceServer) StoreMedia(grpc.ClientStreamingServer[StoreMediaRequest, MediaRefResponse]) error {
-	return status.Error(codes.Unimplemented, "method StoreMedia not implemented")
-}
-func (UnimplementedHostMessagesServiceServer) Reply(context.Context, *ReplyRequest) (*SendReceiptResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Reply not implemented")
-}
-func (UnimplementedHostMessagesServiceServer) Forward(context.Context, *ForwardRequest) (*SendReceiptResponse, error) {
+func (UnimplementedHostMessagesServiceServer) Forward(context.Context, *ForwardRequest) (*SendResultResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Forward not implemented")
-}
-func (UnimplementedHostMessagesServiceServer) SendLink(context.Context, *SendLinkRequest) (*SendReceiptResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SendLink not implemented")
-}
-func (UnimplementedHostMessagesServiceServer) SendLocation(context.Context, *SendLocationRequest) (*SendReceiptResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SendLocation not implemented")
-}
-func (UnimplementedHostMessagesServiceServer) SendNameCard(context.Context, *SendNameCardRequest) (*SendReceiptResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SendNameCard not implemented")
 }
 func (UnimplementedHostMessagesServiceServer) Revoke(context.Context, *RevokeRequest) (*OperationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Revoke not implemented")
 }
-func (UnimplementedHostMessagesServiceServer) Download(*DownloadRequest, grpc.ServerStreamingServer[MediaChunk]) error {
+func (UnimplementedHostMessagesServiceServer) Download(*DownloadRequest, grpc.ServerStreamingServer[DownloadResponse]) error {
 	return status.Error(codes.Unimplemented, "method Download not implemented")
 }
 func (UnimplementedHostMessagesServiceServer) mustEmbedUnimplementedHostMessagesServiceServer() {}
@@ -287,37 +321,30 @@ func _HostMessagesService_SendText_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _HostMessagesService_SendMedia_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(HostMessagesServiceServer).SendMedia(&grpc.GenericServerStream[SendMediaRequest, SendReceiptResponse]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type HostMessagesService_SendMediaServer = grpc.ClientStreamingServer[SendMediaRequest, SendReceiptResponse]
-
-func _HostMessagesService_StoreMedia_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(HostMessagesServiceServer).StoreMedia(&grpc.GenericServerStream[StoreMediaRequest, MediaRefResponse]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type HostMessagesService_StoreMediaServer = grpc.ClientStreamingServer[StoreMediaRequest, MediaRefResponse]
-
-func _HostMessagesService_Reply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReplyRequest)
+func _HostMessagesService_SendApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendAppRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(HostMessagesServiceServer).Reply(ctx, in)
+		return srv.(HostMessagesServiceServer).SendApp(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: HostMessagesService_Reply_FullMethodName,
+		FullMethod: HostMessagesService_SendApp_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostMessagesServiceServer).Reply(ctx, req.(*ReplyRequest))
+		return srv.(HostMessagesServiceServer).SendApp(ctx, req.(*SendAppRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+func _HostMessagesService_SendMedia_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(HostMessagesServiceServer).SendMedia(&grpc.GenericServerStream[SendMediaRequest, SendResultResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type HostMessagesService_SendMediaServer = grpc.ClientStreamingServer[SendMediaRequest, SendResultResponse]
 
 func _HostMessagesService_Forward_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ForwardRequest)
@@ -333,60 +360,6 @@ func _HostMessagesService_Forward_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HostMessagesServiceServer).Forward(ctx, req.(*ForwardRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _HostMessagesService_SendLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendLinkRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostMessagesServiceServer).SendLink(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostMessagesService_SendLink_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostMessagesServiceServer).SendLink(ctx, req.(*SendLinkRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _HostMessagesService_SendLocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendLocationRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostMessagesServiceServer).SendLocation(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostMessagesService_SendLocation_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostMessagesServiceServer).SendLocation(ctx, req.(*SendLocationRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _HostMessagesService_SendNameCard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendNameCardRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostMessagesServiceServer).SendNameCard(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostMessagesService_SendNameCard_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostMessagesServiceServer).SendNameCard(ctx, req.(*SendNameCardRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -414,11 +387,11 @@ func _HostMessagesService_Download_Handler(srv interface{}, stream grpc.ServerSt
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(HostMessagesServiceServer).Download(m, &grpc.GenericServerStream[DownloadRequest, MediaChunk]{ServerStream: stream})
+	return srv.(HostMessagesServiceServer).Download(m, &grpc.GenericServerStream[DownloadRequest, DownloadResponse]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type HostMessagesService_DownloadServer = grpc.ServerStreamingServer[MediaChunk]
+type HostMessagesService_DownloadServer = grpc.ServerStreamingServer[DownloadResponse]
 
 // HostMessagesService_ServiceDesc is the grpc.ServiceDesc for HostMessagesService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -432,24 +405,12 @@ var HostMessagesService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _HostMessagesService_SendText_Handler,
 		},
 		{
-			MethodName: "Reply",
-			Handler:    _HostMessagesService_Reply_Handler,
+			MethodName: "SendApp",
+			Handler:    _HostMessagesService_SendApp_Handler,
 		},
 		{
 			MethodName: "Forward",
 			Handler:    _HostMessagesService_Forward_Handler,
-		},
-		{
-			MethodName: "SendLink",
-			Handler:    _HostMessagesService_SendLink_Handler,
-		},
-		{
-			MethodName: "SendLocation",
-			Handler:    _HostMessagesService_SendLocation_Handler,
-		},
-		{
-			MethodName: "SendNameCard",
-			Handler:    _HostMessagesService_SendNameCard_Handler,
 		},
 		{
 			MethodName: "Revoke",
@@ -463,11 +424,6 @@ var HostMessagesService_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 		{
-			StreamName:    "StoreMedia",
-			Handler:       _HostMessagesService_StoreMedia_Handler,
-			ClientStreams: true,
-		},
-		{
 			StreamName:    "Download",
 			Handler:       _HostMessagesService_Download_Handler,
 			ServerStreams: true,
@@ -477,26 +433,17 @@ var HostMessagesService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	HostContactsService_Get_FullMethodName     = "/golem.sdk.HostContactsService/Get"
-	HostContactsService_Find_FullMethodName    = "/golem.sdk.HostContactsService/Find"
-	HostContactsService_List_FullMethodName    = "/golem.sdk.HostContactsService/List"
-	HostContactsService_Refresh_FullMethodName = "/golem.sdk.HostContactsService/Refresh"
+	HostContactsService_Find_FullMethodName = "/golem.sdk.HostContactsService/Find"
 )
 
 // HostContactsServiceClient is the client API for HostContactsService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// HostContactsService 宿主联系人只读查询和显式刷新服务
+// HostContactsService 提供联系人策略查询。
 type HostContactsServiceClient interface {
-	// Get 查询本地联系人资料，缺失不隐式回源
-	Get(ctx context.Context, in *ContactGetRequest, opts ...grpc.CallOption) (*ContactResponse, error)
-	// Find 按昵称或备注的字面子串查询本地联系人并稳定分页
-	Find(ctx context.Context, in *ContactFindRequest, opts ...grpc.CallOption) (*ContactPageResponse, error)
-	// List 分页查询本地联系人，缺失不隐式回源
-	List(ctx context.Context, in *ContactListRequest, opts ...grpc.CallOption) (*ContactPageResponse, error)
-	// Refresh 显式刷新指定联系人并保留逐项结果
-	Refresh(ctx context.Context, in *ContactRefreshRequest, opts ...grpc.CallOption) (*ContactBatchResponse, error)
+	// Find 按 username、nickname 或 remark 策略精确查询。
+	Find(ctx context.Context, in *ContactFindRequest, opts ...grpc.CallOption) (*ContactResponse, error)
 }
 
 type hostContactsServiceClient struct {
@@ -507,40 +454,10 @@ func NewHostContactsServiceClient(cc grpc.ClientConnInterface) HostContactsServi
 	return &hostContactsServiceClient{cc}
 }
 
-func (c *hostContactsServiceClient) Get(ctx context.Context, in *ContactGetRequest, opts ...grpc.CallOption) (*ContactResponse, error) {
+func (c *hostContactsServiceClient) Find(ctx context.Context, in *ContactFindRequest, opts ...grpc.CallOption) (*ContactResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ContactResponse)
-	err := c.cc.Invoke(ctx, HostContactsService_Get_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *hostContactsServiceClient) Find(ctx context.Context, in *ContactFindRequest, opts ...grpc.CallOption) (*ContactPageResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ContactPageResponse)
 	err := c.cc.Invoke(ctx, HostContactsService_Find_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *hostContactsServiceClient) List(ctx context.Context, in *ContactListRequest, opts ...grpc.CallOption) (*ContactPageResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ContactPageResponse)
-	err := c.cc.Invoke(ctx, HostContactsService_List_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *hostContactsServiceClient) Refresh(ctx context.Context, in *ContactRefreshRequest, opts ...grpc.CallOption) (*ContactBatchResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ContactBatchResponse)
-	err := c.cc.Invoke(ctx, HostContactsService_Refresh_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -551,16 +468,10 @@ func (c *hostContactsServiceClient) Refresh(ctx context.Context, in *ContactRefr
 // All implementations must embed UnimplementedHostContactsServiceServer
 // for forward compatibility.
 //
-// HostContactsService 宿主联系人只读查询和显式刷新服务
+// HostContactsService 提供联系人策略查询。
 type HostContactsServiceServer interface {
-	// Get 查询本地联系人资料，缺失不隐式回源
-	Get(context.Context, *ContactGetRequest) (*ContactResponse, error)
-	// Find 按昵称或备注的字面子串查询本地联系人并稳定分页
-	Find(context.Context, *ContactFindRequest) (*ContactPageResponse, error)
-	// List 分页查询本地联系人，缺失不隐式回源
-	List(context.Context, *ContactListRequest) (*ContactPageResponse, error)
-	// Refresh 显式刷新指定联系人并保留逐项结果
-	Refresh(context.Context, *ContactRefreshRequest) (*ContactBatchResponse, error)
+	// Find 按 username、nickname 或 remark 策略精确查询。
+	Find(context.Context, *ContactFindRequest) (*ContactResponse, error)
 	mustEmbedUnimplementedHostContactsServiceServer()
 }
 
@@ -571,17 +482,8 @@ type HostContactsServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedHostContactsServiceServer struct{}
 
-func (UnimplementedHostContactsServiceServer) Get(context.Context, *ContactGetRequest) (*ContactResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Get not implemented")
-}
-func (UnimplementedHostContactsServiceServer) Find(context.Context, *ContactFindRequest) (*ContactPageResponse, error) {
+func (UnimplementedHostContactsServiceServer) Find(context.Context, *ContactFindRequest) (*ContactResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Find not implemented")
-}
-func (UnimplementedHostContactsServiceServer) List(context.Context, *ContactListRequest) (*ContactPageResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method List not implemented")
-}
-func (UnimplementedHostContactsServiceServer) Refresh(context.Context, *ContactRefreshRequest) (*ContactBatchResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Refresh not implemented")
 }
 func (UnimplementedHostContactsServiceServer) mustEmbedUnimplementedHostContactsServiceServer() {}
 func (UnimplementedHostContactsServiceServer) testEmbeddedByValue()                             {}
@@ -604,24 +506,6 @@ func RegisterHostContactsServiceServer(s grpc.ServiceRegistrar, srv HostContacts
 	s.RegisterService(&HostContactsService_ServiceDesc, srv)
 }
 
-func _HostContactsService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ContactGetRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostContactsServiceServer).Get(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostContactsService_Get_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostContactsServiceServer).Get(ctx, req.(*ContactGetRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _HostContactsService_Find_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ContactFindRequest)
 	if err := dec(in); err != nil {
@@ -640,42 +524,6 @@ func _HostContactsService_Find_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _HostContactsService_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ContactListRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostContactsServiceServer).List(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostContactsService_List_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostContactsServiceServer).List(ctx, req.(*ContactListRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _HostContactsService_Refresh_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ContactRefreshRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostContactsServiceServer).Refresh(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostContactsService_Refresh_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostContactsServiceServer).Refresh(ctx, req.(*ContactRefreshRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // HostContactsService_ServiceDesc is the grpc.ServiceDesc for HostContactsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -684,20 +532,8 @@ var HostContactsService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*HostContactsServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Get",
-			Handler:    _HostContactsService_Get_Handler,
-		},
-		{
 			MethodName: "Find",
 			Handler:    _HostContactsService_Find_Handler,
-		},
-		{
-			MethodName: "List",
-			Handler:    _HostContactsService_List_Handler,
-		},
-		{
-			MethodName: "Refresh",
-			Handler:    _HostContactsService_Refresh_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -707,24 +543,18 @@ var HostContactsService_ServiceDesc = grpc.ServiceDesc{
 const (
 	HostChatroomsService_Get_FullMethodName     = "/golem.sdk.HostChatroomsService/Get"
 	HostChatroomsService_Members_FullMethodName = "/golem.sdk.HostChatroomsService/Members"
-	HostChatroomsService_Member_FullMethodName  = "/golem.sdk.HostChatroomsService/Member"
-	HostChatroomsService_Refresh_FullMethodName = "/golem.sdk.HostChatroomsService/Refresh"
 )
 
 // HostChatroomsServiceClient is the client API for HostChatroomsService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// HostChatroomsService 宿主群资料、成员查询和显式刷新服务
+// HostChatroomsService 提供群资料和成员查询。
 type HostChatroomsServiceClient interface {
-	// Get 查询本地群资料，缺失不隐式回源
-	Get(ctx context.Context, in *ChatroomGetRequest, opts ...grpc.CallOption) (*RoomResponse, error)
-	// Members 分页查询本地群成员，缺失不隐式回源
-	Members(ctx context.Context, in *ChatroomMembersRequest, opts ...grpc.CallOption) (*MemberPageResponse, error)
-	// Member 查询本地指定群成员，缺失不隐式回源
-	Member(ctx context.Context, in *ChatroomMemberRequest, opts ...grpc.CallOption) (*MemberResponse, error)
-	// Refresh 显式刷新群资料及成员并保留各阶段结果
-	Refresh(ctx context.Context, in *ChatroomRefreshRequest, opts ...grpc.CallOption) (*ChatroomRefreshResponse, error)
+	// Get 返回群专属资料。
+	Get(ctx context.Context, in *ChatroomGetRequest, opts ...grpc.CallOption) (*ChatroomResponse, error)
+	// Members 返回宿主缓存中的群成员快照。
+	Members(ctx context.Context, in *ChatroomMembersRequest, opts ...grpc.CallOption) (*ChatroomMembersResponse, error)
 }
 
 type hostChatroomsServiceClient struct {
@@ -735,9 +565,9 @@ func NewHostChatroomsServiceClient(cc grpc.ClientConnInterface) HostChatroomsSer
 	return &hostChatroomsServiceClient{cc}
 }
 
-func (c *hostChatroomsServiceClient) Get(ctx context.Context, in *ChatroomGetRequest, opts ...grpc.CallOption) (*RoomResponse, error) {
+func (c *hostChatroomsServiceClient) Get(ctx context.Context, in *ChatroomGetRequest, opts ...grpc.CallOption) (*ChatroomResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RoomResponse)
+	out := new(ChatroomResponse)
 	err := c.cc.Invoke(ctx, HostChatroomsService_Get_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -745,30 +575,10 @@ func (c *hostChatroomsServiceClient) Get(ctx context.Context, in *ChatroomGetReq
 	return out, nil
 }
 
-func (c *hostChatroomsServiceClient) Members(ctx context.Context, in *ChatroomMembersRequest, opts ...grpc.CallOption) (*MemberPageResponse, error) {
+func (c *hostChatroomsServiceClient) Members(ctx context.Context, in *ChatroomMembersRequest, opts ...grpc.CallOption) (*ChatroomMembersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(MemberPageResponse)
+	out := new(ChatroomMembersResponse)
 	err := c.cc.Invoke(ctx, HostChatroomsService_Members_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *hostChatroomsServiceClient) Member(ctx context.Context, in *ChatroomMemberRequest, opts ...grpc.CallOption) (*MemberResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(MemberResponse)
-	err := c.cc.Invoke(ctx, HostChatroomsService_Member_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *hostChatroomsServiceClient) Refresh(ctx context.Context, in *ChatroomRefreshRequest, opts ...grpc.CallOption) (*ChatroomRefreshResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ChatroomRefreshResponse)
-	err := c.cc.Invoke(ctx, HostChatroomsService_Refresh_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -779,16 +589,12 @@ func (c *hostChatroomsServiceClient) Refresh(ctx context.Context, in *ChatroomRe
 // All implementations must embed UnimplementedHostChatroomsServiceServer
 // for forward compatibility.
 //
-// HostChatroomsService 宿主群资料、成员查询和显式刷新服务
+// HostChatroomsService 提供群资料和成员查询。
 type HostChatroomsServiceServer interface {
-	// Get 查询本地群资料，缺失不隐式回源
-	Get(context.Context, *ChatroomGetRequest) (*RoomResponse, error)
-	// Members 分页查询本地群成员，缺失不隐式回源
-	Members(context.Context, *ChatroomMembersRequest) (*MemberPageResponse, error)
-	// Member 查询本地指定群成员，缺失不隐式回源
-	Member(context.Context, *ChatroomMemberRequest) (*MemberResponse, error)
-	// Refresh 显式刷新群资料及成员并保留各阶段结果
-	Refresh(context.Context, *ChatroomRefreshRequest) (*ChatroomRefreshResponse, error)
+	// Get 返回群专属资料。
+	Get(context.Context, *ChatroomGetRequest) (*ChatroomResponse, error)
+	// Members 返回宿主缓存中的群成员快照。
+	Members(context.Context, *ChatroomMembersRequest) (*ChatroomMembersResponse, error)
 	mustEmbedUnimplementedHostChatroomsServiceServer()
 }
 
@@ -799,17 +605,11 @@ type HostChatroomsServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedHostChatroomsServiceServer struct{}
 
-func (UnimplementedHostChatroomsServiceServer) Get(context.Context, *ChatroomGetRequest) (*RoomResponse, error) {
+func (UnimplementedHostChatroomsServiceServer) Get(context.Context, *ChatroomGetRequest) (*ChatroomResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedHostChatroomsServiceServer) Members(context.Context, *ChatroomMembersRequest) (*MemberPageResponse, error) {
+func (UnimplementedHostChatroomsServiceServer) Members(context.Context, *ChatroomMembersRequest) (*ChatroomMembersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Members not implemented")
-}
-func (UnimplementedHostChatroomsServiceServer) Member(context.Context, *ChatroomMemberRequest) (*MemberResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Member not implemented")
-}
-func (UnimplementedHostChatroomsServiceServer) Refresh(context.Context, *ChatroomRefreshRequest) (*ChatroomRefreshResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Refresh not implemented")
 }
 func (UnimplementedHostChatroomsServiceServer) mustEmbedUnimplementedHostChatroomsServiceServer() {}
 func (UnimplementedHostChatroomsServiceServer) testEmbeddedByValue()                              {}
@@ -868,42 +668,6 @@ func _HostChatroomsService_Members_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _HostChatroomsService_Member_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChatroomMemberRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostChatroomsServiceServer).Member(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostChatroomsService_Member_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostChatroomsServiceServer).Member(ctx, req.(*ChatroomMemberRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _HostChatroomsService_Refresh_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChatroomRefreshRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostChatroomsServiceServer).Refresh(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostChatroomsService_Refresh_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostChatroomsServiceServer).Refresh(ctx, req.(*ChatroomRefreshRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // HostChatroomsService_ServiceDesc is the grpc.ServiceDesc for HostChatroomsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -918,14 +682,6 @@ var HostChatroomsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Members",
 			Handler:    _HostChatroomsService_Members_Handler,
-		},
-		{
-			MethodName: "Member",
-			Handler:    _HostChatroomsService_Member_Handler,
-		},
-		{
-			MethodName: "Refresh",
-			Handler:    _HostChatroomsService_Refresh_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -942,14 +698,14 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// HostSessionsService 宿主联系人及整群会话租约服务
+// HostSessionsService 提供联系人或整群租约。
 type HostSessionsServiceClient interface {
-	// Acquire 按联系人或整个群申请指定主题的会话租约
-	Acquire(ctx context.Context, in *SessionAcquireRequest, opts ...grpc.CallOption) (*LeaseResponse, error)
-	// Renew 为当前插件持有的会话租约续期
-	Renew(ctx context.Context, in *SessionRenewRequest, opts ...grpc.CallOption) (*LeaseResponse, error)
-	// Release 释放当前插件持有的会话租约
-	Release(ctx context.Context, in *SessionReleaseRequest, opts ...grpc.CallOption) (*OperationResponse, error)
+	// Acquire 申请联系人或整个群的指定主题租约。
+	Acquire(ctx context.Context, in *AcquireLeaseRequest, opts ...grpc.CallOption) (*LeaseResponse, error)
+	// Renew 续期当前插件持有的租约。
+	Renew(ctx context.Context, in *RenewLeaseRequest, opts ...grpc.CallOption) (*LeaseResponse, error)
+	// Release 释放当前插件持有的租约。
+	Release(ctx context.Context, in *ReleaseLeaseRequest, opts ...grpc.CallOption) (*OperationResponse, error)
 }
 
 type hostSessionsServiceClient struct {
@@ -960,7 +716,7 @@ func NewHostSessionsServiceClient(cc grpc.ClientConnInterface) HostSessionsServi
 	return &hostSessionsServiceClient{cc}
 }
 
-func (c *hostSessionsServiceClient) Acquire(ctx context.Context, in *SessionAcquireRequest, opts ...grpc.CallOption) (*LeaseResponse, error) {
+func (c *hostSessionsServiceClient) Acquire(ctx context.Context, in *AcquireLeaseRequest, opts ...grpc.CallOption) (*LeaseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LeaseResponse)
 	err := c.cc.Invoke(ctx, HostSessionsService_Acquire_FullMethodName, in, out, cOpts...)
@@ -970,7 +726,7 @@ func (c *hostSessionsServiceClient) Acquire(ctx context.Context, in *SessionAcqu
 	return out, nil
 }
 
-func (c *hostSessionsServiceClient) Renew(ctx context.Context, in *SessionRenewRequest, opts ...grpc.CallOption) (*LeaseResponse, error) {
+func (c *hostSessionsServiceClient) Renew(ctx context.Context, in *RenewLeaseRequest, opts ...grpc.CallOption) (*LeaseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LeaseResponse)
 	err := c.cc.Invoke(ctx, HostSessionsService_Renew_FullMethodName, in, out, cOpts...)
@@ -980,7 +736,7 @@ func (c *hostSessionsServiceClient) Renew(ctx context.Context, in *SessionRenewR
 	return out, nil
 }
 
-func (c *hostSessionsServiceClient) Release(ctx context.Context, in *SessionReleaseRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
+func (c *hostSessionsServiceClient) Release(ctx context.Context, in *ReleaseLeaseRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OperationResponse)
 	err := c.cc.Invoke(ctx, HostSessionsService_Release_FullMethodName, in, out, cOpts...)
@@ -994,14 +750,14 @@ func (c *hostSessionsServiceClient) Release(ctx context.Context, in *SessionRele
 // All implementations must embed UnimplementedHostSessionsServiceServer
 // for forward compatibility.
 //
-// HostSessionsService 宿主联系人及整群会话租约服务
+// HostSessionsService 提供联系人或整群租约。
 type HostSessionsServiceServer interface {
-	// Acquire 按联系人或整个群申请指定主题的会话租约
-	Acquire(context.Context, *SessionAcquireRequest) (*LeaseResponse, error)
-	// Renew 为当前插件持有的会话租约续期
-	Renew(context.Context, *SessionRenewRequest) (*LeaseResponse, error)
-	// Release 释放当前插件持有的会话租约
-	Release(context.Context, *SessionReleaseRequest) (*OperationResponse, error)
+	// Acquire 申请联系人或整个群的指定主题租约。
+	Acquire(context.Context, *AcquireLeaseRequest) (*LeaseResponse, error)
+	// Renew 续期当前插件持有的租约。
+	Renew(context.Context, *RenewLeaseRequest) (*LeaseResponse, error)
+	// Release 释放当前插件持有的租约。
+	Release(context.Context, *ReleaseLeaseRequest) (*OperationResponse, error)
 	mustEmbedUnimplementedHostSessionsServiceServer()
 }
 
@@ -1012,13 +768,13 @@ type HostSessionsServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedHostSessionsServiceServer struct{}
 
-func (UnimplementedHostSessionsServiceServer) Acquire(context.Context, *SessionAcquireRequest) (*LeaseResponse, error) {
+func (UnimplementedHostSessionsServiceServer) Acquire(context.Context, *AcquireLeaseRequest) (*LeaseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Acquire not implemented")
 }
-func (UnimplementedHostSessionsServiceServer) Renew(context.Context, *SessionRenewRequest) (*LeaseResponse, error) {
+func (UnimplementedHostSessionsServiceServer) Renew(context.Context, *RenewLeaseRequest) (*LeaseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Renew not implemented")
 }
-func (UnimplementedHostSessionsServiceServer) Release(context.Context, *SessionReleaseRequest) (*OperationResponse, error) {
+func (UnimplementedHostSessionsServiceServer) Release(context.Context, *ReleaseLeaseRequest) (*OperationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Release not implemented")
 }
 func (UnimplementedHostSessionsServiceServer) mustEmbedUnimplementedHostSessionsServiceServer() {}
@@ -1043,7 +799,7 @@ func RegisterHostSessionsServiceServer(s grpc.ServiceRegistrar, srv HostSessions
 }
 
 func _HostSessionsService_Acquire_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SessionAcquireRequest)
+	in := new(AcquireLeaseRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1055,13 +811,13 @@ func _HostSessionsService_Acquire_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: HostSessionsService_Acquire_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostSessionsServiceServer).Acquire(ctx, req.(*SessionAcquireRequest))
+		return srv.(HostSessionsServiceServer).Acquire(ctx, req.(*AcquireLeaseRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _HostSessionsService_Renew_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SessionRenewRequest)
+	in := new(RenewLeaseRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1073,13 +829,13 @@ func _HostSessionsService_Renew_Handler(srv interface{}, ctx context.Context, de
 		FullMethod: HostSessionsService_Renew_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostSessionsServiceServer).Renew(ctx, req.(*SessionRenewRequest))
+		return srv.(HostSessionsServiceServer).Renew(ctx, req.(*RenewLeaseRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _HostSessionsService_Release_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SessionReleaseRequest)
+	in := new(ReleaseLeaseRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1091,7 +847,7 @@ func _HostSessionsService_Release_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: HostSessionsService_Release_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostSessionsServiceServer).Release(ctx, req.(*SessionReleaseRequest))
+		return srv.(HostSessionsServiceServer).Release(ctx, req.(*ReleaseLeaseRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1121,20 +877,17 @@ var HostSessionsService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	HostCallerService_Call_FullMethodName           = "/golem.sdk.HostCallerService/Call"
-	HostCallerService_CallBackground_FullMethodName = "/golem.sdk.HostCallerService/CallBackground"
+	HostCallerService_Call_FullMethodName = "/golem.sdk.HostCallerService/Call"
 )
 
 // HostCallerServiceClient is the client API for HostCallerService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// HostCallerService 宿主按能力名路由的跨插件调用服务
+// HostCallerService 提供跨插件能力路由。
 type HostCallerServiceClient interface {
-	// Call 按能力名调用，由宿主选择提供者
-	Call(ctx context.Context, in *HostCallRequest, opts ...grpc.CallOption) (*HostCallResponse, error)
-	// CallBackground 使用 background.run、能力名和明确目标会话独立授权
-	CallBackground(ctx context.Context, in *HostBackgroundCallRequest, opts ...grpc.CallOption) (*HostCallResponse, error)
+	// Call 按能力名调用，由宿主选择提供者。
+	Call(ctx context.Context, in *CallCapabilityRequest, opts ...grpc.CallOption) (*CallCapabilityResponse, error)
 }
 
 type hostCallerServiceClient struct {
@@ -1145,20 +898,10 @@ func NewHostCallerServiceClient(cc grpc.ClientConnInterface) HostCallerServiceCl
 	return &hostCallerServiceClient{cc}
 }
 
-func (c *hostCallerServiceClient) Call(ctx context.Context, in *HostCallRequest, opts ...grpc.CallOption) (*HostCallResponse, error) {
+func (c *hostCallerServiceClient) Call(ctx context.Context, in *CallCapabilityRequest, opts ...grpc.CallOption) (*CallCapabilityResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(HostCallResponse)
+	out := new(CallCapabilityResponse)
 	err := c.cc.Invoke(ctx, HostCallerService_Call_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *hostCallerServiceClient) CallBackground(ctx context.Context, in *HostBackgroundCallRequest, opts ...grpc.CallOption) (*HostCallResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(HostCallResponse)
-	err := c.cc.Invoke(ctx, HostCallerService_CallBackground_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1169,12 +912,10 @@ func (c *hostCallerServiceClient) CallBackground(ctx context.Context, in *HostBa
 // All implementations must embed UnimplementedHostCallerServiceServer
 // for forward compatibility.
 //
-// HostCallerService 宿主按能力名路由的跨插件调用服务
+// HostCallerService 提供跨插件能力路由。
 type HostCallerServiceServer interface {
-	// Call 按能力名调用，由宿主选择提供者
-	Call(context.Context, *HostCallRequest) (*HostCallResponse, error)
-	// CallBackground 使用 background.run、能力名和明确目标会话独立授权
-	CallBackground(context.Context, *HostBackgroundCallRequest) (*HostCallResponse, error)
+	// Call 按能力名调用，由宿主选择提供者。
+	Call(context.Context, *CallCapabilityRequest) (*CallCapabilityResponse, error)
 	mustEmbedUnimplementedHostCallerServiceServer()
 }
 
@@ -1185,11 +926,8 @@ type HostCallerServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedHostCallerServiceServer struct{}
 
-func (UnimplementedHostCallerServiceServer) Call(context.Context, *HostCallRequest) (*HostCallResponse, error) {
+func (UnimplementedHostCallerServiceServer) Call(context.Context, *CallCapabilityRequest) (*CallCapabilityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Call not implemented")
-}
-func (UnimplementedHostCallerServiceServer) CallBackground(context.Context, *HostBackgroundCallRequest) (*HostCallResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method CallBackground not implemented")
 }
 func (UnimplementedHostCallerServiceServer) mustEmbedUnimplementedHostCallerServiceServer() {}
 func (UnimplementedHostCallerServiceServer) testEmbeddedByValue()                           {}
@@ -1213,7 +951,7 @@ func RegisterHostCallerServiceServer(s grpc.ServiceRegistrar, srv HostCallerServ
 }
 
 func _HostCallerService_Call_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HostCallRequest)
+	in := new(CallCapabilityRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1225,25 +963,7 @@ func _HostCallerService_Call_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: HostCallerService_Call_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostCallerServiceServer).Call(ctx, req.(*HostCallRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _HostCallerService_CallBackground_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HostBackgroundCallRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostCallerServiceServer).CallBackground(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostCallerService_CallBackground_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostCallerServiceServer).CallBackground(ctx, req.(*HostBackgroundCallRequest))
+		return srv.(HostCallerServiceServer).Call(ctx, req.(*CallCapabilityRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1259,30 +979,26 @@ var HostCallerService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Call",
 			Handler:    _HostCallerService_Call_Handler,
 		},
-		{
-			MethodName: "CallBackground",
-			Handler:    _HostCallerService_CallBackground_Handler,
-		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "golem/sdk/host.proto",
 }
 
 const (
-	HostConfigService_Snapshot_FullMethodName = "/golem.sdk.HostConfigService/Snapshot"
-	HostConfigService_Save_FullMethodName     = "/golem.sdk.HostConfigService/Save"
+	HostConfigService_Read_FullMethodName = "/golem.sdk.HostConfigService/Read"
+	HostConfigService_Save_FullMethodName = "/golem.sdk.HostConfigService/Save"
 )
 
 // HostConfigServiceClient is the client API for HostConfigService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// HostConfigService 宿主插件自身业务配置服务
+// HostConfigService 提供当前插件自身配置的持久化入口。
 type HostConfigServiceClient interface {
-	// Snapshot 读取插件自身业务配置快照
-	Snapshot(ctx context.Context, in *ConfigSnapshotRequest, opts ...grpc.CallOption) (*ConfigSnapshotResponse, error)
-	// Save 按预期修订号保存配置，保存接受不代表已应用
-	Save(ctx context.Context, in *ConfigSaveRequest, opts ...grpc.CallOption) (*ConfigSaveResponse, error)
+	// Read 读取当前插件自己的配置。
+	Read(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ReadConfigResponse, error)
+	// Save 仅更新当前插件自己的 config 子节。
+	Save(ctx context.Context, in *SaveConfigRequest, opts ...grpc.CallOption) (*OperationResponse, error)
 }
 
 type hostConfigServiceClient struct {
@@ -1293,19 +1009,19 @@ func NewHostConfigServiceClient(cc grpc.ClientConnInterface) HostConfigServiceCl
 	return &hostConfigServiceClient{cc}
 }
 
-func (c *hostConfigServiceClient) Snapshot(ctx context.Context, in *ConfigSnapshotRequest, opts ...grpc.CallOption) (*ConfigSnapshotResponse, error) {
+func (c *hostConfigServiceClient) Read(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ReadConfigResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ConfigSnapshotResponse)
-	err := c.cc.Invoke(ctx, HostConfigService_Snapshot_FullMethodName, in, out, cOpts...)
+	out := new(ReadConfigResponse)
+	err := c.cc.Invoke(ctx, HostConfigService_Read_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *hostConfigServiceClient) Save(ctx context.Context, in *ConfigSaveRequest, opts ...grpc.CallOption) (*ConfigSaveResponse, error) {
+func (c *hostConfigServiceClient) Save(ctx context.Context, in *SaveConfigRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ConfigSaveResponse)
+	out := new(OperationResponse)
 	err := c.cc.Invoke(ctx, HostConfigService_Save_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -1317,12 +1033,12 @@ func (c *hostConfigServiceClient) Save(ctx context.Context, in *ConfigSaveReques
 // All implementations must embed UnimplementedHostConfigServiceServer
 // for forward compatibility.
 //
-// HostConfigService 宿主插件自身业务配置服务
+// HostConfigService 提供当前插件自身配置的持久化入口。
 type HostConfigServiceServer interface {
-	// Snapshot 读取插件自身业务配置快照
-	Snapshot(context.Context, *ConfigSnapshotRequest) (*ConfigSnapshotResponse, error)
-	// Save 按预期修订号保存配置，保存接受不代表已应用
-	Save(context.Context, *ConfigSaveRequest) (*ConfigSaveResponse, error)
+	// Read 读取当前插件自己的配置。
+	Read(context.Context, *emptypb.Empty) (*ReadConfigResponse, error)
+	// Save 仅更新当前插件自己的 config 子节。
+	Save(context.Context, *SaveConfigRequest) (*OperationResponse, error)
 	mustEmbedUnimplementedHostConfigServiceServer()
 }
 
@@ -1333,10 +1049,10 @@ type HostConfigServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedHostConfigServiceServer struct{}
 
-func (UnimplementedHostConfigServiceServer) Snapshot(context.Context, *ConfigSnapshotRequest) (*ConfigSnapshotResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Snapshot not implemented")
+func (UnimplementedHostConfigServiceServer) Read(context.Context, *emptypb.Empty) (*ReadConfigResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Read not implemented")
 }
-func (UnimplementedHostConfigServiceServer) Save(context.Context, *ConfigSaveRequest) (*ConfigSaveResponse, error) {
+func (UnimplementedHostConfigServiceServer) Save(context.Context, *SaveConfigRequest) (*OperationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Save not implemented")
 }
 func (UnimplementedHostConfigServiceServer) mustEmbedUnimplementedHostConfigServiceServer() {}
@@ -1360,26 +1076,26 @@ func RegisterHostConfigServiceServer(s grpc.ServiceRegistrar, srv HostConfigServ
 	s.RegisterService(&HostConfigService_ServiceDesc, srv)
 }
 
-func _HostConfigService_Snapshot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ConfigSnapshotRequest)
+func _HostConfigService_Read_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(HostConfigServiceServer).Snapshot(ctx, in)
+		return srv.(HostConfigServiceServer).Read(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: HostConfigService_Snapshot_FullMethodName,
+		FullMethod: HostConfigService_Read_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostConfigServiceServer).Snapshot(ctx, req.(*ConfigSnapshotRequest))
+		return srv.(HostConfigServiceServer).Read(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _HostConfigService_Save_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ConfigSaveRequest)
+	in := new(SaveConfigRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1391,7 +1107,7 @@ func _HostConfigService_Save_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: HostConfigService_Save_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostConfigServiceServer).Save(ctx, req.(*ConfigSaveRequest))
+		return srv.(HostConfigServiceServer).Save(ctx, req.(*SaveConfigRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1404,376 +1120,12 @@ var HostConfigService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*HostConfigServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Snapshot",
-			Handler:    _HostConfigService_Snapshot_Handler,
+			MethodName: "Read",
+			Handler:    _HostConfigService_Read_Handler,
 		},
 		{
 			MethodName: "Save",
 			Handler:    _HostConfigService_Save_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "golem/sdk/host.proto",
-}
-
-const (
-	HostAccountService_Current_FullMethodName = "/golem.sdk.HostAccountService/Current"
-)
-
-// HostAccountServiceClient is the client API for HostAccountService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// HostAccountService 宿主当前账号业务快照服务
-type HostAccountServiceClient interface {
-	// Current 读取当前账号业务快照
-	Current(ctx context.Context, in *AccountCurrentRequest, opts ...grpc.CallOption) (*AccountResponse, error)
-}
-
-type hostAccountServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewHostAccountServiceClient(cc grpc.ClientConnInterface) HostAccountServiceClient {
-	return &hostAccountServiceClient{cc}
-}
-
-func (c *hostAccountServiceClient) Current(ctx context.Context, in *AccountCurrentRequest, opts ...grpc.CallOption) (*AccountResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AccountResponse)
-	err := c.cc.Invoke(ctx, HostAccountService_Current_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// HostAccountServiceServer is the server API for HostAccountService service.
-// All implementations must embed UnimplementedHostAccountServiceServer
-// for forward compatibility.
-//
-// HostAccountService 宿主当前账号业务快照服务
-type HostAccountServiceServer interface {
-	// Current 读取当前账号业务快照
-	Current(context.Context, *AccountCurrentRequest) (*AccountResponse, error)
-	mustEmbedUnimplementedHostAccountServiceServer()
-}
-
-// UnimplementedHostAccountServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedHostAccountServiceServer struct{}
-
-func (UnimplementedHostAccountServiceServer) Current(context.Context, *AccountCurrentRequest) (*AccountResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Current not implemented")
-}
-func (UnimplementedHostAccountServiceServer) mustEmbedUnimplementedHostAccountServiceServer() {}
-func (UnimplementedHostAccountServiceServer) testEmbeddedByValue()                            {}
-
-// UnsafeHostAccountServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to HostAccountServiceServer will
-// result in compilation errors.
-type UnsafeHostAccountServiceServer interface {
-	mustEmbedUnimplementedHostAccountServiceServer()
-}
-
-func RegisterHostAccountServiceServer(s grpc.ServiceRegistrar, srv HostAccountServiceServer) {
-	// If the following call panics, it indicates UnimplementedHostAccountServiceServer was
-	// embedded by pointer and is nil.  This will cause panics if an
-	// unimplemented method is ever invoked, so we test this at initialization
-	// time to prevent it from happening at runtime later due to I/O.
-	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
-		t.testEmbeddedByValue()
-	}
-	s.RegisterService(&HostAccountService_ServiceDesc, srv)
-}
-
-func _HostAccountService_Current_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AccountCurrentRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostAccountServiceServer).Current(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostAccountService_Current_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostAccountServiceServer).Current(ctx, req.(*AccountCurrentRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// HostAccountService_ServiceDesc is the grpc.ServiceDesc for HostAccountService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var HostAccountService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "golem.sdk.HostAccountService",
-	HandlerType: (*HostAccountServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Current",
-			Handler:    _HostAccountService_Current_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "golem/sdk/host.proto",
-}
-
-const (
-	HostCoreService_Invoke_FullMethodName = "/golem.sdk.HostCoreService/Invoke"
-)
-
-// HostCoreServiceClient is the client API for HostCoreService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// HostCoreService 宿主当前 core 公共 API 的稳定扩展入口
-type HostCoreServiceClient interface {
-	// Invoke 按显式声明的方法名调用当前 core 已接入的扩展业务
-	Invoke(ctx context.Context, in *CoreInvokeRequest, opts ...grpc.CallOption) (*CoreInvokeResponse, error)
-}
-
-type hostCoreServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewHostCoreServiceClient(cc grpc.ClientConnInterface) HostCoreServiceClient {
-	return &hostCoreServiceClient{cc}
-}
-
-func (c *hostCoreServiceClient) Invoke(ctx context.Context, in *CoreInvokeRequest, opts ...grpc.CallOption) (*CoreInvokeResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CoreInvokeResponse)
-	err := c.cc.Invoke(ctx, HostCoreService_Invoke_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// HostCoreServiceServer is the server API for HostCoreService service.
-// All implementations must embed UnimplementedHostCoreServiceServer
-// for forward compatibility.
-//
-// HostCoreService 宿主当前 core 公共 API 的稳定扩展入口
-type HostCoreServiceServer interface {
-	// Invoke 按显式声明的方法名调用当前 core 已接入的扩展业务
-	Invoke(context.Context, *CoreInvokeRequest) (*CoreInvokeResponse, error)
-	mustEmbedUnimplementedHostCoreServiceServer()
-}
-
-// UnimplementedHostCoreServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedHostCoreServiceServer struct{}
-
-func (UnimplementedHostCoreServiceServer) Invoke(context.Context, *CoreInvokeRequest) (*CoreInvokeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Invoke not implemented")
-}
-func (UnimplementedHostCoreServiceServer) mustEmbedUnimplementedHostCoreServiceServer() {}
-func (UnimplementedHostCoreServiceServer) testEmbeddedByValue()                         {}
-
-// UnsafeHostCoreServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to HostCoreServiceServer will
-// result in compilation errors.
-type UnsafeHostCoreServiceServer interface {
-	mustEmbedUnimplementedHostCoreServiceServer()
-}
-
-func RegisterHostCoreServiceServer(s grpc.ServiceRegistrar, srv HostCoreServiceServer) {
-	// If the following call panics, it indicates UnimplementedHostCoreServiceServer was
-	// embedded by pointer and is nil.  This will cause panics if an
-	// unimplemented method is ever invoked, so we test this at initialization
-	// time to prevent it from happening at runtime later due to I/O.
-	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
-		t.testEmbeddedByValue()
-	}
-	s.RegisterService(&HostCoreService_ServiceDesc, srv)
-}
-
-func _HostCoreService_Invoke_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CoreInvokeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostCoreServiceServer).Invoke(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostCoreService_Invoke_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostCoreServiceServer).Invoke(ctx, req.(*CoreInvokeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// HostCoreService_ServiceDesc is the grpc.ServiceDesc for HostCoreService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var HostCoreService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "golem.sdk.HostCoreService",
-	HandlerType: (*HostCoreServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Invoke",
-			Handler:    _HostCoreService_Invoke_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "golem/sdk/host.proto",
-}
-
-const (
-	HostControlService_ReverseReady_FullMethodName       = "/golem.sdk.HostControlService/ReverseReady"
-	HostControlService_ExecutionCompleted_FullMethodName = "/golem.sdk.HostControlService/ExecutionCompleted"
-)
-
-// HostControlServiceClient is the client API for HostControlService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// HostControlService 宿主反向连接就绪及执行完成确认服务
-type HostControlServiceClient interface {
-	// ReverseReady 使用控制凭据确认反向宿主连接已就绪
-	ReverseReady(ctx context.Context, in *ReverseReadyRequest, opts ...grpc.CallOption) (*OperationResponse, error)
-	// ExecutionCompleted 在处理函数实际结束后确认执行完成，RPC 返回或超时不能代替此确认
-	ExecutionCompleted(ctx context.Context, in *ExecutionCompletedRequest, opts ...grpc.CallOption) (*OperationResponse, error)
-}
-
-type hostControlServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewHostControlServiceClient(cc grpc.ClientConnInterface) HostControlServiceClient {
-	return &hostControlServiceClient{cc}
-}
-
-func (c *hostControlServiceClient) ReverseReady(ctx context.Context, in *ReverseReadyRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(OperationResponse)
-	err := c.cc.Invoke(ctx, HostControlService_ReverseReady_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *hostControlServiceClient) ExecutionCompleted(ctx context.Context, in *ExecutionCompletedRequest, opts ...grpc.CallOption) (*OperationResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(OperationResponse)
-	err := c.cc.Invoke(ctx, HostControlService_ExecutionCompleted_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// HostControlServiceServer is the server API for HostControlService service.
-// All implementations must embed UnimplementedHostControlServiceServer
-// for forward compatibility.
-//
-// HostControlService 宿主反向连接就绪及执行完成确认服务
-type HostControlServiceServer interface {
-	// ReverseReady 使用控制凭据确认反向宿主连接已就绪
-	ReverseReady(context.Context, *ReverseReadyRequest) (*OperationResponse, error)
-	// ExecutionCompleted 在处理函数实际结束后确认执行完成，RPC 返回或超时不能代替此确认
-	ExecutionCompleted(context.Context, *ExecutionCompletedRequest) (*OperationResponse, error)
-	mustEmbedUnimplementedHostControlServiceServer()
-}
-
-// UnimplementedHostControlServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedHostControlServiceServer struct{}
-
-func (UnimplementedHostControlServiceServer) ReverseReady(context.Context, *ReverseReadyRequest) (*OperationResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ReverseReady not implemented")
-}
-func (UnimplementedHostControlServiceServer) ExecutionCompleted(context.Context, *ExecutionCompletedRequest) (*OperationResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ExecutionCompleted not implemented")
-}
-func (UnimplementedHostControlServiceServer) mustEmbedUnimplementedHostControlServiceServer() {}
-func (UnimplementedHostControlServiceServer) testEmbeddedByValue()                            {}
-
-// UnsafeHostControlServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to HostControlServiceServer will
-// result in compilation errors.
-type UnsafeHostControlServiceServer interface {
-	mustEmbedUnimplementedHostControlServiceServer()
-}
-
-func RegisterHostControlServiceServer(s grpc.ServiceRegistrar, srv HostControlServiceServer) {
-	// If the following call panics, it indicates UnimplementedHostControlServiceServer was
-	// embedded by pointer and is nil.  This will cause panics if an
-	// unimplemented method is ever invoked, so we test this at initialization
-	// time to prevent it from happening at runtime later due to I/O.
-	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
-		t.testEmbeddedByValue()
-	}
-	s.RegisterService(&HostControlService_ServiceDesc, srv)
-}
-
-func _HostControlService_ReverseReady_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReverseReadyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostControlServiceServer).ReverseReady(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostControlService_ReverseReady_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostControlServiceServer).ReverseReady(ctx, req.(*ReverseReadyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _HostControlService_ExecutionCompleted_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ExecutionCompletedRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HostControlServiceServer).ExecutionCompleted(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: HostControlService_ExecutionCompleted_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HostControlServiceServer).ExecutionCompleted(ctx, req.(*ExecutionCompletedRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// HostControlService_ServiceDesc is the grpc.ServiceDesc for HostControlService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var HostControlService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "golem.sdk.HostControlService",
-	HandlerType: (*HostControlServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "ReverseReady",
-			Handler:    _HostControlService_ReverseReady_Handler,
-		},
-		{
-			MethodName: "ExecutionCompleted",
-			Handler:    _HostControlService_ExecutionCompleted_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

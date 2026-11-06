@@ -1,36 +1,37 @@
-// Package capability 定义跨插件能力调用契约
+// Package capability 定义跨插件能力声明和内存内调用契约。
 package capability
 
-import (
-	"context"
+import "context"
 
-	"github.com/golemwx/sdk"
-)
+// MaxInlineSize 是单次能力请求或结果允许的内联字节上限。
+//
+// 大媒体结果不得进入能力载荷或 frame 媒体仓库；提供者应直接通过
+// message.Client 发送，或等待后续 SDK 流式能力契约。
+const MaxInlineSize = 256 << 10
 
-// CapabilitySpec 插件公开能力声明
-type CapabilitySpec struct {
-	Name          string // 公开能力名，调用方只按此名称发起调用
-	InputType     string // 能力输入内容类型
-	OutputType    string // 能力输出内容类型
-	Description   string // 面向使用者的业务说明
-	MaxInlineSize int    // 能力内联结果字节上限，0 使用默认 256 KiB，不得大于 256 KiB
+// Spec 是插件公开能力的描述。
+type Spec struct {
+	Name          string
+	Description   string
+	InputType     string
+	OutputType    string
+	MaxInlineSize int
 }
 
-// CallRequest 跨插件能力调用请求
-type CallRequest struct {
-	CapabilityName string // 目标能力名，由宿主选择提供者，不指定插件 ID
-	ContentType    string // 载荷内容类型
-	Payload        []byte // 内联业务载荷，缺失与显式空字节可区分
+// Request 是按能力名发起的调用请求。
+type Request struct {
+	Name        string
+	ContentType string
+	Payload     []byte
 }
 
-// CallResult 能力调用结果
-type CallResult struct {
-	ContentType string        // 载荷内容类型
-	Payload     []byte        // 内联结果载荷，与 Media 互斥，缺失与显式空字节可区分
-	Media       *sdk.MediaRef // 宿主管理的结果媒体引用，与 Payload 互斥
+// Result 是有界内联调用结果。
+type Result struct {
+	ContentType string
+	Payload     []byte
 }
 
-// CallerClient 宿主跨插件调用能力
-type CallerClient interface {
-	Call(ctx context.Context, request CallRequest) (*CallResult, error)
+// Client 是宿主跨插件能力调用入口。
+type Client interface {
+	Call(ctx context.Context, request Request) (*Result, error)
 }

@@ -1,48 +1,72 @@
 # Golem SDK
 
-Golem 插件 SDK 定义插件与 frame 之间的稳定业务模型、RPC 协议、生命周期接口和宿主能力。
-SDK 只定义公共契约，不依赖 `github.com/golemwx/core`。
+Golem 插件 SDK 定义 frame 与插件共享的公共模型和通信契约。SDK 不依赖
+`github.com/golemwx/core`，也不公开 core 的 DTO、会话或配置文件。
+
+## R02 状态
+
+本修订对应 GOLEM-39 / R02：
+
+- 已冻结消息、联系人、群、事件、命令、配置、租约、能力和运行时公共签名
+- Proto 是唯一 wire 来源，生成代码只存在于 `internal/wire`
+- 八类消息使用 Proto `oneof` 表达结构化 `Data`
+- 不提供媒体、撤回或转发业务 token；不提供配置 revision/active/apply 状态
+- 运行时、Kong 命令、配置注入、数据目录和日志桥接分别由 R03–R07 实现
+
+R02 只交付可引用的契约，不是可直接运行的插件框架。当前没有 `plugin.Serve`，
+Runtime 也没有生产实现；未实现行为必须返回 `CategoryUnimplemented`，不能伪装成功。
 
 ## 包结构
 
-- `plugin`：插件描述、生命周期、业务处理接口与自动绑定 Host 的 `Base`
-- `event`、`command`、`capability`：事件、命令和跨插件能力契约
-- `message`、`contact`、`chatroom`、`session`、`config`：领域模型和类型化 Host 客户端
-- `rpc`：共享配对配置、真实插件启动、控制 RPC 和反向 Host 服务
-- `internal/wire`：Proto 生成类型和转换，不属于插件公共 API
-- `proto/golem/sdk`：唯一 Proto 协议源，不设置版本子目录
+- `message`：完整消息、八类类型化数据、发送结果和消息 Host 能力
+- `contact`、`chatroom`、`session`：联系人选择器、群资料和消费租约
+- `event`：Topic、Observe/Consume 订阅和事件结果
+- `command`：结构体命令 schema、调用输入、owner 上下文和 Reply
+- `capability`：有界跨插件能力调用
+- `plugin`：Metadata、可选生命周期、小型 Host、Config[T] 和 Runtime 签名
+- `proto/golem/sdk`：唯一 Proto 源
+- `internal/wire`：生成类型、服务桩和公开模型转换，不属于公共 API
 
-## 快速使用
+## 可编译示例
 
-```powershell
-$env:GOWORK = "off"
-$env:GOFLAGS = ""
-task proto
-task test
-task lint
-task build
+下面的包只使用 R02 已存在的类型；它不会启动插件进程：
+
+```go
+package fixture
+
+import (
+	"context"
+
+	"github.com/golemwx/sdk/event"
+	"github.com/golemwx/sdk/plugin"
+)
+
+type Plugin struct {
+	*plugin.Base
+}
+
+func New() *Plugin {
+	return &Plugin{Base: plugin.NewBase()}
+}
+
+func (*Plugin) Metadata() plugin.Metadata {
+	return plugin.Metadata{ID: "fixture", Name: "示例"}
+}
+
+func (*Plugin) Subscriptions() []event.Subscription {
+	return []event.Subscription{{Topic: event.Message, Mode: event.Observe}}
+}
+
+func (*Plugin) OnEvent(context.Context, event.Event) (event.Result, error) {
+	return event.Result{}, nil
+}
 ```
 
-插件入口调用 `plugin.Serve(implementation)`；需要宿主能力时嵌入零值 `plugin.Base`。
-SDK 会在反向连接初始化后、`OnLoad` 之前自动绑定 `p.Host`。Host 字段仅供初始化后的
-回调读取，不得改写；卸载或断连后旧句柄不可用。
-
-配对配置由 SDK 唯一定义：`ProtocolVersion=1`、`MagicCookieKey=GOLEM_PLUGIN_MAGIC_COOKIE`、
-`MagicCookieValue=golem-sdk-grpc`、PluginSet 键为 `golem`。普通发布和兼容的 Proto
-新增字段保持这些值不变；只有不兼容的通信或业务语义变更才提高唯一协议版本。
-
-## 中文文档
-
-- [快速开始](docs/快速开始.md)：创建独立插件 module 和本地构建
-- [开发指南](docs/开发指南.md)：生成链、版本、测试和模块边界
-- [插件通信](docs/插件通信.md)：握手、生命周期、Host 绑定和资源所有权
-- [公共契约](docs/公共契约.md)：字段存在性、错误类别和业务结果
-- [宿主能力与安全](docs/宿主能力与安全.md)：权限、配置、资料目录和取消
-- [故障排查](docs/故障排查.md)：生成、依赖、race 和 Host 问题
+完整签名和字段语义见[公共契约](docs/公共契约.md)。
 
 ## 生成与验证
 
-生成工具固定版本，不使用 `latest`：
+固定工具版本：
 
 ```text
 Buf                 1.75.0
@@ -50,16 +74,23 @@ protoc-gen-go       1.36.12
 protoc-gen-go-grpc  1.6.2
 ```
 
-`task proto` 依次执行格式化、格式检查、lint、生成、临时目录重复生成差异核对和 wire
-测试。正式命令显式 `GOWORK=off GOFLAGS=`；`task ci` 额外执行 tidy 检查、全量测试、
-vet 和 `CGO_ENABLED=0` 构建。race 通过独立的 `task test:race` 执行，需要 CGO 和 C
-编译器。
+```powershell
+task proto
+task deps:check
+task test
+task lint
+task build
+```
 
-## 错误与安全
+`task proto` 会格式化、lint、生成、在临时目录重复生成并核对字节一致性。
+`task test:race` 需要 CGO 和 C 编译器；本机没有 GCC 时不得把 race 记为通过。
 
-跨进程错误使用 `*sdk.Error`。调用方只按 `Category` 和写操作的 `Outcome` 判断，不匹配
-`Reason` 文本；未实现的方法返回 `CategoryUnimplemented`，不能返回空成功。所有 Host
-回调都必须经过显式授权，缺少授权默认拒绝；`OutcomeUnknown` 的写操作不得自动重试。
+## 文档
 
-插件业务签名只使用公开领域类型。frame 通过 `sdk/rpc` 接线，不直接导入
-`internal/wire`；公共 API 不公开宿主路径、原始 XML 或 CDN 解密材料。
+- [公共契约](docs/公共契约.md)：R02 公共 API、字段语义、错误和服务形状
+- [快速开始](docs/快速开始.md)：编译期示例和 R02 边界
+- [开发指南](docs/开发指南.md)：生成链、验证和后续任务分工
+- [插件通信](docs/插件通信.md)：Proto 服务、流和生命周期边界
+- [宿主能力与安全](docs/宿主能力与安全.md)：Host、owner、数据和错误规则
+- [故障排查](docs/故障排查.md)：常见生成、依赖和契约问题
+- [R02 验收记录](docs/R02验收记录.md)：条款、测试、命令和未运行项

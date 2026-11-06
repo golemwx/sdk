@@ -10,6 +10,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -22,29 +23,29 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Invocation 宿主反向调用的执行身份凭据
-type Invocation struct {
+// AccountResponse 返回当前唯一账号快照。
+type AccountResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`       // 关联执行的唯一标识
-	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"` // 绑定当前执行身份的宿主签发凭据
+	Account       *Account               `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Invocation) Reset() {
-	*x = Invocation{}
+func (x *AccountResponse) Reset() {
+	*x = AccountResponse{}
 	mi := &file_golem_sdk_host_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Invocation) String() string {
+func (x *AccountResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Invocation) ProtoMessage() {}
+func (*AccountResponse) ProtoMessage() {}
 
-func (x *Invocation) ProtoReflect() protoreflect.Message {
+func (x *AccountResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_golem_sdk_host_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -56,35 +57,33 @@ func (x *Invocation) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Invocation.ProtoReflect.Descriptor instead.
-func (*Invocation) Descriptor() ([]byte, []int) {
+// Deprecated: Use AccountResponse.ProtoReflect.Descriptor instead.
+func (*AccountResponse) Descriptor() ([]byte, []int) {
 	return file_golem_sdk_host_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Invocation) GetId() string {
+func (x *AccountResponse) GetAccount() *Account {
 	if x != nil {
-		return x.Id
+		return x.Account
 	}
-	return ""
+	return nil
 }
 
-func (x *Invocation) GetToken() string {
+func (x *AccountResponse) GetError() *Error {
 	if x != nil {
-		return x.Token
+		return x.Error
 	}
-	return ""
+	return nil
 }
 
-// SendTextRequest 文本消息发送请求
+// SendTextRequest 向联系人或群发送文本。
 type SendTextRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Invocation      *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                                  // 本次反向调用绑定的执行身份凭据
-	Conversation    *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`                              // 所属或目标业务会话，群内所有成员共用整群会话
-	Text            string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`                                              // 待发送的文本内容
-	Mentions        []string               `protobuf:"bytes,4,rep,name=mentions,proto3" json:"mentions,omitempty"`                                      // 被提及者的微信 username 列表
-	BackgroundToken string                 `protobuf:"bytes,5,opt,name=background_token,json=backgroundToken,proto3" json:"background_token,omitempty"` // 启用期后台发送令牌，与 invocation 二选一
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Target        string                 `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
+	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	Mentions      []string               `protobuf:"bytes,3,rep,name=mentions,proto3" json:"mentions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SendTextRequest) Reset() {
@@ -117,18 +116,11 @@ func (*SendTextRequest) Descriptor() ([]byte, []int) {
 	return file_golem_sdk_host_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *SendTextRequest) GetInvocation() *Invocation {
+func (x *SendTextRequest) GetTarget() string {
 	if x != nil {
-		return x.Invocation
+		return x.Target
 	}
-	return nil
-}
-
-func (x *SendTextRequest) GetConversation() *Conversation {
-	if x != nil {
-		return x.Conversation
-	}
-	return nil
+	return ""
 }
 
 func (x *SendTextRequest) GetText() string {
@@ -145,38 +137,29 @@ func (x *SendTextRequest) GetMentions() []string {
 	return nil
 }
 
-func (x *SendTextRequest) GetBackgroundToken() string {
-	if x != nil {
-		return x.BackgroundToken
-	}
-	return ""
-}
-
-// ReplyRequest 引用回复请求
-type ReplyRequest struct {
+// SendAppRequest 向联系人或群发送应用消息。
+type SendAppRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`     // 本次反向调用绑定的执行身份凭据
-	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"` // 所属或目标业务会话，群内所有成员共用整群会话
-	Quote         *Quote                 `protobuf:"bytes,3,opt,name=quote,proto3" json:"quote,omitempty"`               // 引用消息摘要，缺失时为空
-	Text          string                 `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`                 // 引用回复的文本内容
+	Target        string                 `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
+	App           *AppData               `protobuf:"bytes,2,opt,name=app,proto3" json:"app,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReplyRequest) Reset() {
-	*x = ReplyRequest{}
+func (x *SendAppRequest) Reset() {
+	*x = SendAppRequest{}
 	mi := &file_golem_sdk_host_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReplyRequest) String() string {
+func (x *SendAppRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReplyRequest) ProtoMessage() {}
+func (*SendAppRequest) ProtoMessage() {}
 
-func (x *ReplyRequest) ProtoReflect() protoreflect.Message {
+func (x *SendAppRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_golem_sdk_host_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -188,162 +171,40 @@ func (x *ReplyRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReplyRequest.ProtoReflect.Descriptor instead.
-func (*ReplyRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use SendAppRequest.ProtoReflect.Descriptor instead.
+func (*SendAppRequest) Descriptor() ([]byte, []int) {
 	return file_golem_sdk_host_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ReplyRequest) GetInvocation() *Invocation {
+func (x *SendAppRequest) GetTarget() string {
 	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *ReplyRequest) GetConversation() *Conversation {
-	if x != nil {
-		return x.Conversation
-	}
-	return nil
-}
-
-func (x *ReplyRequest) GetQuote() *Quote {
-	if x != nil {
-		return x.Quote
-	}
-	return nil
-}
-
-func (x *ReplyRequest) GetText() string {
-	if x != nil {
-		return x.Text
+		return x.Target
 	}
 	return ""
 }
 
-// SendReceiptResponse 消息发送回执响应
-type SendReceiptResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Receipt       *SendReceipt           `protobuf:"bytes,1,opt,name=receipt,proto3" json:"receipt,omitempty"` // 消息发送回执，写结果未知时不得据此认定成功
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`     // 业务错误，成功时为空；部分成功仍保留逐项结果
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SendReceiptResponse) Reset() {
-	*x = SendReceiptResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SendReceiptResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SendReceiptResponse) ProtoMessage() {}
-
-func (x *SendReceiptResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[3]
+func (x *SendAppRequest) GetApp() *AppData {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SendReceiptResponse.ProtoReflect.Descriptor instead.
-func (*SendReceiptResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *SendReceiptResponse) GetReceipt() *SendReceipt {
-	if x != nil {
-		return x.Receipt
+		return x.App
 	}
 	return nil
 }
 
-func (x *SendReceiptResponse) GetError() *Error {
-	if x != nil {
-		return x.Error
-	}
-	return nil
-}
-
-// RevokeRequest 消息撤回请求
-type RevokeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
-	Ref           *RevokeRef             `protobuf:"bytes,2,opt,name=ref,proto3" json:"ref,omitempty"`               // 待撤回消息的宿主签发引用
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RevokeRequest) Reset() {
-	*x = RevokeRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RevokeRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RevokeRequest) ProtoMessage() {}
-
-func (x *RevokeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RevokeRequest.ProtoReflect.Descriptor instead.
-func (*RevokeRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *RevokeRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *RevokeRequest) GetRef() *RevokeRef {
-	if x != nil {
-		return x.Ref
-	}
-	return nil
-}
-
-// SendMediaMetadata 媒体上传流首包的调用身份和业务元数据
+// SendMediaMetadata 是媒体上传流首包的业务元数据。
 type SendMediaMetadata struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`               // 本次反向调用绑定的执行身份凭据
-	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`           // 所属或目标业务会话，群内所有成员共用整群会话
-	Kind          MediaKind              `protobuf:"varint,3,opt,name=kind,proto3,enum=golem.sdk.MediaKind" json:"kind,omitempty"` // 业务种类，未知枚举归一为对应零值
-	FileName      string                 `protobuf:"bytes,4,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`   // 展示用文件名及扩展名，不得用于拼接宿主路径
-	Size          int64                  `protobuf:"varint,5,opt,name=size,proto3" json:"size,omitempty"`                          // 待上传媒体字节数，-1 代表未知
-	Ref           *MediaRef              `protobuf:"bytes,6,opt,name=ref,proto3" json:"ref,omitempty"`                             // 复用的宿主管理媒体引用，不传插件本地路径
-	Voice         *VoiceOptions          `protobuf:"bytes,7,opt,name=voice,proto3" json:"voice,omitempty"`                         // 语音时长与编码参数，非语音媒体时为空
+	Target        string                 `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
+	Type          MessageType            `protobuf:"varint,2,opt,name=type,proto3,enum=golem.sdk.MessageType" json:"type,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Size          int64                  `protobuf:"varint,4,opt,name=size,proto3" json:"size,omitempty"`
+	Voice         *VoiceUpload           `protobuf:"bytes,5,opt,name=voice,proto3" json:"voice,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SendMediaMetadata) Reset() {
 	*x = SendMediaMetadata{}
-	mi := &file_golem_sdk_host_proto_msgTypes[5]
+	mi := &file_golem_sdk_host_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -355,7 +216,7 @@ func (x *SendMediaMetadata) String() string {
 func (*SendMediaMetadata) ProtoMessage() {}
 
 func (x *SendMediaMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[5]
+	mi := &file_golem_sdk_host_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -368,33 +229,26 @@ func (x *SendMediaMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMediaMetadata.ProtoReflect.Descriptor instead.
 func (*SendMediaMetadata) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{5}
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *SendMediaMetadata) GetInvocation() *Invocation {
+func (x *SendMediaMetadata) GetTarget() string {
 	if x != nil {
-		return x.Invocation
+		return x.Target
 	}
-	return nil
+	return ""
 }
 
-func (x *SendMediaMetadata) GetConversation() *Conversation {
+func (x *SendMediaMetadata) GetType() MessageType {
 	if x != nil {
-		return x.Conversation
+		return x.Type
 	}
-	return nil
+	return MessageType_MESSAGE_TYPE_UNKNOWN
 }
 
-func (x *SendMediaMetadata) GetKind() MediaKind {
+func (x *SendMediaMetadata) GetName() string {
 	if x != nil {
-		return x.Kind
-	}
-	return MediaKind_MEDIA_KIND_UNKNOWN
-}
-
-func (x *SendMediaMetadata) GetFileName() string {
-	if x != nil {
-		return x.FileName
+		return x.Name
 	}
 	return ""
 }
@@ -406,25 +260,16 @@ func (x *SendMediaMetadata) GetSize() int64 {
 	return 0
 }
 
-func (x *SendMediaMetadata) GetRef() *MediaRef {
-	if x != nil {
-		return x.Ref
-	}
-	return nil
-}
-
-func (x *SendMediaMetadata) GetVoice() *VoiceOptions {
+func (x *SendMediaMetadata) GetVoice() *VoiceUpload {
 	if x != nil {
 		return x.Voice
 	}
 	return nil
 }
 
-// SendMediaRequest 媒体上传流中的元数据或字节分块
+// SendMediaRequest 是媒体上传流的首包元数据或后续字节。
 type SendMediaRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// value 上传流包体，首包为元数据，后续包为字节分块
-	//
 	// Types that are valid to be assigned to Value:
 	//
 	//	*SendMediaRequest_Metadata
@@ -436,7 +281,7 @@ type SendMediaRequest struct {
 
 func (x *SendMediaRequest) Reset() {
 	*x = SendMediaRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[6]
+	mi := &file_golem_sdk_host_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -448,7 +293,7 @@ func (x *SendMediaRequest) String() string {
 func (*SendMediaRequest) ProtoMessage() {}
 
 func (x *SendMediaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[6]
+	mi := &file_golem_sdk_host_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -461,7 +306,7 @@ func (x *SendMediaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMediaRequest.ProtoReflect.Descriptor instead.
 func (*SendMediaRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{6}
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SendMediaRequest) GetValue() isSendMediaRequest_Value {
@@ -494,41 +339,41 @@ type isSendMediaRequest_Value interface {
 }
 
 type SendMediaRequest_Metadata struct {
-	Metadata *SendMediaMetadata `protobuf:"bytes,1,opt,name=metadata,proto3,oneof"` // 上传流首包元数据，必须先于字节分块发送
+	Metadata *SendMediaMetadata `protobuf:"bytes,1,opt,name=metadata,proto3,oneof"`
 }
 
 type SendMediaRequest_Data struct {
-	Data []byte `protobuf:"bytes,2,opt,name=data,proto3,oneof"` // 媒体上传字节分块，单块不超过 MaxMediaChunkSize
+	Data []byte `protobuf:"bytes,2,opt,name=data,proto3,oneof"`
 }
 
 func (*SendMediaRequest_Metadata) isSendMediaRequest_Value() {}
 
 func (*SendMediaRequest_Data) isSendMediaRequest_Value() {}
 
-// DownloadRequest 宿主管理的媒体下载请求
-type DownloadRequest struct {
+// SendResultResponse 返回真实发送结果。
+type SendResultResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
-	Media         *MediaRef              `protobuf:"bytes,2,opt,name=media,proto3" json:"media,omitempty"`           // 宿主管理的媒体引用
+	Result        *SendResult            `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *DownloadRequest) Reset() {
-	*x = DownloadRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[7]
+func (x *SendResultResponse) Reset() {
+	*x = SendResultResponse{}
+	mi := &file_golem_sdk_host_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DownloadRequest) String() string {
+func (x *SendResultResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DownloadRequest) ProtoMessage() {}
+func (*SendResultResponse) ProtoMessage() {}
 
-func (x *DownloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[7]
+func (x *SendResultResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -539,253 +384,37 @@ func (x *DownloadRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DownloadRequest.ProtoReflect.Descriptor instead.
-func (*DownloadRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{7}
+// Deprecated: Use SendResultResponse.ProtoReflect.Descriptor instead.
+func (*SendResultResponse) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *DownloadRequest) GetInvocation() *Invocation {
+func (x *SendResultResponse) GetResult() *SendResult {
 	if x != nil {
-		return x.Invocation
+		return x.Result
 	}
 	return nil
 }
 
-func (x *DownloadRequest) GetMedia() *MediaRef {
-	if x != nil {
-		return x.Media
-	}
-	return nil
-}
-
-// StoreMediaMetadata 媒体暂存流首包的调用身份和业务元数据
-type StoreMediaMetadata struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`               // 本次反向调用绑定的执行身份凭据
-	Kind          MediaKind              `protobuf:"varint,2,opt,name=kind,proto3,enum=golem.sdk.MediaKind" json:"kind,omitempty"` // 业务种类，未知枚举归一为对应零值
-	FileName      string                 `protobuf:"bytes,3,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`   // 展示用文件名及扩展名，不得用于拼接宿主路径
-	Size          int64                  `protobuf:"varint,4,opt,name=size,proto3" json:"size,omitempty"`                          // 待暂存媒体字节数，-1 代表未知
-	Voice         *VoiceOptions          `protobuf:"bytes,5,opt,name=voice,proto3" json:"voice,omitempty"`                         // 语音时长与编码参数，非语音媒体时为空
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *StoreMediaMetadata) Reset() {
-	*x = StoreMediaMetadata{}
-	mi := &file_golem_sdk_host_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *StoreMediaMetadata) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StoreMediaMetadata) ProtoMessage() {}
-
-func (x *StoreMediaMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use StoreMediaMetadata.ProtoReflect.Descriptor instead.
-func (*StoreMediaMetadata) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *StoreMediaMetadata) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *StoreMediaMetadata) GetKind() MediaKind {
-	if x != nil {
-		return x.Kind
-	}
-	return MediaKind_MEDIA_KIND_UNKNOWN
-}
-
-func (x *StoreMediaMetadata) GetFileName() string {
-	if x != nil {
-		return x.FileName
-	}
-	return ""
-}
-
-func (x *StoreMediaMetadata) GetSize() int64 {
-	if x != nil {
-		return x.Size
-	}
-	return 0
-}
-
-func (x *StoreMediaMetadata) GetVoice() *VoiceOptions {
-	if x != nil {
-		return x.Voice
-	}
-	return nil
-}
-
-// StoreMediaRequest 媒体暂存流中的元数据或字节分块
-type StoreMediaRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// value 暂存流包体，首包为元数据，后续包为字节分块
-	//
-	// Types that are valid to be assigned to Value:
-	//
-	//	*StoreMediaRequest_Metadata
-	//	*StoreMediaRequest_Data
-	Value         isStoreMediaRequest_Value `protobuf_oneof:"value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *StoreMediaRequest) Reset() {
-	*x = StoreMediaRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *StoreMediaRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StoreMediaRequest) ProtoMessage() {}
-
-func (x *StoreMediaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use StoreMediaRequest.ProtoReflect.Descriptor instead.
-func (*StoreMediaRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *StoreMediaRequest) GetValue() isStoreMediaRequest_Value {
-	if x != nil {
-		return x.Value
-	}
-	return nil
-}
-
-func (x *StoreMediaRequest) GetMetadata() *StoreMediaMetadata {
-	if x != nil {
-		if x, ok := x.Value.(*StoreMediaRequest_Metadata); ok {
-			return x.Metadata
-		}
-	}
-	return nil
-}
-
-func (x *StoreMediaRequest) GetData() []byte {
-	if x != nil {
-		if x, ok := x.Value.(*StoreMediaRequest_Data); ok {
-			return x.Data
-		}
-	}
-	return nil
-}
-
-type isStoreMediaRequest_Value interface {
-	isStoreMediaRequest_Value()
-}
-
-type StoreMediaRequest_Metadata struct {
-	Metadata *StoreMediaMetadata `protobuf:"bytes,1,opt,name=metadata,proto3,oneof"` // 暂存流首包元数据，必须先于字节分块发送
-}
-
-type StoreMediaRequest_Data struct {
-	Data []byte `protobuf:"bytes,2,opt,name=data,proto3,oneof"` // 媒体暂存字节分块，单块不超过 MaxMediaChunkSize
-}
-
-func (*StoreMediaRequest_Metadata) isStoreMediaRequest_Value() {}
-
-func (*StoreMediaRequest_Data) isStoreMediaRequest_Value() {}
-
-// MediaRefResponse 宿主媒体引用响应
-type MediaRefResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Media         *MediaRef              `protobuf:"bytes,1,opt,name=media,proto3" json:"media,omitempty"` // 已绑定账号、实例、调用范围和期限的媒体引用
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"` // 业务错误，成功时为空
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *MediaRefResponse) Reset() {
-	*x = MediaRefResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *MediaRefResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*MediaRefResponse) ProtoMessage() {}
-
-func (x *MediaRefResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use MediaRefResponse.ProtoReflect.Descriptor instead.
-func (*MediaRefResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *MediaRefResponse) GetMedia() *MediaRef {
-	if x != nil {
-		return x.Media
-	}
-	return nil
-}
-
-func (x *MediaRefResponse) GetError() *Error {
+func (x *SendResultResponse) GetError() *Error {
 	if x != nil {
 		return x.Error
 	}
 	return nil
 }
 
-// ForwardRequest 使用宿主管理引用转发消息
+// ForwardRequest 使用完整源消息转发。
 type ForwardRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`     // 本次反向调用绑定的执行身份凭据
-	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"` // 目标业务会话
-	Ref           *ForwardRef            `protobuf:"bytes,3,opt,name=ref,proto3" json:"ref,omitempty"`                   // 宿主管理的源消息引用
+	Target        string                 `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
+	Source        *Message               `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ForwardRequest) Reset() {
 	*x = ForwardRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[11]
+	mi := &file_golem_sdk_host_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -797,7 +426,7 @@ func (x *ForwardRequest) String() string {
 func (*ForwardRequest) ProtoMessage() {}
 
 func (x *ForwardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[11]
+	mi := &file_golem_sdk_host_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -810,57 +439,46 @@ func (x *ForwardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ForwardRequest.ProtoReflect.Descriptor instead.
 func (*ForwardRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{11}
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *ForwardRequest) GetInvocation() *Invocation {
+func (x *ForwardRequest) GetTarget() string {
 	if x != nil {
-		return x.Invocation
+		return x.Target
+	}
+	return ""
+}
+
+func (x *ForwardRequest) GetSource() *Message {
+	if x != nil {
+		return x.Source
 	}
 	return nil
 }
 
-func (x *ForwardRequest) GetConversation() *Conversation {
-	if x != nil {
-		return x.Conversation
-	}
-	return nil
-}
-
-func (x *ForwardRequest) GetRef() *ForwardRef {
-	if x != nil {
-		return x.Ref
-	}
-	return nil
-}
-
-// SendLinkRequest 结构化链接消息请求
-type SendLinkRequest struct {
+// RevokeRequest 使用真实发送结果撤回。
+type RevokeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`     // 本次反向调用绑定的执行身份凭据
-	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"` // 目标业务会话
-	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`               // 链接标题
-	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`   // 链接摘要
-	Url           string                 `protobuf:"bytes,5,opt,name=url,proto3" json:"url,omitempty"`                   // 仅作为消息内容投递的 HTTP/HTTPS 地址
+	Sent          *SendResult            `protobuf:"bytes,1,opt,name=sent,proto3" json:"sent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SendLinkRequest) Reset() {
-	*x = SendLinkRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[12]
+func (x *RevokeRequest) Reset() {
+	*x = RevokeRequest{}
+	mi := &file_golem_sdk_host_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SendLinkRequest) String() string {
+func (x *RevokeRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SendLinkRequest) ProtoMessage() {}
+func (*RevokeRequest) ProtoMessage() {}
 
-func (x *SendLinkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[12]
+func (x *RevokeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -871,75 +489,41 @@ func (x *SendLinkRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SendLinkRequest.ProtoReflect.Descriptor instead.
-func (*SendLinkRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{12}
+// Deprecated: Use RevokeRequest.ProtoReflect.Descriptor instead.
+func (*RevokeRequest) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *SendLinkRequest) GetInvocation() *Invocation {
+func (x *RevokeRequest) GetSent() *SendResult {
 	if x != nil {
-		return x.Invocation
+		return x.Sent
 	}
 	return nil
 }
 
-func (x *SendLinkRequest) GetConversation() *Conversation {
-	if x != nil {
-		return x.Conversation
-	}
-	return nil
-}
-
-func (x *SendLinkRequest) GetTitle() string {
-	if x != nil {
-		return x.Title
-	}
-	return ""
-}
-
-func (x *SendLinkRequest) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
-func (x *SendLinkRequest) GetUrl() string {
-	if x != nil {
-		return x.Url
-	}
-	return ""
-}
-
-// SendLocationRequest 结构化位置消息请求
-type SendLocationRequest struct {
+// DownloadRequest 使用完整消息携带的 ID 和类型化媒体数据下载。
+type DownloadRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`          // 本次反向调用绑定的执行身份凭据
-	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`      // 目标业务会话
-	Label         string                 `protobuf:"bytes,3,opt,name=label,proto3" json:"label,omitempty"`                    // 展示地址
-	PoiName       string                 `protobuf:"bytes,4,opt,name=poi_name,json=poiName,proto3" json:"poi_name,omitempty"` // 地点名称
-	Longitude     float64                `protobuf:"fixed64,5,opt,name=longitude,proto3" json:"longitude,omitempty"`          // 经度
-	Latitude      float64                `protobuf:"fixed64,6,opt,name=latitude,proto3" json:"latitude,omitempty"`            // 纬度
-	Scale         float64                `protobuf:"fixed64,7,opt,name=scale,proto3" json:"scale,omitempty"`                  // 地图缩放级别
+	Source        *Message               `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SendLocationRequest) Reset() {
-	*x = SendLocationRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[13]
+func (x *DownloadRequest) Reset() {
+	*x = DownloadRequest{}
+	mi := &file_golem_sdk_host_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SendLocationRequest) String() string {
+func (x *DownloadRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SendLocationRequest) ProtoMessage() {}
+func (*DownloadRequest) ProtoMessage() {}
 
-func (x *SendLocationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[13]
+func (x *DownloadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -950,203 +534,29 @@ func (x *SendLocationRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SendLocationRequest.ProtoReflect.Descriptor instead.
-func (*SendLocationRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{13}
+// Deprecated: Use DownloadRequest.ProtoReflect.Descriptor instead.
+func (*DownloadRequest) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *SendLocationRequest) GetInvocation() *Invocation {
+func (x *DownloadRequest) GetSource() *Message {
 	if x != nil {
-		return x.Invocation
+		return x.Source
 	}
 	return nil
 }
 
-func (x *SendLocationRequest) GetConversation() *Conversation {
-	if x != nil {
-		return x.Conversation
-	}
-	return nil
-}
-
-func (x *SendLocationRequest) GetLabel() string {
-	if x != nil {
-		return x.Label
-	}
-	return ""
-}
-
-func (x *SendLocationRequest) GetPoiName() string {
-	if x != nil {
-		return x.PoiName
-	}
-	return ""
-}
-
-func (x *SendLocationRequest) GetLongitude() float64 {
-	if x != nil {
-		return x.Longitude
-	}
-	return 0
-}
-
-func (x *SendLocationRequest) GetLatitude() float64 {
-	if x != nil {
-		return x.Latitude
-	}
-	return 0
-}
-
-func (x *SendLocationRequest) GetScale() float64 {
-	if x != nil {
-		return x.Scale
-	}
-	return 0
-}
-
-// SendNameCardRequest 结构化联系人名片请求
-type SendNameCardRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`     // 本次反向调用绑定的执行身份凭据
-	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"` // 目标业务会话
-	Username      string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`         // 联系人的微信 username
-	Nickname      string                 `protobuf:"bytes,4,opt,name=nickname,proto3" json:"nickname,omitempty"`         // 展示昵称
-	Alias         string                 `protobuf:"bytes,5,opt,name=alias,proto3" json:"alias,omitempty"`               // 可选别名
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SendNameCardRequest) Reset() {
-	*x = SendNameCardRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[14]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SendNameCardRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SendNameCardRequest) ProtoMessage() {}
-
-func (x *SendNameCardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[14]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SendNameCardRequest.ProtoReflect.Descriptor instead.
-func (*SendNameCardRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *SendNameCardRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *SendNameCardRequest) GetConversation() *Conversation {
-	if x != nil {
-		return x.Conversation
-	}
-	return nil
-}
-
-func (x *SendNameCardRequest) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *SendNameCardRequest) GetNickname() string {
-	if x != nil {
-		return x.Nickname
-	}
-	return ""
-}
-
-func (x *SendNameCardRequest) GetAlias() string {
-	if x != nil {
-		return x.Alias
-	}
-	return ""
-}
-
-// ContactGetRequest 指定联系人查询请求
-type ContactGetRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
-	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`     // 微信 username，不另建用户标识
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ContactGetRequest) Reset() {
-	*x = ContactGetRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[15]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ContactGetRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ContactGetRequest) ProtoMessage() {}
-
-func (x *ContactGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[15]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ContactGetRequest.ProtoReflect.Descriptor instead.
-func (*ContactGetRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{15}
-}
-
-func (x *ContactGetRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *ContactGetRequest) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-// ContactFindRequest 按昵称或备注查询联系人的分页请求
+// ContactFindRequest 按策略选择器查询联系人。
 type ContactFindRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
-	Query         string                 `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`           // 昵称或备注的字面子串，空字符串等同列表查询
-	Page          *PageRequest           `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`             // 有界分页请求或分页业务结果
+	Selector      string                 `protobuf:"bytes,1,opt,name=selector,proto3" json:"selector,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ContactFindRequest) Reset() {
 	*x = ContactFindRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[16]
+	mi := &file_golem_sdk_host_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1158,7 +568,7 @@ func (x *ContactFindRequest) String() string {
 func (*ContactFindRequest) ProtoMessage() {}
 
 func (x *ContactFindRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[16]
+	mi := &file_golem_sdk_host_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1171,148 +581,28 @@ func (x *ContactFindRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactFindRequest.ProtoReflect.Descriptor instead.
 func (*ContactFindRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{16}
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *ContactFindRequest) GetInvocation() *Invocation {
+func (x *ContactFindRequest) GetSelector() string {
 	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *ContactFindRequest) GetQuery() string {
-	if x != nil {
-		return x.Query
+		return x.Selector
 	}
 	return ""
 }
 
-func (x *ContactFindRequest) GetPage() *PageRequest {
-	if x != nil {
-		return x.Page
-	}
-	return nil
-}
-
-// ContactListRequest 联系人列表分页请求
-type ContactListRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
-	Page          *PageRequest           `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`             // 有界分页请求或分页业务结果
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ContactListRequest) Reset() {
-	*x = ContactListRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[17]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ContactListRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ContactListRequest) ProtoMessage() {}
-
-func (x *ContactListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[17]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ContactListRequest.ProtoReflect.Descriptor instead.
-func (*ContactListRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{17}
-}
-
-func (x *ContactListRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *ContactListRequest) GetPage() *PageRequest {
-	if x != nil {
-		return x.Page
-	}
-	return nil
-}
-
-// ContactRefreshRequest 显式批量刷新联系人请求
-type ContactRefreshRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
-	Usernames     []string               `protobuf:"bytes,2,rep,name=usernames,proto3" json:"usernames,omitempty"`   // 需要显式刷新的联系人微信 username，结果保持输入顺序
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ContactRefreshRequest) Reset() {
-	*x = ContactRefreshRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[18]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ContactRefreshRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ContactRefreshRequest) ProtoMessage() {}
-
-func (x *ContactRefreshRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[18]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ContactRefreshRequest.ProtoReflect.Descriptor instead.
-func (*ContactRefreshRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{18}
-}
-
-func (x *ContactRefreshRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *ContactRefreshRequest) GetUsernames() []string {
-	if x != nil {
-		return x.Usernames
-	}
-	return nil
-}
-
-// ContactResponse 单个联系人查询响应
+// ContactResponse 返回单个联系人。
 type ContactResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Contact       *Contact               `protobuf:"bytes,1,opt,name=contact,proto3" json:"contact,omitempty"` // 变更或查询对应的联系人业务快照
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`     // 业务错误，成功时为空；部分成功仍保留逐项结果
+	Contact       *Contact               `protobuf:"bytes,1,opt,name=contact,proto3" json:"contact,omitempty"`
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ContactResponse) Reset() {
 	*x = ContactResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[19]
+	mi := &file_golem_sdk_host_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1324,7 +614,7 @@ func (x *ContactResponse) String() string {
 func (*ContactResponse) ProtoMessage() {}
 
 func (x *ContactResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[19]
+	mi := &file_golem_sdk_host_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1337,7 +627,7 @@ func (x *ContactResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactResponse.ProtoReflect.Descriptor instead.
 func (*ContactResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{19}
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ContactResponse) GetContact() *Contact {
@@ -1354,124 +644,17 @@ func (x *ContactResponse) GetError() *Error {
 	return nil
 }
 
-// ContactPageResponse 联系人分页查询响应
-type ContactPageResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Page          *ContactPage           `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`   // 有界分页请求或分页业务结果
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"` // 业务错误，成功时为空；部分成功仍保留逐项结果
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ContactPageResponse) Reset() {
-	*x = ContactPageResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[20]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ContactPageResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ContactPageResponse) ProtoMessage() {}
-
-func (x *ContactPageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[20]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ContactPageResponse.ProtoReflect.Descriptor instead.
-func (*ContactPageResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{20}
-}
-
-func (x *ContactPageResponse) GetPage() *ContactPage {
-	if x != nil {
-		return x.Page
-	}
-	return nil
-}
-
-func (x *ContactPageResponse) GetError() *Error {
-	if x != nil {
-		return x.Error
-	}
-	return nil
-}
-
-// ContactBatchResponse 联系人批量刷新响应
-type ContactBatchResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Result        *ContactBatchResult    `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"` // 业务处理结果，失败时结合 error 判断
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ContactBatchResponse) Reset() {
-	*x = ContactBatchResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[21]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ContactBatchResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ContactBatchResponse) ProtoMessage() {}
-
-func (x *ContactBatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[21]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ContactBatchResponse.ProtoReflect.Descriptor instead.
-func (*ContactBatchResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{21}
-}
-
-func (x *ContactBatchResponse) GetResult() *ContactBatchResult {
-	if x != nil {
-		return x.Result
-	}
-	return nil
-}
-
-func (x *ContactBatchResponse) GetError() *Error {
-	if x != nil {
-		return x.Error
-	}
-	return nil
-}
-
-// ChatroomGetRequest 指定群资料查询请求
+// ChatroomGetRequest 查询群专属资料。
 type ChatroomGetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                         // 本次反向调用绑定的执行身份凭据
-	RoomUsername  string                 `protobuf:"bytes,2,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"` // 群的微信 username
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChatroomGetRequest) Reset() {
 	*x = ChatroomGetRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[22]
+	mi := &file_golem_sdk_host_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1483,7 +666,7 @@ func (x *ChatroomGetRequest) String() string {
 func (*ChatroomGetRequest) ProtoMessage() {}
 
 func (x *ChatroomGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[22]
+	mi := &file_golem_sdk_host_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1496,36 +679,80 @@ func (x *ChatroomGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatroomGetRequest.ProtoReflect.Descriptor instead.
 func (*ChatroomGetRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{22}
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *ChatroomGetRequest) GetInvocation() *Invocation {
+func (x *ChatroomGetRequest) GetUsername() string {
 	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *ChatroomGetRequest) GetRoomUsername() string {
-	if x != nil {
-		return x.RoomUsername
+		return x.Username
 	}
 	return ""
 }
 
-// ChatroomMembersRequest 群成员列表分页请求
+// ChatroomResponse 返回群资料。
+type ChatroomResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Chatroom      *Chatroom              `protobuf:"bytes,1,opt,name=chatroom,proto3" json:"chatroom,omitempty"`
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChatroomResponse) Reset() {
+	*x = ChatroomResponse{}
+	mi := &file_golem_sdk_host_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChatroomResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatroomResponse) ProtoMessage() {}
+
+func (x *ChatroomResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatroomResponse.ProtoReflect.Descriptor instead.
+func (*ChatroomResponse) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ChatroomResponse) GetChatroom() *Chatroom {
+	if x != nil {
+		return x.Chatroom
+	}
+	return nil
+}
+
+func (x *ChatroomResponse) GetError() *Error {
+	if x != nil {
+		return x.Error
+	}
+	return nil
+}
+
+// ChatroomMembersRequest 查询群成员快照。
 type ChatroomMembersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                         // 本次反向调用绑定的执行身份凭据
-	RoomUsername  string                 `protobuf:"bytes,2,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"` // 群的微信 username
-	Page          *PageRequest           `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`                                     // 有界分页请求或分页业务结果
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChatroomMembersRequest) Reset() {
 	*x = ChatroomMembersRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[23]
+	mi := &file_golem_sdk_host_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1537,7 +764,7 @@ func (x *ChatroomMembersRequest) String() string {
 func (*ChatroomMembersRequest) ProtoMessage() {}
 
 func (x *ChatroomMembersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[23]
+	mi := &file_golem_sdk_host_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1550,55 +777,40 @@ func (x *ChatroomMembersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatroomMembersRequest.ProtoReflect.Descriptor instead.
 func (*ChatroomMembersRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{23}
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{13}
 }
 
-func (x *ChatroomMembersRequest) GetInvocation() *Invocation {
+func (x *ChatroomMembersRequest) GetUsername() string {
 	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *ChatroomMembersRequest) GetRoomUsername() string {
-	if x != nil {
-		return x.RoomUsername
+		return x.Username
 	}
 	return ""
 }
 
-func (x *ChatroomMembersRequest) GetPage() *PageRequest {
-	if x != nil {
-		return x.Page
-	}
-	return nil
-}
-
-// ChatroomMemberRequest 指定群成员查询请求
-type ChatroomMemberRequest struct {
+// ChatroomMembersResponse 返回群成员快照。
+type ChatroomMembersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                         // 本次反向调用绑定的执行身份凭据
-	RoomUsername  string                 `protobuf:"bytes,2,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"` // 群的微信 username
-	UserUsername  string                 `protobuf:"bytes,3,opt,name=user_username,json=userUsername,proto3" json:"user_username,omitempty"` // 群成员的微信 username
+	Members       []*Member              `protobuf:"bytes,1,rep,name=members,proto3" json:"members,omitempty"`
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ChatroomMemberRequest) Reset() {
-	*x = ChatroomMemberRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[24]
+func (x *ChatroomMembersResponse) Reset() {
+	*x = ChatroomMembersResponse{}
+	mi := &file_golem_sdk_host_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ChatroomMemberRequest) String() string {
+func (x *ChatroomMembersResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ChatroomMemberRequest) ProtoMessage() {}
+func (*ChatroomMembersResponse) ProtoMessage() {}
 
-func (x *ChatroomMemberRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[24]
+func (x *ChatroomMembersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1609,162 +821,49 @@ func (x *ChatroomMemberRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ChatroomMemberRequest.ProtoReflect.Descriptor instead.
-func (*ChatroomMemberRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{24}
+// Deprecated: Use ChatroomMembersResponse.ProtoReflect.Descriptor instead.
+func (*ChatroomMembersResponse) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{14}
 }
 
-func (x *ChatroomMemberRequest) GetInvocation() *Invocation {
+func (x *ChatroomMembersResponse) GetMembers() []*Member {
 	if x != nil {
-		return x.Invocation
+		return x.Members
 	}
 	return nil
 }
 
-func (x *ChatroomMemberRequest) GetRoomUsername() string {
-	if x != nil {
-		return x.RoomUsername
-	}
-	return ""
-}
-
-func (x *ChatroomMemberRequest) GetUserUsername() string {
-	if x != nil {
-		return x.UserUsername
-	}
-	return ""
-}
-
-// ChatroomRefreshRequest 显式刷新群资料及成员请求
-type ChatroomRefreshRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                         // 本次反向调用绑定的执行身份凭据
-	RoomUsername  string                 `protobuf:"bytes,2,opt,name=room_username,json=roomUsername,proto3" json:"room_username,omitempty"` // 群的微信 username
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ChatroomRefreshRequest) Reset() {
-	*x = ChatroomRefreshRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[25]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ChatroomRefreshRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ChatroomRefreshRequest) ProtoMessage() {}
-
-func (x *ChatroomRefreshRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[25]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ChatroomRefreshRequest.ProtoReflect.Descriptor instead.
-func (*ChatroomRefreshRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{25}
-}
-
-func (x *ChatroomRefreshRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *ChatroomRefreshRequest) GetRoomUsername() string {
-	if x != nil {
-		return x.RoomUsername
-	}
-	return ""
-}
-
-// RoomResponse 单个群资料查询响应
-type RoomResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Room          *Room                  `protobuf:"bytes,1,opt,name=room,proto3" json:"room,omitempty"`   // 变更或查询对应的群业务快照
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"` // 业务错误，成功时为空；部分成功仍保留逐项结果
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RoomResponse) Reset() {
-	*x = RoomResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[26]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RoomResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RoomResponse) ProtoMessage() {}
-
-func (x *RoomResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[26]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RoomResponse.ProtoReflect.Descriptor instead.
-func (*RoomResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{26}
-}
-
-func (x *RoomResponse) GetRoom() *Room {
-	if x != nil {
-		return x.Room
-	}
-	return nil
-}
-
-func (x *RoomResponse) GetError() *Error {
+func (x *ChatroomMembersResponse) GetError() *Error {
 	if x != nil {
 		return x.Error
 	}
 	return nil
 }
 
-// MemberResponse 单个群成员查询响应
-type MemberResponse struct {
+// AcquireLeaseRequest 申请联系人或整个群的消费租约。
+type AcquireLeaseRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Member        *Member                `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"` // 变更或查询对应的群成员业务快照
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
+	Target        string                 `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
+	Topics        []string               `protobuf:"bytes,2,rep,name=topics,proto3" json:"topics,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *MemberResponse) Reset() {
-	*x = MemberResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[27]
+func (x *AcquireLeaseRequest) Reset() {
+	*x = AcquireLeaseRequest{}
+	mi := &file_golem_sdk_host_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *MemberResponse) String() string {
+func (x *AcquireLeaseRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MemberResponse) ProtoMessage() {}
+func (*AcquireLeaseRequest) ProtoMessage() {}
 
-func (x *MemberResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[27]
+func (x *AcquireLeaseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1775,217 +874,49 @@ func (x *MemberResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use MemberResponse.ProtoReflect.Descriptor instead.
-func (*MemberResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{27}
+// Deprecated: Use AcquireLeaseRequest.ProtoReflect.Descriptor instead.
+func (*AcquireLeaseRequest) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{15}
 }
 
-func (x *MemberResponse) GetMember() *Member {
+func (x *AcquireLeaseRequest) GetTarget() string {
 	if x != nil {
-		return x.Member
+		return x.Target
 	}
-	return nil
+	return ""
 }
 
-func (x *MemberResponse) GetError() *Error {
-	if x != nil {
-		return x.Error
-	}
-	return nil
-}
-
-// MemberPageResponse 群成员分页查询响应
-type MemberPageResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Page          *MemberPage            `protobuf:"bytes,1,opt,name=page,proto3" json:"page,omitempty"`   // 有界分页请求或分页业务结果
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"` // 业务错误，成功时为空；部分成功仍保留逐项结果
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *MemberPageResponse) Reset() {
-	*x = MemberPageResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[28]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *MemberPageResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*MemberPageResponse) ProtoMessage() {}
-
-func (x *MemberPageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[28]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use MemberPageResponse.ProtoReflect.Descriptor instead.
-func (*MemberPageResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{28}
-}
-
-func (x *MemberPageResponse) GetPage() *MemberPage {
-	if x != nil {
-		return x.Page
-	}
-	return nil
-}
-
-func (x *MemberPageResponse) GetError() *Error {
-	if x != nil {
-		return x.Error
-	}
-	return nil
-}
-
-// ChatroomRefreshResponse 群资料及成员刷新响应
-type ChatroomRefreshResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Result        *ChatroomRefreshResult `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"` // 业务处理结果，失败时结合 error 判断
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ChatroomRefreshResponse) Reset() {
-	*x = ChatroomRefreshResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[29]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ChatroomRefreshResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ChatroomRefreshResponse) ProtoMessage() {}
-
-func (x *ChatroomRefreshResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[29]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ChatroomRefreshResponse.ProtoReflect.Descriptor instead.
-func (*ChatroomRefreshResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{29}
-}
-
-func (x *ChatroomRefreshResponse) GetResult() *ChatroomRefreshResult {
-	if x != nil {
-		return x.Result
-	}
-	return nil
-}
-
-func (x *ChatroomRefreshResponse) GetError() *Error {
-	if x != nil {
-		return x.Error
-	}
-	return nil
-}
-
-// SessionAcquireRequest 联系人或整群会话租约申请请求
-type SessionAcquireRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`     // 本次反向调用绑定的执行身份凭据
-	Conversation  *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"` // 所属或目标业务会话，群内所有成员共用整群会话
-	Topics        []string               `protobuf:"bytes,3,rep,name=topics,proto3" json:"topics,omitempty"`             // 租约覆盖的事件主题，作用于联系人或整个群
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SessionAcquireRequest) Reset() {
-	*x = SessionAcquireRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[30]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SessionAcquireRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SessionAcquireRequest) ProtoMessage() {}
-
-func (x *SessionAcquireRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[30]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SessionAcquireRequest.ProtoReflect.Descriptor instead.
-func (*SessionAcquireRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{30}
-}
-
-func (x *SessionAcquireRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *SessionAcquireRequest) GetConversation() *Conversation {
-	if x != nil {
-		return x.Conversation
-	}
-	return nil
-}
-
-func (x *SessionAcquireRequest) GetTopics() []string {
+func (x *AcquireLeaseRequest) GetTopics() []string {
 	if x != nil {
 		return x.Topics
 	}
 	return nil
 }
 
-// SessionRenewRequest 会话租约续期请求
-type SessionRenewRequest struct {
+// RenewLeaseRequest 续期当前插件持有的租约。
+type RenewLeaseRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`          // 本次反向调用绑定的执行身份凭据
-	LeaseId       string                 `protobuf:"bytes,2,opt,name=lease_id,json=leaseId,proto3" json:"lease_id,omitempty"` // 当前插件持有的会话租约标识
-	Ttl           *durationpb.Duration   `protobuf:"bytes,3,opt,name=ttl,proto3" json:"ttl,omitempty"`                        // 租约续期时长，受宿主允许范围约束
+	LeaseId       string                 `protobuf:"bytes,1,opt,name=lease_id,json=leaseId,proto3" json:"lease_id,omitempty"`
+	Ttl           *durationpb.Duration   `protobuf:"bytes,2,opt,name=ttl,proto3" json:"ttl,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SessionRenewRequest) Reset() {
-	*x = SessionRenewRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[31]
+func (x *RenewLeaseRequest) Reset() {
+	*x = RenewLeaseRequest{}
+	mi := &file_golem_sdk_host_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SessionRenewRequest) String() string {
+func (x *RenewLeaseRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SessionRenewRequest) ProtoMessage() {}
+func (*RenewLeaseRequest) ProtoMessage() {}
 
-func (x *SessionRenewRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[31]
+func (x *RenewLeaseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1996,56 +927,48 @@ func (x *SessionRenewRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SessionRenewRequest.ProtoReflect.Descriptor instead.
-func (*SessionRenewRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{31}
+// Deprecated: Use RenewLeaseRequest.ProtoReflect.Descriptor instead.
+func (*RenewLeaseRequest) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{16}
 }
 
-func (x *SessionRenewRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *SessionRenewRequest) GetLeaseId() string {
+func (x *RenewLeaseRequest) GetLeaseId() string {
 	if x != nil {
 		return x.LeaseId
 	}
 	return ""
 }
 
-func (x *SessionRenewRequest) GetTtl() *durationpb.Duration {
+func (x *RenewLeaseRequest) GetTtl() *durationpb.Duration {
 	if x != nil {
 		return x.Ttl
 	}
 	return nil
 }
 
-// SessionReleaseRequest 会话租约释放请求
-type SessionReleaseRequest struct {
+// ReleaseLeaseRequest 释放当前插件持有的租约。
+type ReleaseLeaseRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`          // 本次反向调用绑定的执行身份凭据
-	LeaseId       string                 `protobuf:"bytes,2,opt,name=lease_id,json=leaseId,proto3" json:"lease_id,omitempty"` // 当前插件持有的会话租约标识
+	LeaseId       string                 `protobuf:"bytes,1,opt,name=lease_id,json=leaseId,proto3" json:"lease_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SessionReleaseRequest) Reset() {
-	*x = SessionReleaseRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[32]
+func (x *ReleaseLeaseRequest) Reset() {
+	*x = ReleaseLeaseRequest{}
+	mi := &file_golem_sdk_host_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SessionReleaseRequest) String() string {
+func (x *ReleaseLeaseRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SessionReleaseRequest) ProtoMessage() {}
+func (*ReleaseLeaseRequest) ProtoMessage() {}
 
-func (x *SessionReleaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[32]
+func (x *ReleaseLeaseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2056,37 +979,30 @@ func (x *SessionReleaseRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SessionReleaseRequest.ProtoReflect.Descriptor instead.
-func (*SessionReleaseRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{32}
+// Deprecated: Use ReleaseLeaseRequest.ProtoReflect.Descriptor instead.
+func (*ReleaseLeaseRequest) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{17}
 }
 
-func (x *SessionReleaseRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *SessionReleaseRequest) GetLeaseId() string {
+func (x *ReleaseLeaseRequest) GetLeaseId() string {
 	if x != nil {
 		return x.LeaseId
 	}
 	return ""
 }
 
-// LeaseResponse 会话租约操作响应
+// LeaseResponse 返回租约状态。
 type LeaseResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Lease         *Lease                 `protobuf:"bytes,1,opt,name=lease,proto3" json:"lease,omitempty"` // 关联的会话租约
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"` // 业务错误，成功时为空；部分成功仍保留逐项结果
+	Lease         *Lease                 `protobuf:"bytes,1,opt,name=lease,proto3" json:"lease,omitempty"`
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *LeaseResponse) Reset() {
 	*x = LeaseResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[33]
+	mi := &file_golem_sdk_host_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2098,7 +1014,7 @@ func (x *LeaseResponse) String() string {
 func (*LeaseResponse) ProtoMessage() {}
 
 func (x *LeaseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[33]
+	mi := &file_golem_sdk_host_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2111,7 +1027,7 @@ func (x *LeaseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeaseResponse.ProtoReflect.Descriptor instead.
 func (*LeaseResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{33}
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *LeaseResponse) GetLease() *Lease {
@@ -2128,30 +1044,29 @@ func (x *LeaseResponse) GetError() *Error {
 	return nil
 }
 
-// HostCallRequest 经宿主路由的跨插件能力调用请求
-type HostCallRequest struct {
+// CallCapabilityRequest 按能力名发起跨插件调用。
+type CallCapabilityRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
-	Request       *CallRequest           `protobuf:"bytes,2,opt,name=request,proto3" json:"request,omitempty"`       // 待处理的按能力名调用请求
+	Request       *CapabilityRequest     `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *HostCallRequest) Reset() {
-	*x = HostCallRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[34]
+func (x *CallCapabilityRequest) Reset() {
+	*x = CallCapabilityRequest{}
+	mi := &file_golem_sdk_host_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *HostCallRequest) String() string {
+func (x *CallCapabilityRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*HostCallRequest) ProtoMessage() {}
+func (*CallCapabilityRequest) ProtoMessage() {}
 
-func (x *HostCallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[34]
+func (x *CallCapabilityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2162,49 +1077,42 @@ func (x *HostCallRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use HostCallRequest.ProtoReflect.Descriptor instead.
-func (*HostCallRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{34}
+// Deprecated: Use CallCapabilityRequest.ProtoReflect.Descriptor instead.
+func (*CallCapabilityRequest) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{19}
 }
 
-func (x *HostCallRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *HostCallRequest) GetRequest() *CallRequest {
+func (x *CallCapabilityRequest) GetRequest() *CapabilityRequest {
 	if x != nil {
 		return x.Request
 	}
 	return nil
 }
 
-// HostCallResponse 经宿主路由的跨插件能力调用响应
-type HostCallResponse struct {
+// CallCapabilityResponse 返回有界内联能力结果。
+type CallCapabilityResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Result        *CallResult            `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"` // 业务处理结果，失败时结合 error 判断
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
+	Result        *CapabilityResult      `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *HostCallResponse) Reset() {
-	*x = HostCallResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[35]
+func (x *CallCapabilityResponse) Reset() {
+	*x = CallCapabilityResponse{}
+	mi := &file_golem_sdk_host_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *HostCallResponse) String() string {
+func (x *CallCapabilityResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*HostCallResponse) ProtoMessage() {}
+func (*CallCapabilityResponse) ProtoMessage() {}
 
-func (x *HostCallResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[35]
+func (x *CallCapabilityResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2215,109 +1123,49 @@ func (x *HostCallResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use HostCallResponse.ProtoReflect.Descriptor instead.
-func (*HostCallResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{35}
+// Deprecated: Use CallCapabilityResponse.ProtoReflect.Descriptor instead.
+func (*CallCapabilityResponse) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{20}
 }
 
-func (x *HostCallResponse) GetResult() *CallResult {
+func (x *CallCapabilityResponse) GetResult() *CapabilityResult {
 	if x != nil {
 		return x.Result
 	}
 	return nil
 }
 
-func (x *HostCallResponse) GetError() *Error {
+func (x *CallCapabilityResponse) GetError() *Error {
 	if x != nil {
 		return x.Error
 	}
 	return nil
 }
 
-// HostBackgroundCallRequest 独立后台授权的目标会话及能力调用
-type HostBackgroundCallRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	BackgroundToken string                 `protobuf:"bytes,1,opt,name=background_token,json=backgroundToken,proto3" json:"background_token,omitempty"` // 宿主启用时签发的不可预测后台令牌
-	Conversation    *Conversation          `protobuf:"bytes,2,opt,name=conversation,proto3" json:"conversation,omitempty"`                              // 后台授权目标，不冒充原用户或当前调用会话
-	Request         *CallRequest           `protobuf:"bytes,3,opt,name=request,proto3" json:"request,omitempty"`                                        // 待处理的按能力名调用请求
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *HostBackgroundCallRequest) Reset() {
-	*x = HostBackgroundCallRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[36]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *HostBackgroundCallRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*HostBackgroundCallRequest) ProtoMessage() {}
-
-func (x *HostBackgroundCallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[36]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use HostBackgroundCallRequest.ProtoReflect.Descriptor instead.
-func (*HostBackgroundCallRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{36}
-}
-
-func (x *HostBackgroundCallRequest) GetBackgroundToken() string {
-	if x != nil {
-		return x.BackgroundToken
-	}
-	return ""
-}
-
-func (x *HostBackgroundCallRequest) GetConversation() *Conversation {
-	if x != nil {
-		return x.Conversation
-	}
-	return nil
-}
-
-func (x *HostBackgroundCallRequest) GetRequest() *CallRequest {
-	if x != nil {
-		return x.Request
-	}
-	return nil
-}
-
-// ConfigSnapshotRequest 插件自身配置快照查询请求
-type ConfigSnapshotRequest struct {
+// ReadConfigResponse 返回当前插件自己的持久化配置。
+type ReadConfigResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
+	Config        *BytesValue            `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ConfigSnapshotRequest) Reset() {
-	*x = ConfigSnapshotRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[37]
+func (x *ReadConfigResponse) Reset() {
+	*x = ReadConfigResponse{}
+	mi := &file_golem_sdk_host_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ConfigSnapshotRequest) String() string {
+func (x *ReadConfigResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConfigSnapshotRequest) ProtoMessage() {}
+func (*ReadConfigResponse) ProtoMessage() {}
 
-func (x *ConfigSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[37]
+func (x *ReadConfigResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2328,156 +1176,48 @@ func (x *ConfigSnapshotRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ConfigSnapshotRequest.ProtoReflect.Descriptor instead.
-func (*ConfigSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{37}
+// Deprecated: Use ReadConfigResponse.ProtoReflect.Descriptor instead.
+func (*ReadConfigResponse) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{21}
 }
 
-func (x *ConfigSnapshotRequest) GetInvocation() *Invocation {
+func (x *ReadConfigResponse) GetConfig() *BytesValue {
 	if x != nil {
-		return x.Invocation
+		return x.Config
 	}
 	return nil
 }
 
-// ConfigSnapshotResponse 插件自身配置快照响应
-type ConfigSnapshotResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Snapshot      *ConfigSnapshot        `protobuf:"bytes,1,opt,name=snapshot,proto3" json:"snapshot,omitempty"` // 插件自身已保存配置及当前生效修订的快照
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`       // 业务错误，成功时为空；部分成功仍保留逐项结果
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ConfigSnapshotResponse) Reset() {
-	*x = ConfigSnapshotResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[38]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConfigSnapshotResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConfigSnapshotResponse) ProtoMessage() {}
-
-func (x *ConfigSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[38]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConfigSnapshotResponse.ProtoReflect.Descriptor instead.
-func (*ConfigSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{38}
-}
-
-func (x *ConfigSnapshotResponse) GetSnapshot() *ConfigSnapshot {
-	if x != nil {
-		return x.Snapshot
-	}
-	return nil
-}
-
-func (x *ConfigSnapshotResponse) GetError() *Error {
+func (x *ReadConfigResponse) GetError() *Error {
 	if x != nil {
 		return x.Error
 	}
 	return nil
 }
 
-// ConfigSaveRequest 按预期修订号保存插件自身配置的请求
-type ConfigSaveRequest struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Invocation       *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                                      // 本次反向调用绑定的执行身份凭据
-	ExpectedRevision uint64                 `protobuf:"varint,2,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"` // 保存时预期的当前修订号，不匹配时返回 Conflict
-	Data             *BytesValue            `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`                                                  // 插件自身业务配置字节，缺失与显式空字节可区分
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *ConfigSaveRequest) Reset() {
-	*x = ConfigSaveRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[39]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConfigSaveRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConfigSaveRequest) ProtoMessage() {}
-
-func (x *ConfigSaveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[39]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConfigSaveRequest.ProtoReflect.Descriptor instead.
-func (*ConfigSaveRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{39}
-}
-
-func (x *ConfigSaveRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *ConfigSaveRequest) GetExpectedRevision() uint64 {
-	if x != nil {
-		return x.ExpectedRevision
-	}
-	return 0
-}
-
-func (x *ConfigSaveRequest) GetData() *BytesValue {
-	if x != nil {
-		return x.Data
-	}
-	return nil
-}
-
-// ConfigSaveResponse 插件自身配置保存响应
-type ConfigSaveResponse struct {
+// SaveConfigRequest 保存当前插件自己的配置子节。
+type SaveConfigRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Result        *ConfigSaveResult      `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"` // 业务处理结果，失败时结合 error 判断
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`   // 业务错误，成功时为空；部分成功仍保留逐项结果
+	Config        *BytesValue            `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ConfigSaveResponse) Reset() {
-	*x = ConfigSaveResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[40]
+func (x *SaveConfigRequest) Reset() {
+	*x = SaveConfigRequest{}
+	mi := &file_golem_sdk_host_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ConfigSaveResponse) String() string {
+func (x *SaveConfigRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConfigSaveResponse) ProtoMessage() {}
+func (*SaveConfigRequest) ProtoMessage() {}
 
-func (x *ConfigSaveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[40]
+func (x *SaveConfigRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golem_sdk_host_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2488,623 +1228,112 @@ func (x *ConfigSaveResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ConfigSaveResponse.ProtoReflect.Descriptor instead.
-func (*ConfigSaveResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{40}
+// Deprecated: Use SaveConfigRequest.ProtoReflect.Descriptor instead.
+func (*SaveConfigRequest) Descriptor() ([]byte, []int) {
+	return file_golem_sdk_host_proto_rawDescGZIP(), []int{22}
 }
 
-func (x *ConfigSaveResponse) GetResult() *ConfigSaveResult {
+func (x *SaveConfigRequest) GetConfig() *BytesValue {
 	if x != nil {
-		return x.Result
+		return x.Config
 	}
 	return nil
-}
-
-func (x *ConfigSaveResponse) GetError() *Error {
-	if x != nil {
-		return x.Error
-	}
-	return nil
-}
-
-// AccountCurrentRequest 当前账号业务快照查询请求
-type AccountCurrentRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Invocation      *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"`                                  // 本次反向调用绑定的执行身份凭据
-	BackgroundToken string                 `protobuf:"bytes,2,opt,name=background_token,json=backgroundToken,proto3" json:"background_token,omitempty"` // 启用期后台查询令牌，与 invocation 二选一
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *AccountCurrentRequest) Reset() {
-	*x = AccountCurrentRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[41]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AccountCurrentRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AccountCurrentRequest) ProtoMessage() {}
-
-func (x *AccountCurrentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[41]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AccountCurrentRequest.ProtoReflect.Descriptor instead.
-func (*AccountCurrentRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{41}
-}
-
-func (x *AccountCurrentRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *AccountCurrentRequest) GetBackgroundToken() string {
-	if x != nil {
-		return x.BackgroundToken
-	}
-	return ""
-}
-
-// AccountResponse 当前账号业务快照响应
-type AccountResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Account       *Account               `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"` // 变更或查询对应的当前账号业务快照
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`     // 业务错误，成功时为空；部分成功仍保留逐项结果
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AccountResponse) Reset() {
-	*x = AccountResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[42]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AccountResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AccountResponse) ProtoMessage() {}
-
-func (x *AccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[42]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AccountResponse.ProtoReflect.Descriptor instead.
-func (*AccountResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{42}
-}
-
-func (x *AccountResponse) GetAccount() *Account {
-	if x != nil {
-		return x.Account
-	}
-	return nil
-}
-
-func (x *AccountResponse) GetError() *Error {
-	if x != nil {
-		return x.Error
-	}
-	return nil
-}
-
-// CoreInvokeRequest 经宿主白名单路由的 core 扩展业务调用请求
-type CoreInvokeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invocation    *Invocation            `protobuf:"bytes,1,opt,name=invocation,proto3" json:"invocation,omitempty"` // 本次反向调用绑定的执行身份凭据
-	Method        string                 `protobuf:"bytes,2,opt,name=method,proto3" json:"method,omitempty"`         // 已声明的稳定业务方法名
-	Request       []byte                 `protobuf:"bytes,3,opt,name=request,proto3" json:"request,omitempty"`       // 方法对应的 JSON 请求体，不包含宿主路径或凭据
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CoreInvokeRequest) Reset() {
-	*x = CoreInvokeRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[43]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CoreInvokeRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CoreInvokeRequest) ProtoMessage() {}
-
-func (x *CoreInvokeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[43]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CoreInvokeRequest.ProtoReflect.Descriptor instead.
-func (*CoreInvokeRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{43}
-}
-
-func (x *CoreInvokeRequest) GetInvocation() *Invocation {
-	if x != nil {
-		return x.Invocation
-	}
-	return nil
-}
-
-func (x *CoreInvokeRequest) GetMethod() string {
-	if x != nil {
-		return x.Method
-	}
-	return ""
-}
-
-func (x *CoreInvokeRequest) GetRequest() []byte {
-	if x != nil {
-		return x.Request
-	}
-	return nil
-}
-
-// CoreInvokeResponse core 扩展业务调用响应
-type CoreInvokeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Response      []byte                 `protobuf:"bytes,1,opt,name=response,proto3" json:"response,omitempty"` // 方法对应的 JSON 响应体，成功且无返回数据时为空
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`       // 业务错误，成功时为空
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CoreInvokeResponse) Reset() {
-	*x = CoreInvokeResponse{}
-	mi := &file_golem_sdk_host_proto_msgTypes[44]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CoreInvokeResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CoreInvokeResponse) ProtoMessage() {}
-
-func (x *CoreInvokeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[44]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CoreInvokeResponse.ProtoReflect.Descriptor instead.
-func (*CoreInvokeResponse) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{44}
-}
-
-func (x *CoreInvokeResponse) GetResponse() []byte {
-	if x != nil {
-		return x.Response
-	}
-	return nil
-}
-
-func (x *CoreInvokeResponse) GetError() *Error {
-	if x != nil {
-		return x.Error
-	}
-	return nil
-}
-
-// ExecutionCompletedRequest 插件处理函数实际结束后的受控执行确认
-type ExecutionCompletedRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	ControlToken       string                 `protobuf:"bytes,1,opt,name=control_token,json=controlToken,proto3" json:"control_token,omitempty"`                    // 绑定插件实例的控制通道凭据，不作为业务参数暴露
-	InvocationId       string                 `protobuf:"bytes,2,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`                    // 关联执行的唯一标识
-	InstanceGeneration uint64                 `protobuf:"varint,3,opt,name=instance_generation,json=instanceGeneration,proto3" json:"instance_generation,omitempty"` // 插件实例代次，用于拒绝旧实例请求
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
-}
-
-func (x *ExecutionCompletedRequest) Reset() {
-	*x = ExecutionCompletedRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[45]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ExecutionCompletedRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ExecutionCompletedRequest) ProtoMessage() {}
-
-func (x *ExecutionCompletedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[45]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ExecutionCompletedRequest.ProtoReflect.Descriptor instead.
-func (*ExecutionCompletedRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{45}
-}
-
-func (x *ExecutionCompletedRequest) GetControlToken() string {
-	if x != nil {
-		return x.ControlToken
-	}
-	return ""
-}
-
-func (x *ExecutionCompletedRequest) GetInvocationId() string {
-	if x != nil {
-		return x.InvocationId
-	}
-	return ""
-}
-
-func (x *ExecutionCompletedRequest) GetInstanceGeneration() uint64 {
-	if x != nil {
-		return x.InstanceGeneration
-	}
-	return 0
-}
-
-// ReverseReadyRequest 插件反向宿主连接就绪确认
-type ReverseReadyRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ControlToken  string                 `protobuf:"bytes,1,opt,name=control_token,json=controlToken,proto3" json:"control_token,omitempty"` // 绑定插件实例的控制通道凭据，不作为业务参数暴露
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ReverseReadyRequest) Reset() {
-	*x = ReverseReadyRequest{}
-	mi := &file_golem_sdk_host_proto_msgTypes[46]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ReverseReadyRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ReverseReadyRequest) ProtoMessage() {}
-
-func (x *ReverseReadyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golem_sdk_host_proto_msgTypes[46]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ReverseReadyRequest.ProtoReflect.Descriptor instead.
-func (*ReverseReadyRequest) Descriptor() ([]byte, []int) {
-	return file_golem_sdk_host_proto_rawDescGZIP(), []int{46}
-}
-
-func (x *ReverseReadyRequest) GetControlToken() string {
-	if x != nil {
-		return x.ControlToken
-	}
-	return ""
 }
 
 var File_golem_sdk_host_proto protoreflect.FileDescriptor
 
 const file_golem_sdk_host_proto_rawDesc = "" +
 	"\n" +
-	"\x14golem/sdk/host.proto\x12\tgolem.sdk\x1a\x15golem/sdk/media.proto\x1a\x15golem/sdk/model.proto\x1a\x16golem/sdk/plugin.proto\x1a\x1egoogle/protobuf/duration.proto\"2\n" +
-	"\n" +
-	"Invocation\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token\"\xe0\x01\n" +
-	"\x0fSendTextRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12;\n" +
-	"\fconversation\x18\x02 \x01(\v2\x17.golem.sdk.ConversationR\fconversation\x12\x12\n" +
-	"\x04text\x18\x03 \x01(\tR\x04text\x12\x1a\n" +
-	"\bmentions\x18\x04 \x03(\tR\bmentions\x12)\n" +
-	"\x10background_token\x18\x05 \x01(\tR\x0fbackgroundToken\"\xbe\x01\n" +
-	"\fReplyRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12;\n" +
-	"\fconversation\x18\x02 \x01(\v2\x17.golem.sdk.ConversationR\fconversation\x12&\n" +
-	"\x05quote\x18\x03 \x01(\v2\x10.golem.sdk.QuoteR\x05quote\x12\x12\n" +
-	"\x04text\x18\x04 \x01(\tR\x04text\"o\n" +
-	"\x13SendReceiptResponse\x120\n" +
-	"\areceipt\x18\x01 \x01(\v2\x16.golem.sdk.SendReceiptR\areceipt\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"n\n" +
-	"\rRevokeRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12&\n" +
-	"\x03ref\x18\x02 \x01(\v2\x14.golem.sdk.RevokeRefR\x03ref\"\xb8\x02\n" +
-	"\x11SendMediaMetadata\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12;\n" +
-	"\fconversation\x18\x02 \x01(\v2\x17.golem.sdk.ConversationR\fconversation\x12(\n" +
-	"\x04kind\x18\x03 \x01(\x0e2\x14.golem.sdk.MediaKindR\x04kind\x12\x1b\n" +
-	"\tfile_name\x18\x04 \x01(\tR\bfileName\x12\x12\n" +
-	"\x04size\x18\x05 \x01(\x03R\x04size\x12%\n" +
-	"\x03ref\x18\x06 \x01(\v2\x13.golem.sdk.MediaRefR\x03ref\x12-\n" +
-	"\x05voice\x18\a \x01(\v2\x17.golem.sdk.VoiceOptionsR\x05voice\"m\n" +
+	"\x14golem/sdk/host.proto\x12\tgolem.sdk\x1a\x15golem/sdk/media.proto\x1a\x15golem/sdk/model.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\"g\n" +
+	"\x0fAccountResponse\x12,\n" +
+	"\aaccount\x18\x01 \x01(\v2\x12.golem.sdk.AccountR\aaccount\x12&\n" +
+	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"Y\n" +
+	"\x0fSendTextRequest\x12\x16\n" +
+	"\x06target\x18\x01 \x01(\tR\x06target\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1a\n" +
+	"\bmentions\x18\x03 \x03(\tR\bmentions\"N\n" +
+	"\x0eSendAppRequest\x12\x16\n" +
+	"\x06target\x18\x01 \x01(\tR\x06target\x12$\n" +
+	"\x03app\x18\x02 \x01(\v2\x12.golem.sdk.AppDataR\x03app\"\xad\x01\n" +
+	"\x11SendMediaMetadata\x12\x16\n" +
+	"\x06target\x18\x01 \x01(\tR\x06target\x12*\n" +
+	"\x04type\x18\x02 \x01(\x0e2\x16.golem.sdk.MessageTypeR\x04type\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
+	"\x04size\x18\x04 \x01(\x03R\x04size\x12,\n" +
+	"\x05voice\x18\x05 \x01(\v2\x16.golem.sdk.VoiceUploadR\x05voice\"m\n" +
 	"\x10SendMediaRequest\x12:\n" +
 	"\bmetadata\x18\x01 \x01(\v2\x1c.golem.sdk.SendMediaMetadataH\x00R\bmetadata\x12\x14\n" +
 	"\x04data\x18\x02 \x01(\fH\x00R\x04dataB\a\n" +
-	"\x05value\"s\n" +
-	"\x0fDownloadRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12)\n" +
-	"\x05media\x18\x02 \x01(\v2\x13.golem.sdk.MediaRefR\x05media\"\xd5\x01\n" +
-	"\x12StoreMediaMetadata\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12(\n" +
-	"\x04kind\x18\x02 \x01(\x0e2\x14.golem.sdk.MediaKindR\x04kind\x12\x1b\n" +
-	"\tfile_name\x18\x03 \x01(\tR\bfileName\x12\x12\n" +
-	"\x04size\x18\x04 \x01(\x03R\x04size\x12-\n" +
-	"\x05voice\x18\x05 \x01(\v2\x17.golem.sdk.VoiceOptionsR\x05voice\"o\n" +
-	"\x11StoreMediaRequest\x12;\n" +
-	"\bmetadata\x18\x01 \x01(\v2\x1d.golem.sdk.StoreMediaMetadataH\x00R\bmetadata\x12\x14\n" +
-	"\x04data\x18\x02 \x01(\fH\x00R\x04dataB\a\n" +
-	"\x05value\"e\n" +
-	"\x10MediaRefResponse\x12)\n" +
-	"\x05media\x18\x01 \x01(\v2\x13.golem.sdk.MediaRefR\x05media\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"\xad\x01\n" +
-	"\x0eForwardRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12;\n" +
-	"\fconversation\x18\x02 \x01(\v2\x17.golem.sdk.ConversationR\fconversation\x12'\n" +
-	"\x03ref\x18\x03 \x01(\v2\x15.golem.sdk.ForwardRefR\x03ref\"\xcf\x01\n" +
-	"\x0fSendLinkRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12;\n" +
-	"\fconversation\x18\x02 \x01(\v2\x17.golem.sdk.ConversationR\fconversation\x12\x14\n" +
-	"\x05title\x18\x03 \x01(\tR\x05title\x12 \n" +
-	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x10\n" +
-	"\x03url\x18\x05 \x01(\tR\x03url\"\x8a\x02\n" +
-	"\x13SendLocationRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12;\n" +
-	"\fconversation\x18\x02 \x01(\v2\x17.golem.sdk.ConversationR\fconversation\x12\x14\n" +
-	"\x05label\x18\x03 \x01(\tR\x05label\x12\x19\n" +
-	"\bpoi_name\x18\x04 \x01(\tR\apoiName\x12\x1c\n" +
-	"\tlongitude\x18\x05 \x01(\x01R\tlongitude\x12\x1a\n" +
-	"\blatitude\x18\x06 \x01(\x01R\blatitude\x12\x14\n" +
-	"\x05scale\x18\a \x01(\x01R\x05scale\"\xd7\x01\n" +
-	"\x13SendNameCardRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12;\n" +
-	"\fconversation\x18\x02 \x01(\v2\x17.golem.sdk.ConversationR\fconversation\x12\x1a\n" +
-	"\busername\x18\x03 \x01(\tR\busername\x12\x1a\n" +
-	"\bnickname\x18\x04 \x01(\tR\bnickname\x12\x14\n" +
-	"\x05alias\x18\x05 \x01(\tR\x05alias\"f\n" +
-	"\x11ContactGetRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\"\x8d\x01\n" +
-	"\x12ContactFindRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12\x14\n" +
-	"\x05query\x18\x02 \x01(\tR\x05query\x12*\n" +
-	"\x04page\x18\x03 \x01(\v2\x16.golem.sdk.PageRequestR\x04page\"w\n" +
-	"\x12ContactListRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12*\n" +
-	"\x04page\x18\x02 \x01(\v2\x16.golem.sdk.PageRequestR\x04page\"l\n" +
-	"\x15ContactRefreshRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12\x1c\n" +
-	"\tusernames\x18\x02 \x03(\tR\tusernames\"g\n" +
+	"\x05value\"k\n" +
+	"\x12SendResultResponse\x12-\n" +
+	"\x06result\x18\x01 \x01(\v2\x15.golem.sdk.SendResultR\x06result\x12&\n" +
+	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"T\n" +
+	"\x0eForwardRequest\x12\x16\n" +
+	"\x06target\x18\x01 \x01(\tR\x06target\x12*\n" +
+	"\x06source\x18\x02 \x01(\v2\x12.golem.sdk.MessageR\x06source\":\n" +
+	"\rRevokeRequest\x12)\n" +
+	"\x04sent\x18\x01 \x01(\v2\x15.golem.sdk.SendResultR\x04sent\"=\n" +
+	"\x0fDownloadRequest\x12*\n" +
+	"\x06source\x18\x01 \x01(\v2\x12.golem.sdk.MessageR\x06source\"0\n" +
+	"\x12ContactFindRequest\x12\x1a\n" +
+	"\bselector\x18\x01 \x01(\tR\bselector\"g\n" +
 	"\x0fContactResponse\x12,\n" +
 	"\acontact\x18\x01 \x01(\v2\x12.golem.sdk.ContactR\acontact\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"i\n" +
-	"\x13ContactPageResponse\x12*\n" +
-	"\x04page\x18\x01 \x01(\v2\x16.golem.sdk.ContactPageR\x04page\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"u\n" +
-	"\x14ContactBatchResponse\x125\n" +
-	"\x06result\x18\x01 \x01(\v2\x1d.golem.sdk.ContactBatchResultR\x06result\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"p\n" +
-	"\x12ChatroomGetRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12#\n" +
-	"\rroom_username\x18\x02 \x01(\tR\froomUsername\"\xa0\x01\n" +
-	"\x16ChatroomMembersRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12#\n" +
-	"\rroom_username\x18\x02 \x01(\tR\froomUsername\x12*\n" +
-	"\x04page\x18\x03 \x01(\v2\x16.golem.sdk.PageRequestR\x04page\"\x98\x01\n" +
-	"\x15ChatroomMemberRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12#\n" +
-	"\rroom_username\x18\x02 \x01(\tR\froomUsername\x12#\n" +
-	"\ruser_username\x18\x03 \x01(\tR\fuserUsername\"t\n" +
-	"\x16ChatroomRefreshRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12#\n" +
-	"\rroom_username\x18\x02 \x01(\tR\froomUsername\"[\n" +
-	"\fRoomResponse\x12#\n" +
-	"\x04room\x18\x01 \x01(\v2\x0f.golem.sdk.RoomR\x04room\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"c\n" +
-	"\x0eMemberResponse\x12)\n" +
-	"\x06member\x18\x01 \x01(\v2\x11.golem.sdk.MemberR\x06member\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"g\n" +
-	"\x12MemberPageResponse\x12)\n" +
-	"\x04page\x18\x01 \x01(\v2\x15.golem.sdk.MemberPageR\x04page\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"{\n" +
-	"\x17ChatroomRefreshResponse\x128\n" +
-	"\x06result\x18\x01 \x01(\v2 .golem.sdk.ChatroomRefreshResultR\x06result\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"\xa3\x01\n" +
-	"\x15SessionAcquireRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12;\n" +
-	"\fconversation\x18\x02 \x01(\v2\x17.golem.sdk.ConversationR\fconversation\x12\x16\n" +
-	"\x06topics\x18\x03 \x03(\tR\x06topics\"\x94\x01\n" +
-	"\x13SessionRenewRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12\x19\n" +
-	"\blease_id\x18\x02 \x01(\tR\aleaseId\x12+\n" +
-	"\x03ttl\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\x03ttl\"i\n" +
-	"\x15SessionReleaseRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12\x19\n" +
-	"\blease_id\x18\x02 \x01(\tR\aleaseId\"_\n" +
+	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"0\n" +
+	"\x12ChatroomGetRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"k\n" +
+	"\x10ChatroomResponse\x12/\n" +
+	"\bchatroom\x18\x01 \x01(\v2\x13.golem.sdk.ChatroomR\bchatroom\x12&\n" +
+	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"4\n" +
+	"\x16ChatroomMembersRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"n\n" +
+	"\x17ChatroomMembersResponse\x12+\n" +
+	"\amembers\x18\x01 \x03(\v2\x11.golem.sdk.MemberR\amembers\x12&\n" +
+	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"E\n" +
+	"\x13AcquireLeaseRequest\x12\x16\n" +
+	"\x06target\x18\x01 \x01(\tR\x06target\x12\x16\n" +
+	"\x06topics\x18\x02 \x03(\tR\x06topics\"[\n" +
+	"\x11RenewLeaseRequest\x12\x19\n" +
+	"\blease_id\x18\x01 \x01(\tR\aleaseId\x12+\n" +
+	"\x03ttl\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\x03ttl\"0\n" +
+	"\x13ReleaseLeaseRequest\x12\x19\n" +
+	"\blease_id\x18\x01 \x01(\tR\aleaseId\"_\n" +
 	"\rLeaseResponse\x12&\n" +
 	"\x05lease\x18\x01 \x01(\v2\x10.golem.sdk.LeaseR\x05lease\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"z\n" +
-	"\x0fHostCallRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x120\n" +
-	"\arequest\x18\x02 \x01(\v2\x16.golem.sdk.CallRequestR\arequest\"i\n" +
-	"\x10HostCallResponse\x12-\n" +
-	"\x06result\x18\x01 \x01(\v2\x15.golem.sdk.CallResultR\x06result\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"\xb5\x01\n" +
-	"\x19HostBackgroundCallRequest\x12)\n" +
-	"\x10background_token\x18\x01 \x01(\tR\x0fbackgroundToken\x12;\n" +
-	"\fconversation\x18\x02 \x01(\v2\x17.golem.sdk.ConversationR\fconversation\x120\n" +
-	"\arequest\x18\x03 \x01(\v2\x16.golem.sdk.CallRequestR\arequest\"N\n" +
-	"\x15ConfigSnapshotRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\"w\n" +
-	"\x16ConfigSnapshotResponse\x125\n" +
-	"\bsnapshot\x18\x01 \x01(\v2\x19.golem.sdk.ConfigSnapshotR\bsnapshot\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"\xa2\x01\n" +
-	"\x11ConfigSaveRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12+\n" +
-	"\x11expected_revision\x18\x02 \x01(\x04R\x10expectedRevision\x12)\n" +
-	"\x04data\x18\x03 \x01(\v2\x15.golem.sdk.BytesValueR\x04data\"q\n" +
-	"\x12ConfigSaveResponse\x123\n" +
-	"\x06result\x18\x01 \x01(\v2\x1b.golem.sdk.ConfigSaveResultR\x06result\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"y\n" +
-	"\x15AccountCurrentRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12)\n" +
-	"\x10background_token\x18\x02 \x01(\tR\x0fbackgroundToken\"g\n" +
-	"\x0fAccountResponse\x12,\n" +
-	"\aaccount\x18\x01 \x01(\v2\x12.golem.sdk.AccountR\aaccount\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"|\n" +
-	"\x11CoreInvokeRequest\x125\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\v2\x15.golem.sdk.InvocationR\n" +
-	"invocation\x12\x16\n" +
-	"\x06method\x18\x02 \x01(\tR\x06method\x12\x18\n" +
-	"\arequest\x18\x03 \x01(\fR\arequest\"X\n" +
-	"\x12CoreInvokeResponse\x12\x1a\n" +
-	"\bresponse\x18\x01 \x01(\fR\bresponse\x12&\n" +
-	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"\x96\x01\n" +
-	"\x19ExecutionCompletedRequest\x12#\n" +
-	"\rcontrol_token\x18\x01 \x01(\tR\fcontrolToken\x12#\n" +
-	"\rinvocation_id\x18\x02 \x01(\tR\finvocationId\x12/\n" +
-	"\x13instance_generation\x18\x03 \x01(\x04R\x12instanceGeneration\":\n" +
-	"\x13ReverseReadyRequest\x12#\n" +
-	"\rcontrol_token\x18\x01 \x01(\tR\fcontrolToken2\xe7\x05\n" +
-	"\x13HostMessagesService\x12F\n" +
-	"\bSendText\x12\x1a.golem.sdk.SendTextRequest\x1a\x1e.golem.sdk.SendReceiptResponse\x12J\n" +
-	"\tSendMedia\x12\x1b.golem.sdk.SendMediaRequest\x1a\x1e.golem.sdk.SendReceiptResponse(\x01\x12I\n" +
-	"\n" +
-	"StoreMedia\x12\x1c.golem.sdk.StoreMediaRequest\x1a\x1b.golem.sdk.MediaRefResponse(\x01\x12@\n" +
-	"\x05Reply\x12\x17.golem.sdk.ReplyRequest\x1a\x1e.golem.sdk.SendReceiptResponse\x12D\n" +
-	"\aForward\x12\x19.golem.sdk.ForwardRequest\x1a\x1e.golem.sdk.SendReceiptResponse\x12F\n" +
-	"\bSendLink\x12\x1a.golem.sdk.SendLinkRequest\x1a\x1e.golem.sdk.SendReceiptResponse\x12N\n" +
-	"\fSendLocation\x12\x1e.golem.sdk.SendLocationRequest\x1a\x1e.golem.sdk.SendReceiptResponse\x12N\n" +
-	"\fSendNameCard\x12\x1e.golem.sdk.SendNameCardRequest\x1a\x1e.golem.sdk.SendReceiptResponse\x12@\n" +
-	"\x06Revoke\x12\x18.golem.sdk.RevokeRequest\x1a\x1c.golem.sdk.OperationResponse\x12?\n" +
-	"\bDownload\x12\x1a.golem.sdk.DownloadRequest\x1a\x15.golem.sdk.MediaChunk0\x012\xb2\x02\n" +
-	"\x13HostContactsService\x12?\n" +
-	"\x03Get\x12\x1c.golem.sdk.ContactGetRequest\x1a\x1a.golem.sdk.ContactResponse\x12E\n" +
-	"\x04Find\x12\x1d.golem.sdk.ContactFindRequest\x1a\x1e.golem.sdk.ContactPageResponse\x12E\n" +
-	"\x04List\x12\x1d.golem.sdk.ContactListRequest\x1a\x1e.golem.sdk.ContactPageResponse\x12L\n" +
-	"\aRefresh\x12 .golem.sdk.ContactRefreshRequest\x1a\x1f.golem.sdk.ContactBatchResponse2\xbb\x02\n" +
-	"\x14HostChatroomsService\x12=\n" +
-	"\x03Get\x12\x1d.golem.sdk.ChatroomGetRequest\x1a\x17.golem.sdk.RoomResponse\x12K\n" +
-	"\aMembers\x12!.golem.sdk.ChatroomMembersRequest\x1a\x1d.golem.sdk.MemberPageResponse\x12E\n" +
-	"\x06Member\x12 .golem.sdk.ChatroomMemberRequest\x1a\x19.golem.sdk.MemberResponse\x12P\n" +
-	"\aRefresh\x12!.golem.sdk.ChatroomRefreshRequest\x1a\".golem.sdk.ChatroomRefreshResponse2\xea\x01\n" +
-	"\x13HostSessionsService\x12E\n" +
-	"\aAcquire\x12 .golem.sdk.SessionAcquireRequest\x1a\x18.golem.sdk.LeaseResponse\x12A\n" +
-	"\x05Renew\x12\x1e.golem.sdk.SessionRenewRequest\x1a\x18.golem.sdk.LeaseResponse\x12I\n" +
-	"\aRelease\x12 .golem.sdk.SessionReleaseRequest\x1a\x1c.golem.sdk.OperationResponse2\xa9\x01\n" +
-	"\x11HostCallerService\x12?\n" +
-	"\x04Call\x12\x1a.golem.sdk.HostCallRequest\x1a\x1b.golem.sdk.HostCallResponse\x12S\n" +
-	"\x0eCallBackground\x12$.golem.sdk.HostBackgroundCallRequest\x1a\x1b.golem.sdk.HostCallResponse2\xa9\x01\n" +
-	"\x11HostConfigService\x12O\n" +
-	"\bSnapshot\x12 .golem.sdk.ConfigSnapshotRequest\x1a!.golem.sdk.ConfigSnapshotResponse\x12C\n" +
-	"\x04Save\x12\x1c.golem.sdk.ConfigSaveRequest\x1a\x1d.golem.sdk.ConfigSaveResponse2]\n" +
-	"\x12HostAccountService\x12G\n" +
-	"\aCurrent\x12 .golem.sdk.AccountCurrentRequest\x1a\x1a.golem.sdk.AccountResponse2X\n" +
-	"\x0fHostCoreService\x12E\n" +
-	"\x06Invoke\x12\x1c.golem.sdk.CoreInvokeRequest\x1a\x1d.golem.sdk.CoreInvokeResponse2\xbc\x01\n" +
-	"\x12HostControlService\x12L\n" +
-	"\fReverseReady\x12\x1e.golem.sdk.ReverseReadyRequest\x1a\x1c.golem.sdk.OperationResponse\x12X\n" +
-	"\x12ExecutionCompleted\x12$.golem.sdk.ExecutionCompletedRequest\x1a\x1c.golem.sdk.OperationResponseB+Z)github.com/golemwx/sdk/internal/wire;wireb\x06proto3"
+	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"O\n" +
+	"\x15CallCapabilityRequest\x126\n" +
+	"\arequest\x18\x01 \x01(\v2\x1c.golem.sdk.CapabilityRequestR\arequest\"u\n" +
+	"\x16CallCapabilityResponse\x123\n" +
+	"\x06result\x18\x01 \x01(\v2\x1b.golem.sdk.CapabilityResultR\x06result\x12&\n" +
+	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"k\n" +
+	"\x12ReadConfigResponse\x12-\n" +
+	"\x06config\x18\x01 \x01(\v2\x15.golem.sdk.BytesValueR\x06config\x12&\n" +
+	"\x05error\x18\x02 \x01(\v2\x10.golem.sdk.ErrorR\x05error\"B\n" +
+	"\x11SaveConfigRequest\x12-\n" +
+	"\x06config\x18\x01 \x01(\v2\x15.golem.sdk.BytesValueR\x06config2S\n" +
+	"\x12HostAccountService\x12=\n" +
+	"\aCurrent\x12\x16.google.protobuf.Empty\x1a\x1a.golem.sdk.AccountResponse2\xba\x03\n" +
+	"\x13HostMessagesService\x12E\n" +
+	"\bSendText\x12\x1a.golem.sdk.SendTextRequest\x1a\x1d.golem.sdk.SendResultResponse\x12C\n" +
+	"\aSendApp\x12\x19.golem.sdk.SendAppRequest\x1a\x1d.golem.sdk.SendResultResponse\x12I\n" +
+	"\tSendMedia\x12\x1b.golem.sdk.SendMediaRequest\x1a\x1d.golem.sdk.SendResultResponse(\x01\x12C\n" +
+	"\aForward\x12\x19.golem.sdk.ForwardRequest\x1a\x1d.golem.sdk.SendResultResponse\x12@\n" +
+	"\x06Revoke\x12\x18.golem.sdk.RevokeRequest\x1a\x1c.golem.sdk.OperationResponse\x12E\n" +
+	"\bDownload\x12\x1a.golem.sdk.DownloadRequest\x1a\x1b.golem.sdk.DownloadResponse0\x012X\n" +
+	"\x13HostContactsService\x12A\n" +
+	"\x04Find\x12\x1d.golem.sdk.ContactFindRequest\x1a\x1a.golem.sdk.ContactResponse2\xab\x01\n" +
+	"\x14HostChatroomsService\x12A\n" +
+	"\x03Get\x12\x1d.golem.sdk.ChatroomGetRequest\x1a\x1b.golem.sdk.ChatroomResponse\x12P\n" +
+	"\aMembers\x12!.golem.sdk.ChatroomMembersRequest\x1a\".golem.sdk.ChatroomMembersResponse2\xe4\x01\n" +
+	"\x13HostSessionsService\x12C\n" +
+	"\aAcquire\x12\x1e.golem.sdk.AcquireLeaseRequest\x1a\x18.golem.sdk.LeaseResponse\x12?\n" +
+	"\x05Renew\x12\x1c.golem.sdk.RenewLeaseRequest\x1a\x18.golem.sdk.LeaseResponse\x12G\n" +
+	"\aRelease\x12\x1e.golem.sdk.ReleaseLeaseRequest\x1a\x1c.golem.sdk.OperationResponse2`\n" +
+	"\x11HostCallerService\x12K\n" +
+	"\x04Call\x12 .golem.sdk.CallCapabilityRequest\x1a!.golem.sdk.CallCapabilityResponse2\x96\x01\n" +
+	"\x11HostConfigService\x12=\n" +
+	"\x04Read\x12\x16.google.protobuf.Empty\x1a\x1d.golem.sdk.ReadConfigResponse\x12B\n" +
+	"\x04Save\x12\x1c.golem.sdk.SaveConfigRequest\x1a\x1c.golem.sdk.OperationResponseB+Z)github.com/golemwx/sdk/internal/wire;wireb\x06proto3"
 
 var (
 	file_golem_sdk_host_proto_rawDescOnce sync.Once
@@ -3118,229 +1347,114 @@ func file_golem_sdk_host_proto_rawDescGZIP() []byte {
 	return file_golem_sdk_host_proto_rawDescData
 }
 
-var file_golem_sdk_host_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
+var file_golem_sdk_host_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_golem_sdk_host_proto_goTypes = []any{
-	(*Invocation)(nil),                // 0: golem.sdk.Invocation
-	(*SendTextRequest)(nil),           // 1: golem.sdk.SendTextRequest
-	(*ReplyRequest)(nil),              // 2: golem.sdk.ReplyRequest
-	(*SendReceiptResponse)(nil),       // 3: golem.sdk.SendReceiptResponse
-	(*RevokeRequest)(nil),             // 4: golem.sdk.RevokeRequest
-	(*SendMediaMetadata)(nil),         // 5: golem.sdk.SendMediaMetadata
-	(*SendMediaRequest)(nil),          // 6: golem.sdk.SendMediaRequest
-	(*DownloadRequest)(nil),           // 7: golem.sdk.DownloadRequest
-	(*StoreMediaMetadata)(nil),        // 8: golem.sdk.StoreMediaMetadata
-	(*StoreMediaRequest)(nil),         // 9: golem.sdk.StoreMediaRequest
-	(*MediaRefResponse)(nil),          // 10: golem.sdk.MediaRefResponse
-	(*ForwardRequest)(nil),            // 11: golem.sdk.ForwardRequest
-	(*SendLinkRequest)(nil),           // 12: golem.sdk.SendLinkRequest
-	(*SendLocationRequest)(nil),       // 13: golem.sdk.SendLocationRequest
-	(*SendNameCardRequest)(nil),       // 14: golem.sdk.SendNameCardRequest
-	(*ContactGetRequest)(nil),         // 15: golem.sdk.ContactGetRequest
-	(*ContactFindRequest)(nil),        // 16: golem.sdk.ContactFindRequest
-	(*ContactListRequest)(nil),        // 17: golem.sdk.ContactListRequest
-	(*ContactRefreshRequest)(nil),     // 18: golem.sdk.ContactRefreshRequest
-	(*ContactResponse)(nil),           // 19: golem.sdk.ContactResponse
-	(*ContactPageResponse)(nil),       // 20: golem.sdk.ContactPageResponse
-	(*ContactBatchResponse)(nil),      // 21: golem.sdk.ContactBatchResponse
-	(*ChatroomGetRequest)(nil),        // 22: golem.sdk.ChatroomGetRequest
-	(*ChatroomMembersRequest)(nil),    // 23: golem.sdk.ChatroomMembersRequest
-	(*ChatroomMemberRequest)(nil),     // 24: golem.sdk.ChatroomMemberRequest
-	(*ChatroomRefreshRequest)(nil),    // 25: golem.sdk.ChatroomRefreshRequest
-	(*RoomResponse)(nil),              // 26: golem.sdk.RoomResponse
-	(*MemberResponse)(nil),            // 27: golem.sdk.MemberResponse
-	(*MemberPageResponse)(nil),        // 28: golem.sdk.MemberPageResponse
-	(*ChatroomRefreshResponse)(nil),   // 29: golem.sdk.ChatroomRefreshResponse
-	(*SessionAcquireRequest)(nil),     // 30: golem.sdk.SessionAcquireRequest
-	(*SessionRenewRequest)(nil),       // 31: golem.sdk.SessionRenewRequest
-	(*SessionReleaseRequest)(nil),     // 32: golem.sdk.SessionReleaseRequest
-	(*LeaseResponse)(nil),             // 33: golem.sdk.LeaseResponse
-	(*HostCallRequest)(nil),           // 34: golem.sdk.HostCallRequest
-	(*HostCallResponse)(nil),          // 35: golem.sdk.HostCallResponse
-	(*HostBackgroundCallRequest)(nil), // 36: golem.sdk.HostBackgroundCallRequest
-	(*ConfigSnapshotRequest)(nil),     // 37: golem.sdk.ConfigSnapshotRequest
-	(*ConfigSnapshotResponse)(nil),    // 38: golem.sdk.ConfigSnapshotResponse
-	(*ConfigSaveRequest)(nil),         // 39: golem.sdk.ConfigSaveRequest
-	(*ConfigSaveResponse)(nil),        // 40: golem.sdk.ConfigSaveResponse
-	(*AccountCurrentRequest)(nil),     // 41: golem.sdk.AccountCurrentRequest
-	(*AccountResponse)(nil),           // 42: golem.sdk.AccountResponse
-	(*CoreInvokeRequest)(nil),         // 43: golem.sdk.CoreInvokeRequest
-	(*CoreInvokeResponse)(nil),        // 44: golem.sdk.CoreInvokeResponse
-	(*ExecutionCompletedRequest)(nil), // 45: golem.sdk.ExecutionCompletedRequest
-	(*ReverseReadyRequest)(nil),       // 46: golem.sdk.ReverseReadyRequest
-	(*Conversation)(nil),              // 47: golem.sdk.Conversation
-	(*Quote)(nil),                     // 48: golem.sdk.Quote
-	(*SendReceipt)(nil),               // 49: golem.sdk.SendReceipt
-	(*Error)(nil),                     // 50: golem.sdk.Error
-	(*RevokeRef)(nil),                 // 51: golem.sdk.RevokeRef
-	(MediaKind)(0),                    // 52: golem.sdk.MediaKind
-	(*MediaRef)(nil),                  // 53: golem.sdk.MediaRef
-	(*VoiceOptions)(nil),              // 54: golem.sdk.VoiceOptions
-	(*ForwardRef)(nil),                // 55: golem.sdk.ForwardRef
-	(*PageRequest)(nil),               // 56: golem.sdk.PageRequest
-	(*Contact)(nil),                   // 57: golem.sdk.Contact
-	(*ContactPage)(nil),               // 58: golem.sdk.ContactPage
-	(*ContactBatchResult)(nil),        // 59: golem.sdk.ContactBatchResult
-	(*Room)(nil),                      // 60: golem.sdk.Room
-	(*Member)(nil),                    // 61: golem.sdk.Member
-	(*MemberPage)(nil),                // 62: golem.sdk.MemberPage
-	(*ChatroomRefreshResult)(nil),     // 63: golem.sdk.ChatroomRefreshResult
-	(*durationpb.Duration)(nil),       // 64: google.protobuf.Duration
-	(*Lease)(nil),                     // 65: golem.sdk.Lease
-	(*CallRequest)(nil),               // 66: golem.sdk.CallRequest
-	(*CallResult)(nil),                // 67: golem.sdk.CallResult
-	(*ConfigSnapshot)(nil),            // 68: golem.sdk.ConfigSnapshot
-	(*BytesValue)(nil),                // 69: golem.sdk.BytesValue
-	(*ConfigSaveResult)(nil),          // 70: golem.sdk.ConfigSaveResult
-	(*Account)(nil),                   // 71: golem.sdk.Account
-	(*OperationResponse)(nil),         // 72: golem.sdk.OperationResponse
-	(*MediaChunk)(nil),                // 73: golem.sdk.MediaChunk
+	(*AccountResponse)(nil),         // 0: golem.sdk.AccountResponse
+	(*SendTextRequest)(nil),         // 1: golem.sdk.SendTextRequest
+	(*SendAppRequest)(nil),          // 2: golem.sdk.SendAppRequest
+	(*SendMediaMetadata)(nil),       // 3: golem.sdk.SendMediaMetadata
+	(*SendMediaRequest)(nil),        // 4: golem.sdk.SendMediaRequest
+	(*SendResultResponse)(nil),      // 5: golem.sdk.SendResultResponse
+	(*ForwardRequest)(nil),          // 6: golem.sdk.ForwardRequest
+	(*RevokeRequest)(nil),           // 7: golem.sdk.RevokeRequest
+	(*DownloadRequest)(nil),         // 8: golem.sdk.DownloadRequest
+	(*ContactFindRequest)(nil),      // 9: golem.sdk.ContactFindRequest
+	(*ContactResponse)(nil),         // 10: golem.sdk.ContactResponse
+	(*ChatroomGetRequest)(nil),      // 11: golem.sdk.ChatroomGetRequest
+	(*ChatroomResponse)(nil),        // 12: golem.sdk.ChatroomResponse
+	(*ChatroomMembersRequest)(nil),  // 13: golem.sdk.ChatroomMembersRequest
+	(*ChatroomMembersResponse)(nil), // 14: golem.sdk.ChatroomMembersResponse
+	(*AcquireLeaseRequest)(nil),     // 15: golem.sdk.AcquireLeaseRequest
+	(*RenewLeaseRequest)(nil),       // 16: golem.sdk.RenewLeaseRequest
+	(*ReleaseLeaseRequest)(nil),     // 17: golem.sdk.ReleaseLeaseRequest
+	(*LeaseResponse)(nil),           // 18: golem.sdk.LeaseResponse
+	(*CallCapabilityRequest)(nil),   // 19: golem.sdk.CallCapabilityRequest
+	(*CallCapabilityResponse)(nil),  // 20: golem.sdk.CallCapabilityResponse
+	(*ReadConfigResponse)(nil),      // 21: golem.sdk.ReadConfigResponse
+	(*SaveConfigRequest)(nil),       // 22: golem.sdk.SaveConfigRequest
+	(*Account)(nil),                 // 23: golem.sdk.Account
+	(*Error)(nil),                   // 24: golem.sdk.Error
+	(*AppData)(nil),                 // 25: golem.sdk.AppData
+	(MessageType)(0),                // 26: golem.sdk.MessageType
+	(*VoiceUpload)(nil),             // 27: golem.sdk.VoiceUpload
+	(*SendResult)(nil),              // 28: golem.sdk.SendResult
+	(*Message)(nil),                 // 29: golem.sdk.Message
+	(*Contact)(nil),                 // 30: golem.sdk.Contact
+	(*Chatroom)(nil),                // 31: golem.sdk.Chatroom
+	(*Member)(nil),                  // 32: golem.sdk.Member
+	(*durationpb.Duration)(nil),     // 33: google.protobuf.Duration
+	(*Lease)(nil),                   // 34: golem.sdk.Lease
+	(*CapabilityRequest)(nil),       // 35: golem.sdk.CapabilityRequest
+	(*CapabilityResult)(nil),        // 36: golem.sdk.CapabilityResult
+	(*BytesValue)(nil),              // 37: golem.sdk.BytesValue
+	(*emptypb.Empty)(nil),           // 38: google.protobuf.Empty
+	(*OperationResponse)(nil),       // 39: golem.sdk.OperationResponse
+	(*DownloadResponse)(nil),        // 40: golem.sdk.DownloadResponse
 }
 var file_golem_sdk_host_proto_depIdxs = []int32{
-	0,   // 0: golem.sdk.SendTextRequest.invocation:type_name -> golem.sdk.Invocation
-	47,  // 1: golem.sdk.SendTextRequest.conversation:type_name -> golem.sdk.Conversation
-	0,   // 2: golem.sdk.ReplyRequest.invocation:type_name -> golem.sdk.Invocation
-	47,  // 3: golem.sdk.ReplyRequest.conversation:type_name -> golem.sdk.Conversation
-	48,  // 4: golem.sdk.ReplyRequest.quote:type_name -> golem.sdk.Quote
-	49,  // 5: golem.sdk.SendReceiptResponse.receipt:type_name -> golem.sdk.SendReceipt
-	50,  // 6: golem.sdk.SendReceiptResponse.error:type_name -> golem.sdk.Error
-	0,   // 7: golem.sdk.RevokeRequest.invocation:type_name -> golem.sdk.Invocation
-	51,  // 8: golem.sdk.RevokeRequest.ref:type_name -> golem.sdk.RevokeRef
-	0,   // 9: golem.sdk.SendMediaMetadata.invocation:type_name -> golem.sdk.Invocation
-	47,  // 10: golem.sdk.SendMediaMetadata.conversation:type_name -> golem.sdk.Conversation
-	52,  // 11: golem.sdk.SendMediaMetadata.kind:type_name -> golem.sdk.MediaKind
-	53,  // 12: golem.sdk.SendMediaMetadata.ref:type_name -> golem.sdk.MediaRef
-	54,  // 13: golem.sdk.SendMediaMetadata.voice:type_name -> golem.sdk.VoiceOptions
-	5,   // 14: golem.sdk.SendMediaRequest.metadata:type_name -> golem.sdk.SendMediaMetadata
-	0,   // 15: golem.sdk.DownloadRequest.invocation:type_name -> golem.sdk.Invocation
-	53,  // 16: golem.sdk.DownloadRequest.media:type_name -> golem.sdk.MediaRef
-	0,   // 17: golem.sdk.StoreMediaMetadata.invocation:type_name -> golem.sdk.Invocation
-	52,  // 18: golem.sdk.StoreMediaMetadata.kind:type_name -> golem.sdk.MediaKind
-	54,  // 19: golem.sdk.StoreMediaMetadata.voice:type_name -> golem.sdk.VoiceOptions
-	8,   // 20: golem.sdk.StoreMediaRequest.metadata:type_name -> golem.sdk.StoreMediaMetadata
-	53,  // 21: golem.sdk.MediaRefResponse.media:type_name -> golem.sdk.MediaRef
-	50,  // 22: golem.sdk.MediaRefResponse.error:type_name -> golem.sdk.Error
-	0,   // 23: golem.sdk.ForwardRequest.invocation:type_name -> golem.sdk.Invocation
-	47,  // 24: golem.sdk.ForwardRequest.conversation:type_name -> golem.sdk.Conversation
-	55,  // 25: golem.sdk.ForwardRequest.ref:type_name -> golem.sdk.ForwardRef
-	0,   // 26: golem.sdk.SendLinkRequest.invocation:type_name -> golem.sdk.Invocation
-	47,  // 27: golem.sdk.SendLinkRequest.conversation:type_name -> golem.sdk.Conversation
-	0,   // 28: golem.sdk.SendLocationRequest.invocation:type_name -> golem.sdk.Invocation
-	47,  // 29: golem.sdk.SendLocationRequest.conversation:type_name -> golem.sdk.Conversation
-	0,   // 30: golem.sdk.SendNameCardRequest.invocation:type_name -> golem.sdk.Invocation
-	47,  // 31: golem.sdk.SendNameCardRequest.conversation:type_name -> golem.sdk.Conversation
-	0,   // 32: golem.sdk.ContactGetRequest.invocation:type_name -> golem.sdk.Invocation
-	0,   // 33: golem.sdk.ContactFindRequest.invocation:type_name -> golem.sdk.Invocation
-	56,  // 34: golem.sdk.ContactFindRequest.page:type_name -> golem.sdk.PageRequest
-	0,   // 35: golem.sdk.ContactListRequest.invocation:type_name -> golem.sdk.Invocation
-	56,  // 36: golem.sdk.ContactListRequest.page:type_name -> golem.sdk.PageRequest
-	0,   // 37: golem.sdk.ContactRefreshRequest.invocation:type_name -> golem.sdk.Invocation
-	57,  // 38: golem.sdk.ContactResponse.contact:type_name -> golem.sdk.Contact
-	50,  // 39: golem.sdk.ContactResponse.error:type_name -> golem.sdk.Error
-	58,  // 40: golem.sdk.ContactPageResponse.page:type_name -> golem.sdk.ContactPage
-	50,  // 41: golem.sdk.ContactPageResponse.error:type_name -> golem.sdk.Error
-	59,  // 42: golem.sdk.ContactBatchResponse.result:type_name -> golem.sdk.ContactBatchResult
-	50,  // 43: golem.sdk.ContactBatchResponse.error:type_name -> golem.sdk.Error
-	0,   // 44: golem.sdk.ChatroomGetRequest.invocation:type_name -> golem.sdk.Invocation
-	0,   // 45: golem.sdk.ChatroomMembersRequest.invocation:type_name -> golem.sdk.Invocation
-	56,  // 46: golem.sdk.ChatroomMembersRequest.page:type_name -> golem.sdk.PageRequest
-	0,   // 47: golem.sdk.ChatroomMemberRequest.invocation:type_name -> golem.sdk.Invocation
-	0,   // 48: golem.sdk.ChatroomRefreshRequest.invocation:type_name -> golem.sdk.Invocation
-	60,  // 49: golem.sdk.RoomResponse.room:type_name -> golem.sdk.Room
-	50,  // 50: golem.sdk.RoomResponse.error:type_name -> golem.sdk.Error
-	61,  // 51: golem.sdk.MemberResponse.member:type_name -> golem.sdk.Member
-	50,  // 52: golem.sdk.MemberResponse.error:type_name -> golem.sdk.Error
-	62,  // 53: golem.sdk.MemberPageResponse.page:type_name -> golem.sdk.MemberPage
-	50,  // 54: golem.sdk.MemberPageResponse.error:type_name -> golem.sdk.Error
-	63,  // 55: golem.sdk.ChatroomRefreshResponse.result:type_name -> golem.sdk.ChatroomRefreshResult
-	50,  // 56: golem.sdk.ChatroomRefreshResponse.error:type_name -> golem.sdk.Error
-	0,   // 57: golem.sdk.SessionAcquireRequest.invocation:type_name -> golem.sdk.Invocation
-	47,  // 58: golem.sdk.SessionAcquireRequest.conversation:type_name -> golem.sdk.Conversation
-	0,   // 59: golem.sdk.SessionRenewRequest.invocation:type_name -> golem.sdk.Invocation
-	64,  // 60: golem.sdk.SessionRenewRequest.ttl:type_name -> google.protobuf.Duration
-	0,   // 61: golem.sdk.SessionReleaseRequest.invocation:type_name -> golem.sdk.Invocation
-	65,  // 62: golem.sdk.LeaseResponse.lease:type_name -> golem.sdk.Lease
-	50,  // 63: golem.sdk.LeaseResponse.error:type_name -> golem.sdk.Error
-	0,   // 64: golem.sdk.HostCallRequest.invocation:type_name -> golem.sdk.Invocation
-	66,  // 65: golem.sdk.HostCallRequest.request:type_name -> golem.sdk.CallRequest
-	67,  // 66: golem.sdk.HostCallResponse.result:type_name -> golem.sdk.CallResult
-	50,  // 67: golem.sdk.HostCallResponse.error:type_name -> golem.sdk.Error
-	47,  // 68: golem.sdk.HostBackgroundCallRequest.conversation:type_name -> golem.sdk.Conversation
-	66,  // 69: golem.sdk.HostBackgroundCallRequest.request:type_name -> golem.sdk.CallRequest
-	0,   // 70: golem.sdk.ConfigSnapshotRequest.invocation:type_name -> golem.sdk.Invocation
-	68,  // 71: golem.sdk.ConfigSnapshotResponse.snapshot:type_name -> golem.sdk.ConfigSnapshot
-	50,  // 72: golem.sdk.ConfigSnapshotResponse.error:type_name -> golem.sdk.Error
-	0,   // 73: golem.sdk.ConfigSaveRequest.invocation:type_name -> golem.sdk.Invocation
-	69,  // 74: golem.sdk.ConfigSaveRequest.data:type_name -> golem.sdk.BytesValue
-	70,  // 75: golem.sdk.ConfigSaveResponse.result:type_name -> golem.sdk.ConfigSaveResult
-	50,  // 76: golem.sdk.ConfigSaveResponse.error:type_name -> golem.sdk.Error
-	0,   // 77: golem.sdk.AccountCurrentRequest.invocation:type_name -> golem.sdk.Invocation
-	71,  // 78: golem.sdk.AccountResponse.account:type_name -> golem.sdk.Account
-	50,  // 79: golem.sdk.AccountResponse.error:type_name -> golem.sdk.Error
-	0,   // 80: golem.sdk.CoreInvokeRequest.invocation:type_name -> golem.sdk.Invocation
-	50,  // 81: golem.sdk.CoreInvokeResponse.error:type_name -> golem.sdk.Error
-	1,   // 82: golem.sdk.HostMessagesService.SendText:input_type -> golem.sdk.SendTextRequest
-	6,   // 83: golem.sdk.HostMessagesService.SendMedia:input_type -> golem.sdk.SendMediaRequest
-	9,   // 84: golem.sdk.HostMessagesService.StoreMedia:input_type -> golem.sdk.StoreMediaRequest
-	2,   // 85: golem.sdk.HostMessagesService.Reply:input_type -> golem.sdk.ReplyRequest
-	11,  // 86: golem.sdk.HostMessagesService.Forward:input_type -> golem.sdk.ForwardRequest
-	12,  // 87: golem.sdk.HostMessagesService.SendLink:input_type -> golem.sdk.SendLinkRequest
-	13,  // 88: golem.sdk.HostMessagesService.SendLocation:input_type -> golem.sdk.SendLocationRequest
-	14,  // 89: golem.sdk.HostMessagesService.SendNameCard:input_type -> golem.sdk.SendNameCardRequest
-	4,   // 90: golem.sdk.HostMessagesService.Revoke:input_type -> golem.sdk.RevokeRequest
-	7,   // 91: golem.sdk.HostMessagesService.Download:input_type -> golem.sdk.DownloadRequest
-	15,  // 92: golem.sdk.HostContactsService.Get:input_type -> golem.sdk.ContactGetRequest
-	16,  // 93: golem.sdk.HostContactsService.Find:input_type -> golem.sdk.ContactFindRequest
-	17,  // 94: golem.sdk.HostContactsService.List:input_type -> golem.sdk.ContactListRequest
-	18,  // 95: golem.sdk.HostContactsService.Refresh:input_type -> golem.sdk.ContactRefreshRequest
-	22,  // 96: golem.sdk.HostChatroomsService.Get:input_type -> golem.sdk.ChatroomGetRequest
-	23,  // 97: golem.sdk.HostChatroomsService.Members:input_type -> golem.sdk.ChatroomMembersRequest
-	24,  // 98: golem.sdk.HostChatroomsService.Member:input_type -> golem.sdk.ChatroomMemberRequest
-	25,  // 99: golem.sdk.HostChatroomsService.Refresh:input_type -> golem.sdk.ChatroomRefreshRequest
-	30,  // 100: golem.sdk.HostSessionsService.Acquire:input_type -> golem.sdk.SessionAcquireRequest
-	31,  // 101: golem.sdk.HostSessionsService.Renew:input_type -> golem.sdk.SessionRenewRequest
-	32,  // 102: golem.sdk.HostSessionsService.Release:input_type -> golem.sdk.SessionReleaseRequest
-	34,  // 103: golem.sdk.HostCallerService.Call:input_type -> golem.sdk.HostCallRequest
-	36,  // 104: golem.sdk.HostCallerService.CallBackground:input_type -> golem.sdk.HostBackgroundCallRequest
-	37,  // 105: golem.sdk.HostConfigService.Snapshot:input_type -> golem.sdk.ConfigSnapshotRequest
-	39,  // 106: golem.sdk.HostConfigService.Save:input_type -> golem.sdk.ConfigSaveRequest
-	41,  // 107: golem.sdk.HostAccountService.Current:input_type -> golem.sdk.AccountCurrentRequest
-	43,  // 108: golem.sdk.HostCoreService.Invoke:input_type -> golem.sdk.CoreInvokeRequest
-	46,  // 109: golem.sdk.HostControlService.ReverseReady:input_type -> golem.sdk.ReverseReadyRequest
-	45,  // 110: golem.sdk.HostControlService.ExecutionCompleted:input_type -> golem.sdk.ExecutionCompletedRequest
-	3,   // 111: golem.sdk.HostMessagesService.SendText:output_type -> golem.sdk.SendReceiptResponse
-	3,   // 112: golem.sdk.HostMessagesService.SendMedia:output_type -> golem.sdk.SendReceiptResponse
-	10,  // 113: golem.sdk.HostMessagesService.StoreMedia:output_type -> golem.sdk.MediaRefResponse
-	3,   // 114: golem.sdk.HostMessagesService.Reply:output_type -> golem.sdk.SendReceiptResponse
-	3,   // 115: golem.sdk.HostMessagesService.Forward:output_type -> golem.sdk.SendReceiptResponse
-	3,   // 116: golem.sdk.HostMessagesService.SendLink:output_type -> golem.sdk.SendReceiptResponse
-	3,   // 117: golem.sdk.HostMessagesService.SendLocation:output_type -> golem.sdk.SendReceiptResponse
-	3,   // 118: golem.sdk.HostMessagesService.SendNameCard:output_type -> golem.sdk.SendReceiptResponse
-	72,  // 119: golem.sdk.HostMessagesService.Revoke:output_type -> golem.sdk.OperationResponse
-	73,  // 120: golem.sdk.HostMessagesService.Download:output_type -> golem.sdk.MediaChunk
-	19,  // 121: golem.sdk.HostContactsService.Get:output_type -> golem.sdk.ContactResponse
-	20,  // 122: golem.sdk.HostContactsService.Find:output_type -> golem.sdk.ContactPageResponse
-	20,  // 123: golem.sdk.HostContactsService.List:output_type -> golem.sdk.ContactPageResponse
-	21,  // 124: golem.sdk.HostContactsService.Refresh:output_type -> golem.sdk.ContactBatchResponse
-	26,  // 125: golem.sdk.HostChatroomsService.Get:output_type -> golem.sdk.RoomResponse
-	28,  // 126: golem.sdk.HostChatroomsService.Members:output_type -> golem.sdk.MemberPageResponse
-	27,  // 127: golem.sdk.HostChatroomsService.Member:output_type -> golem.sdk.MemberResponse
-	29,  // 128: golem.sdk.HostChatroomsService.Refresh:output_type -> golem.sdk.ChatroomRefreshResponse
-	33,  // 129: golem.sdk.HostSessionsService.Acquire:output_type -> golem.sdk.LeaseResponse
-	33,  // 130: golem.sdk.HostSessionsService.Renew:output_type -> golem.sdk.LeaseResponse
-	72,  // 131: golem.sdk.HostSessionsService.Release:output_type -> golem.sdk.OperationResponse
-	35,  // 132: golem.sdk.HostCallerService.Call:output_type -> golem.sdk.HostCallResponse
-	35,  // 133: golem.sdk.HostCallerService.CallBackground:output_type -> golem.sdk.HostCallResponse
-	38,  // 134: golem.sdk.HostConfigService.Snapshot:output_type -> golem.sdk.ConfigSnapshotResponse
-	40,  // 135: golem.sdk.HostConfigService.Save:output_type -> golem.sdk.ConfigSaveResponse
-	42,  // 136: golem.sdk.HostAccountService.Current:output_type -> golem.sdk.AccountResponse
-	44,  // 137: golem.sdk.HostCoreService.Invoke:output_type -> golem.sdk.CoreInvokeResponse
-	72,  // 138: golem.sdk.HostControlService.ReverseReady:output_type -> golem.sdk.OperationResponse
-	72,  // 139: golem.sdk.HostControlService.ExecutionCompleted:output_type -> golem.sdk.OperationResponse
-	111, // [111:140] is the sub-list for method output_type
-	82,  // [82:111] is the sub-list for method input_type
-	82,  // [82:82] is the sub-list for extension type_name
-	82,  // [82:82] is the sub-list for extension extendee
-	0,   // [0:82] is the sub-list for field type_name
+	23, // 0: golem.sdk.AccountResponse.account:type_name -> golem.sdk.Account
+	24, // 1: golem.sdk.AccountResponse.error:type_name -> golem.sdk.Error
+	25, // 2: golem.sdk.SendAppRequest.app:type_name -> golem.sdk.AppData
+	26, // 3: golem.sdk.SendMediaMetadata.type:type_name -> golem.sdk.MessageType
+	27, // 4: golem.sdk.SendMediaMetadata.voice:type_name -> golem.sdk.VoiceUpload
+	3,  // 5: golem.sdk.SendMediaRequest.metadata:type_name -> golem.sdk.SendMediaMetadata
+	28, // 6: golem.sdk.SendResultResponse.result:type_name -> golem.sdk.SendResult
+	24, // 7: golem.sdk.SendResultResponse.error:type_name -> golem.sdk.Error
+	29, // 8: golem.sdk.ForwardRequest.source:type_name -> golem.sdk.Message
+	28, // 9: golem.sdk.RevokeRequest.sent:type_name -> golem.sdk.SendResult
+	29, // 10: golem.sdk.DownloadRequest.source:type_name -> golem.sdk.Message
+	30, // 11: golem.sdk.ContactResponse.contact:type_name -> golem.sdk.Contact
+	24, // 12: golem.sdk.ContactResponse.error:type_name -> golem.sdk.Error
+	31, // 13: golem.sdk.ChatroomResponse.chatroom:type_name -> golem.sdk.Chatroom
+	24, // 14: golem.sdk.ChatroomResponse.error:type_name -> golem.sdk.Error
+	32, // 15: golem.sdk.ChatroomMembersResponse.members:type_name -> golem.sdk.Member
+	24, // 16: golem.sdk.ChatroomMembersResponse.error:type_name -> golem.sdk.Error
+	33, // 17: golem.sdk.RenewLeaseRequest.ttl:type_name -> google.protobuf.Duration
+	34, // 18: golem.sdk.LeaseResponse.lease:type_name -> golem.sdk.Lease
+	24, // 19: golem.sdk.LeaseResponse.error:type_name -> golem.sdk.Error
+	35, // 20: golem.sdk.CallCapabilityRequest.request:type_name -> golem.sdk.CapabilityRequest
+	36, // 21: golem.sdk.CallCapabilityResponse.result:type_name -> golem.sdk.CapabilityResult
+	24, // 22: golem.sdk.CallCapabilityResponse.error:type_name -> golem.sdk.Error
+	37, // 23: golem.sdk.ReadConfigResponse.config:type_name -> golem.sdk.BytesValue
+	24, // 24: golem.sdk.ReadConfigResponse.error:type_name -> golem.sdk.Error
+	37, // 25: golem.sdk.SaveConfigRequest.config:type_name -> golem.sdk.BytesValue
+	38, // 26: golem.sdk.HostAccountService.Current:input_type -> google.protobuf.Empty
+	1,  // 27: golem.sdk.HostMessagesService.SendText:input_type -> golem.sdk.SendTextRequest
+	2,  // 28: golem.sdk.HostMessagesService.SendApp:input_type -> golem.sdk.SendAppRequest
+	4,  // 29: golem.sdk.HostMessagesService.SendMedia:input_type -> golem.sdk.SendMediaRequest
+	6,  // 30: golem.sdk.HostMessagesService.Forward:input_type -> golem.sdk.ForwardRequest
+	7,  // 31: golem.sdk.HostMessagesService.Revoke:input_type -> golem.sdk.RevokeRequest
+	8,  // 32: golem.sdk.HostMessagesService.Download:input_type -> golem.sdk.DownloadRequest
+	9,  // 33: golem.sdk.HostContactsService.Find:input_type -> golem.sdk.ContactFindRequest
+	11, // 34: golem.sdk.HostChatroomsService.Get:input_type -> golem.sdk.ChatroomGetRequest
+	13, // 35: golem.sdk.HostChatroomsService.Members:input_type -> golem.sdk.ChatroomMembersRequest
+	15, // 36: golem.sdk.HostSessionsService.Acquire:input_type -> golem.sdk.AcquireLeaseRequest
+	16, // 37: golem.sdk.HostSessionsService.Renew:input_type -> golem.sdk.RenewLeaseRequest
+	17, // 38: golem.sdk.HostSessionsService.Release:input_type -> golem.sdk.ReleaseLeaseRequest
+	19, // 39: golem.sdk.HostCallerService.Call:input_type -> golem.sdk.CallCapabilityRequest
+	38, // 40: golem.sdk.HostConfigService.Read:input_type -> google.protobuf.Empty
+	22, // 41: golem.sdk.HostConfigService.Save:input_type -> golem.sdk.SaveConfigRequest
+	0,  // 42: golem.sdk.HostAccountService.Current:output_type -> golem.sdk.AccountResponse
+	5,  // 43: golem.sdk.HostMessagesService.SendText:output_type -> golem.sdk.SendResultResponse
+	5,  // 44: golem.sdk.HostMessagesService.SendApp:output_type -> golem.sdk.SendResultResponse
+	5,  // 45: golem.sdk.HostMessagesService.SendMedia:output_type -> golem.sdk.SendResultResponse
+	5,  // 46: golem.sdk.HostMessagesService.Forward:output_type -> golem.sdk.SendResultResponse
+	39, // 47: golem.sdk.HostMessagesService.Revoke:output_type -> golem.sdk.OperationResponse
+	40, // 48: golem.sdk.HostMessagesService.Download:output_type -> golem.sdk.DownloadResponse
+	10, // 49: golem.sdk.HostContactsService.Find:output_type -> golem.sdk.ContactResponse
+	12, // 50: golem.sdk.HostChatroomsService.Get:output_type -> golem.sdk.ChatroomResponse
+	14, // 51: golem.sdk.HostChatroomsService.Members:output_type -> golem.sdk.ChatroomMembersResponse
+	18, // 52: golem.sdk.HostSessionsService.Acquire:output_type -> golem.sdk.LeaseResponse
+	18, // 53: golem.sdk.HostSessionsService.Renew:output_type -> golem.sdk.LeaseResponse
+	39, // 54: golem.sdk.HostSessionsService.Release:output_type -> golem.sdk.OperationResponse
+	20, // 55: golem.sdk.HostCallerService.Call:output_type -> golem.sdk.CallCapabilityResponse
+	21, // 56: golem.sdk.HostConfigService.Read:output_type -> golem.sdk.ReadConfigResponse
+	39, // 57: golem.sdk.HostConfigService.Save:output_type -> golem.sdk.OperationResponse
+	42, // [42:58] is the sub-list for method output_type
+	26, // [26:42] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_golem_sdk_host_proto_init() }
@@ -3350,14 +1464,9 @@ func file_golem_sdk_host_proto_init() {
 	}
 	file_golem_sdk_media_proto_init()
 	file_golem_sdk_model_proto_init()
-	file_golem_sdk_plugin_proto_init()
-	file_golem_sdk_host_proto_msgTypes[6].OneofWrappers = []any{
+	file_golem_sdk_host_proto_msgTypes[4].OneofWrappers = []any{
 		(*SendMediaRequest_Metadata)(nil),
 		(*SendMediaRequest_Data)(nil),
-	}
-	file_golem_sdk_host_proto_msgTypes[9].OneofWrappers = []any{
-		(*StoreMediaRequest_Metadata)(nil),
-		(*StoreMediaRequest_Data)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -3365,9 +1474,9 @@ func file_golem_sdk_host_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_golem_sdk_host_proto_rawDesc), len(file_golem_sdk_host_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   47,
+			NumMessages:   23,
 			NumExtensions: 0,
-			NumServices:   9,
+			NumServices:   7,
 		},
 		GoTypes:           file_golem_sdk_host_proto_goTypes,
 		DependencyIndexes: file_golem_sdk_host_proto_depIdxs,

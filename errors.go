@@ -5,65 +5,76 @@ import (
 	"time"
 )
 
-// Category 可机器判断的错误类别
+// Category 是跨插件边界可稳定判断的错误类别。
 type Category int
 
 const (
-	// CategoryUnknown 未知错误类别
+	// CategoryUnknown 表示错误类别未知。
 	CategoryUnknown Category = iota
-	// CategoryInvalidArgument 请求参数无效
+	// CategoryInvalidArgument 表示命令、配置或业务参数无效。
 	CategoryInvalidArgument
-	// CategoryPermissionDenied 调用方无权执行操作
+	// CategoryPermissionDenied 表示调用方无权执行操作。
 	CategoryPermissionDenied
-	// CategoryNotFound 请求的业务对象或能力不存在
+	// CategoryNotFound 表示联系人、插件、命令或能力不存在。
 	CategoryNotFound
-	// CategoryAlreadyExists 目标业务对象已存在
-	CategoryAlreadyExists
-	// CategoryConflict 修订号或业务状态冲突
-	CategoryConflict
-	// CategoryFailedPrecondition 未初始化、引用失效或其他业务前置条件不满足
+	// CategoryFailedPrecondition 表示插件状态、账号状态或消息字段不满足前置条件。
 	CategoryFailedPrecondition
-	// CategoryResourceExhausted 调用额度或资源预算耗尽
+	// CategoryResourceExhausted 表示队列、并发或载荷大小超过限制。
 	CategoryResourceExhausted
-	// CategoryUnimplemented 声明的方法尚未实现
+	// CategoryUnimplemented 表示契约已定义但当前实现尚未提供。
 	CategoryUnimplemented
-	// CategoryDeadlineExceeded 调用已超过截止时间
+	// CategoryDeadlineExceeded 表示调用超过截止时间。
 	CategoryDeadlineExceeded
-	// CategoryCanceled 调用已取消
+	// CategoryCanceled 表示调用被取消。
 	CategoryCanceled
-	// CategoryUnavailable 依赖或服务暂不可用
+	// CategoryUnavailable 表示 core、插件进程或连接暂不可用。
 	CategoryUnavailable
-	// CategoryInternal 内部错误或上游响应违反契约
+	// CategoryInternal 表示内部约束被违反或上游响应不符合契约。
 	CategoryInternal
 )
 
-// Error 跨进程错误载体
+// WriteOutcome 描述有副作用写入是否已经发生。
+type WriteOutcome int
+
+const (
+	// OutcomeUnspecified 表示结果未知，不能当作成功或失败。
+	OutcomeUnspecified WriteOutcome = iota
+	// OutcomeNotApplicable 表示只读操作。
+	OutcomeNotApplicable
+	// OutcomeSucceeded 表示上游明确确认写入成功。
+	OutcomeSucceeded
+	// OutcomeFailed 表示已确认目标写入未发生。
+	OutcomeFailed
+	// OutcomeUnknown 表示写入可能已生效，调用方不得自动重试。
+	OutcomeUnknown
+)
+
+// Error 是可跨进程传递的脱敏业务错误。
+//
+// 调用方必须依据 Category 和 Outcome 分支，不得匹配 Reason 文本。
 type Error struct {
-	Category     Category      // 机器判断的错误类别，不通过匹配 Reason 判断
-	Operation    string        // 发生错误的业务操作名
-	InvocationID string        // 关联执行的唯一标识
-	Outcome      WriteOutcome  // 目标写入副作用结果，只读操作使用 NotApplicable
-	Reason       string        // 供人阅读的脱敏错误说明，不用于机器分支判断
-	RetryAfter   time.Duration // 建议重试等待时长，不构成自动重试写操作的授权
+	Category   Category
+	Operation  string
+	Outcome    WriteOutcome
+	Reason     string
+	RetryAfter time.Duration
 }
 
-// Error 返回脱敏的错误说明
+// Error 返回供人阅读的脱敏错误说明。
 func (e *Error) Error() string {
 	if e == nil {
 		return "<nil>"
 	}
-
 	if e.Operation == "" {
 		return e.Reason
 	}
 	if e.Reason == "" {
 		return fmt.Sprintf("%s: category %d", e.Operation, e.Category)
 	}
-
 	return e.Operation + ": " + e.Reason
 }
 
-// NewError 创建可跨进程传递的业务错误
+// NewError 创建不涉及写副作用的业务错误。
 func NewError(category Category, operation, reason string) *Error {
 	return &Error{
 		Category:  category,

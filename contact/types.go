@@ -1,45 +1,37 @@
-// Package contact 定义联系人模型和宿主联系人客户端
+// Package contact 定义联系人公共模型、策略选择器和宿主查询契约。
 package contact
 
-import (
-	"context"
-	"time"
+import "context"
 
-	"github.com/golemwx/sdk"
-)
-
-// ContactKind 联系人类型
-type ContactKind int
+// Kind 表示宿主已确认的联系人种类。
+type Kind uint8
 
 const (
-	// ContactKindUnknown 未知联系人类型
-	ContactKindUnknown ContactKind = iota
-	// ContactKindFriend 好友联系人
-	ContactKindFriend
-	// ContactKindRoom 群联系人
-	ContactKindRoom
-	// ContactKindOfficial 公众号联系人
-	ContactKindOfficial
-	// ContactKindSelf 账号自身
-	ContactKindSelf
+	// KindUnknown 表示宿主无法确认联系人种类。
+	KindUnknown Kind = iota
+	// KindPersonal 表示个人联系人。
+	KindPersonal
+	// KindRoom 表示群的会话视图。
+	KindRoom
+	// KindOfficial 表示公众号。
+	KindOfficial
+	// KindSelf 表示当前机器人账号。
+	KindSelf
 )
 
-// Contact 联系人业务快照
+// Contact 是联系人缓存中的公共快照。
+//
+// 群专属字段位于 chatroom.Chatroom；群成员位于 chatroom.Member。
 type Contact struct {
-	Username     string           // 微信 username，不另建用户标识
-	Kind         ContactKind      // 业务种类，未知枚举归一为对应零值
-	Nickname     *string          // 昵称，缺失与显式空字符串可区分
-	Remark       *string          // 备注，缺失与显式空字符串可区分
-	AvatarURL    *string          // 头像地址，缺失与显式空字符串可区分
-	Alias        *string          // 微信号别名，缺失与显式空字符串可区分
-	UpdatedAt    time.Time        // 资料快照更新时间，必填并按 UTC 传递
-	Completeness sdk.Completeness // 对象或查询范围的资料完整性，与分页是否结束无关
+	Username string
+	Kind     Kind
+	Nickname string
+	Remark   string
 }
 
-// ContactsClient 宿主联系人能力
-type ContactsClient interface {
-	Get(ctx context.Context, username string) (*Contact, error)
-	Find(ctx context.Context, query string, page sdk.PageRequest) (*sdk.Page[Contact], error)
-	List(ctx context.Context, page sdk.PageRequest) (*sdk.Page[Contact], error)
-	Refresh(ctx context.Context, usernames []string) (*sdk.BatchResult[Contact], error)
+// Client 是 SDK 暴露给插件的联系人查询能力。
+//
+// Selector 按完整值匹配；具体检索规则见 Selector 和公共契约文档。
+type Client interface {
+	Find(ctx context.Context, selector Selector) (*Contact, error)
 }

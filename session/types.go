@@ -1,24 +1,26 @@
-// Package session 定义会话租约模型和宿主租约客户端
+// Package session 定义联系人或整个群的事件消费租约。
 package session
 
 import (
 	"context"
 	"time"
 
-	"github.com/golemwx/sdk"
+	"github.com/golemwx/sdk/event"
 )
 
-// Lease 会话租约
+// Lease 是宿主签发的会话租约。
+//
+// Target 是联系人或群 username，租约不按群成员拆分。
 type Lease struct {
-	ID           string           // 由宿主签发的会话租约标识
-	Conversation sdk.Conversation // 所属或目标业务会话，群内所有成员共用整群会话
-	Topics       []string         // 租约覆盖的事件主题，作用于联系人或整个群
-	ExpiresAt    time.Time        // 会话租约到期时间，到期后不再持有会话
+	ID        string
+	Target    string
+	Topics    []event.Topic
+	ExpiresAt time.Time
 }
 
-// SessionsClient 宿主会话租约能力
-type SessionsClient interface {
-	Acquire(ctx context.Context, conversation sdk.Conversation, topics []string) (*Lease, error)
+// Client 是宿主会话租约能力。
+type Client interface {
+	Acquire(ctx context.Context, target string, topics []event.Topic) (*Lease, error)
 	Renew(ctx context.Context, leaseID string, ttl time.Duration) (*Lease, error)
 	Release(ctx context.Context, leaseID string) error
 }
