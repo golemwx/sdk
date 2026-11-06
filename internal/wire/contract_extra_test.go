@@ -14,7 +14,6 @@ import (
 	"github.com/golemwx/sdk/contact"
 	"github.com/golemwx/sdk/event"
 	"github.com/golemwx/sdk/message"
-	"github.com/golemwx/sdk/plugin"
 	"github.com/golemwx/sdk/session"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -181,58 +180,6 @@ func TestCommandSchemaRoundTripPreservesArgumentShape(t *testing.T) {
 	if !proto.Equal(gotWire, wireValue) {
 		t.Fatalf("schema changed: got %+v want %+v", got, want)
 	}
-}
-
-// TestDescriptorRoundTripPreservesPolicyFields 验证描述中的订阅、能力和默认配置。
-func TestDescriptorRoundTripPreservesPolicyFields(t *testing.T) {
-	want := plugin.Descriptor{
-		Metadata: plugin.Metadata{ID: "fixture", Name: "示例", Version: "1.0.0"},
-		Subscriptions: []event.Subscription{
-			{Topic: event.Message, Mode: event.Consume, Priority: -10},
-			{Topic: event.Member, Mode: event.Observe},
-		},
-		Commands: command.Schema{Roots: []command.Node{{Name: "fixture", Scope: command.ScopeOwner}}},
-		Capabilities: []capability.Spec{{
-			Name:          "fixture.echo",
-			InputType:     "text/plain",
-			OutputType:    "text/plain",
-			MaxInlineSize: capability.MaxInlineSize,
-		}},
-		HasConfig:     true,
-		DefaultConfig: []byte{},
-	}
-
-	wireValue, err := ToWireDescriptor(want)
-	if err != nil {
-		t.Fatalf("ToWireDescriptor() error = %v", err)
-	}
-	encoded, err := proto.Marshal(wireValue)
-	if err != nil {
-		t.Fatalf("proto.Marshal() error = %v", err)
-	}
-	decoded := &Descriptor{}
-	if err := proto.Unmarshal(encoded, decoded); err != nil {
-		t.Fatalf("proto.Unmarshal() error = %v", err)
-	}
-	got := FromWireDescriptor(decoded)
-	gotWire, err := ToWireDescriptor(got)
-	if err != nil {
-		t.Fatalf("ToWireDescriptor(round trip) error = %v", err)
-	}
-	if !proto.Equal(gotWire, wireValue) {
-		t.Fatalf("descriptor changed: got %+v want %+v", got, want)
-	}
-}
-
-// TestDescriptorRejectsOutOfRangeNumbers 验证整数转换失败而不是静默截断。
-func TestDescriptorRejectsOutOfRangeNumbers(t *testing.T) {
-	_, err := ToWireDescriptor(plugin.Descriptor{
-		Subscriptions: []event.Subscription{{Priority: int(math.MaxInt32) + 1}},
-	})
-	assertInvalidArgument(t, err)
-
-	_, err = ToWireCapabilitySpec(capability.Spec{MaxInlineSize: capability.MaxInlineSize + 1})
-	assertInvalidArgument(t, err)
 }
 
 // TestMessageDurationValidation 验证非法时长的跨进程转换返回参数错误。

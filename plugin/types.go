@@ -114,6 +114,8 @@ type Host struct {
 	Sessions session.Client
 	Caller   capability.Client
 	Data     Data
+
+	state *remoteHostState
 }
 
 // NewHost 构造一组显式注入的宿主能力，供 frame 运行时和测试使用。
@@ -146,8 +148,8 @@ type InitializeOptions struct {
 
 // Runtime 是插件运行时必须提供的最小实例契约。
 //
-// R03 实现生命周期和单实例锁，R04 实现命令，R05 实现配置，R06 实现数据目录，
-// R07 实现日志桥接。R02 只冻结可编译签名，不代表这些行为已经交付。
+// R03 实现生命周期和进程级单实例锁；R04 实现命令，R05 实现配置，R06
+// 实现数据目录，R07 实现日志桥接。尚未实现的方法必须返回 Unimplemented。
 type Runtime interface {
 	Describe(ctx context.Context) (*Descriptor, error)
 	Initialize(ctx context.Context, options InitializeOptions) error

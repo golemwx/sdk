@@ -3,8 +3,6 @@ package wire
 import (
 	"github.com/golemwx/sdk/capability"
 	"github.com/golemwx/sdk/command"
-	"github.com/golemwx/sdk/event"
-	"github.com/golemwx/sdk/plugin"
 )
 
 // ToWireCommandSchema 转换自动命令树。
@@ -220,81 +218,5 @@ func FromWireCapabilityResult(value *CapabilityResult) capability.Result {
 	return capability.Result{
 		ContentType: value.GetContentType(),
 		Payload:     FromWireBytes(value.GetPayload()),
-	}
-}
-
-// ToWireMetadata 转换插件元数据。
-func ToWireMetadata(value plugin.Metadata) *Metadata {
-	return &Metadata{
-		Id:          value.ID,
-		Name:        value.Name,
-		Description: value.Description,
-		Author:      value.Author,
-		Version:     value.Version,
-	}
-}
-
-// FromWireMetadata 转换插件元数据。
-func FromWireMetadata(value *Metadata) plugin.Metadata {
-	if value == nil {
-		return plugin.Metadata{}
-	}
-	return plugin.Metadata{
-		ID:          value.GetId(),
-		Name:        value.GetName(),
-		Description: value.GetDescription(),
-		Author:      value.GetAuthor(),
-		Version:     value.GetVersion(),
-	}
-}
-
-// ToWireDescriptor 转换插件描述。
-func ToWireDescriptor(value plugin.Descriptor) (*Descriptor, error) {
-	subscriptions := make([]*Subscription, len(value.Subscriptions))
-	for index, subscription := range value.Subscriptions {
-		converted, err := ToWireSubscription(subscription)
-		if err != nil {
-			return nil, err
-		}
-		subscriptions[index] = converted
-	}
-	capabilities := make([]*CapabilitySpec, len(value.Capabilities))
-	for index, specification := range value.Capabilities {
-		converted, err := ToWireCapabilitySpec(specification)
-		if err != nil {
-			return nil, err
-		}
-		capabilities[index] = converted
-	}
-	return &Descriptor{
-		Metadata:      ToWireMetadata(value.Metadata),
-		Subscriptions: subscriptions,
-		Commands:      ToWireCommandSchema(value.Commands),
-		Capabilities:  capabilities,
-		HasConfig:     value.HasConfig,
-		DefaultConfig: ToWireBytes(value.DefaultConfig),
-	}, nil
-}
-
-// FromWireDescriptor 转换插件描述。
-func FromWireDescriptor(value *Descriptor) plugin.Descriptor {
-	if value == nil {
-		return plugin.Descriptor{}
-	}
-	subscriptions := make([]event.Subscription, len(value.GetSubscriptions()))
-	for index, subscription := range value.GetSubscriptions() {
-		subscriptions[index] = FromWireSubscription(subscription)
-	}
-	capabilities := make([]capability.Spec, len(value.GetCapabilities()))
-	for index, specification := range value.GetCapabilities() {
-		capabilities[index] = FromWireCapabilitySpec(specification)
-	}
-	return plugin.Descriptor{
-		Metadata:      FromWireMetadata(value.GetMetadata()),
-		Subscriptions: subscriptions,
-		Commands:      FromWireCommandSchema(value.GetCommands()),
-		Capabilities:  capabilities,
-		HasConfig:     value.GetHasConfig(),
-		DefaultConfig: FromWireBytes(value.GetDefaultConfig()),
 	}
 }

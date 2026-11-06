@@ -1,20 +1,22 @@
 # Golem SDK
 
-Golem 插件 SDK 定义 frame 与插件共享的公共模型和通信契约。SDK 不依赖
+Golem 插件 SDK 定义 frame 与插件共享的公共模型、通信契约和插件运行时。SDK 不依赖
 `github.com/golemwx/core`，也不公开 core 的 DTO、会话或配置文件。
 
-## R02 状态
+## 当前状态
 
-本修订对应 GOLEM-39 / R02：
+本修订包含 GOLEM-39 / R02 冻结契约和 GOLEM-40 / R03 实例运行时：
 
-- 已冻结消息、联系人、群、事件、命令、配置、租约、能力和运行时公共签名
+- 消息、联系人、群、事件、命令、配置、租约、能力和运行时公共签名已冻结
 - Proto 是唯一 wire 来源，生成代码只存在于 `internal/wire`
-- 八类消息使用 Proto `oneof` 表达结构化 `Data`
-- 不提供媒体、撤回或转发业务 token；不提供配置 revision/active/apply 状态
-- 运行时、Kong 命令、配置注入、数据目录和日志桥接分别由 R03–R07 实现
+- `plugin.Serve` 提供真实插件进程入口，`plugin.Start` 提供 frame 侧客户端
+- Describe、Initialize、Load、Start、Stop、Unload、Host 反向连接和真实子进程收尾已实现
+- 插件进程在业务初始化前取得安装目录与插件 ID 对应的 OS 排他锁
+- 启用周期 `Base.Context()`、停用取消、在途 handler 等待和断连失效已实现
+- Kong 命令、配置注入、数据目录和日志桥接仍分别由 R04–R07 实现
 
-R02 只交付可引用的契约，不是可直接运行的插件框架。当前没有 `plugin.Serve`，
-Runtime 也没有生产实现；未实现行为必须返回 `CategoryUnimplemented`，不能伪装成功。
+未实现行为必须返回 `CategoryUnimplemented`，不能伪装成功。最终跨仓库符合性由 R25
+独立核对。
 
 ## 包结构
 
@@ -29,10 +31,10 @@ Runtime 也没有生产实现；未实现行为必须返回 `CategoryUnimplement
 
 ## 可编译示例
 
-下面的包只使用 R02 已存在的类型；它不会启动插件进程：
+最小可运行插件：
 
 ```go
-package fixture
+package main
 
 import (
 	"context"
@@ -50,7 +52,7 @@ func New() *Plugin {
 }
 
 func (*Plugin) Metadata() plugin.Metadata {
-	return plugin.Metadata{ID: "fixture", Name: "示例"}
+	return plugin.Metadata{ID: "example", Name: "示例"}
 }
 
 func (*Plugin) Subscriptions() []event.Subscription {
@@ -60,9 +62,15 @@ func (*Plugin) Subscriptions() []event.Subscription {
 func (*Plugin) OnEvent(context.Context, event.Event) (event.Result, error) {
 	return event.Result{}, nil
 }
+
+func main() {
+	plugin.Serve(New())
+}
 ```
 
-完整签名和字段语义见[公共契约](docs/公共契约.md)。
+`plugin.Serve` 只负责当前实例的进程入口和握手；frame 使用 `plugin.Start` 启动、
+描述、初始化和推进生命周期。完整签名、锁和退出确认协议见
+[公共契约](docs/公共契约.md)与[插件通信](docs/插件通信.md)。
 
 ## 生成与验证
 
@@ -87,10 +95,11 @@ task build
 
 ## 文档
 
-- [公共契约](docs/公共契约.md)：R02 公共 API、字段语义、错误和服务形状
-- [快速开始](docs/快速开始.md)：编译期示例和 R02 边界
+- [公共契约](docs/公共契约.md)：公共 API、字段语义、生命周期、错误和服务形状
+- [快速开始](docs/快速开始.md)：最小插件和 frame 启停流程
 - [开发指南](docs/开发指南.md)：生成链、验证和后续任务分工
-- [插件通信](docs/插件通信.md)：Proto 服务、流和生命周期边界
+- [插件通信](docs/插件通信.md)：Proto 服务、流、单实例锁和 R10 退出确认
 - [宿主能力与安全](docs/宿主能力与安全.md)：Host、owner、数据和错误规则
 - [故障排查](docs/故障排查.md)：常见生成、依赖和契约问题
 - [R02 验收记录](docs/R02验收记录.md)：条款、测试、命令和未运行项
+- [R03 验收记录](docs/R03验收记录.md)：实例运行时、锁、子进程和未验证项
