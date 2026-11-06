@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/fs"
-	"os"
 	"sync"
 	"time"
 
@@ -98,7 +96,7 @@ func newRemoteHost(state *remoteHostState) *Host {
 		&remoteChatrooms{state: state, client: wire.NewHostChatroomsServiceClient(conn)},
 		&remoteSessions{state: state, client: wire.NewHostSessionsServiceClient(conn)},
 		&remoteCaller{state: state, client: wire.NewHostCallerServiceClient(conn)},
-		unsupportedData{},
+		nil,
 	)
 	host.state = state
 	if conn != nil {
@@ -640,24 +638,6 @@ func (c *remoteCaller) Call(ctx context.Context, request capability.Request) (*c
 		return nil, sdk.NewError(sdk.CategoryResourceExhausted, operation, "inline result is too large")
 	}
 	return &result, nil
-}
-
-type unsupportedData struct{}
-
-func (unsupportedData) Open(string, int, fs.FileMode) (*os.File, error) {
-	return nil, sdk.NewError(sdk.CategoryUnimplemented, "plugin.data.open", "plugin data is implemented by R06")
-}
-
-func (unsupportedData) ReadFile(string) ([]byte, error) {
-	return nil, sdk.NewError(sdk.CategoryUnimplemented, "plugin.data.read", "plugin data is implemented by R06")
-}
-
-func (unsupportedData) WriteFile(string, []byte, fs.FileMode) error {
-	return sdk.NewError(sdk.CategoryUnimplemented, "plugin.data.write", "plugin data is implemented by R06")
-}
-
-func (unsupportedData) Remove(string) error {
-	return sdk.NewError(sdk.CategoryUnimplemented, "plugin.data.remove", "plugin data is implemented by R06")
 }
 
 func missingResult(operation string) error {

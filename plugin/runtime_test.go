@@ -477,7 +477,6 @@ func TestUnimplementedOperationsDoNotReturnSuccess(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("Initialize() error = %v", err)
 	}
-	data := unsupportedData{}
 	tests := []struct {
 		name string
 		call func() error
@@ -487,10 +486,6 @@ func TestUnimplementedOperationsDoNotReturnSuccess(t *testing.T) {
 		{name: "handle command", call: func() error {
 			return instance.HandleCommand(t.Context(), command.Invocation{})
 		}},
-		{name: "data open", call: func() error { _, err := data.Open("file", os.O_RDONLY, 0); return err }},
-		{name: "data read", call: func() error { _, err := data.ReadFile("file"); return err }},
-		{name: "data write", call: func() error { return data.WriteFile("file", nil, 0o600) }},
-		{name: "data remove", call: func() error { return data.Remove("file") }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

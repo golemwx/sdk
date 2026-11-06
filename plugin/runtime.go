@@ -166,8 +166,8 @@ func (r *runtime) Describe(ctx context.Context) (*Descriptor, error) {
 
 // Initialize 绑定当前实例唯一的 Host。
 //
-// Initialize 绑定 Host，并通过 Host 内部配置通道装载当前配置。DataDir 由
-// R06 消费，当前不会创建数据目录。
+// Initialize 绑定 Host，并通过 Host 内部配置通道装载当前配置。数据句柄
+// 由 DataDir 派生，不会读取或创建该目录；调用方不能自带 Data 改变根目录。
 func (r *runtime) Initialize(ctx context.Context, options InitializeOptions) error {
 	r.lifecycleMu.Lock()
 	defer r.lifecycleMu.Unlock()
@@ -189,6 +189,10 @@ func (r *runtime) Initialize(ctx context.Context, options InitializeOptions) err
 		return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.initialize", "data root is empty")
 	}
 	r.mu.Unlock()
+	data, err := newDataDir(options.DataDir)
+	if err != nil {
+		return err
+	}
 	if r.config != nil {
 		r.config.setClient(options.Host.configClient)
 		if err := r.config.loadInitial(ctx, options.Config); err != nil {
@@ -197,6 +201,7 @@ func (r *runtime) Initialize(ctx context.Context, options InitializeOptions) err
 	} else if len(options.Config) > 0 {
 		return sdk.NewError(sdk.CategoryInvalidArgument, "plugin.initialize", "插件未声明配置，不能接收配置")
 	}
+	options.Host.Data = data
 	if binder, ok := r.implementation.(interface{ bindHost(*Host) error }); ok {
 		if err := binder.bindHost(options.Host); err != nil {
 			return err
