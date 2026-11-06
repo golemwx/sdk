@@ -27,6 +27,10 @@ type runtime struct {
 	descriptor     *wire.Descriptor
 	descriptorErr  error
 
+	commandsOnce sync.Once
+	commands     *command.Set
+	commandsErr  error
+
 	lifecycleMu sync.Mutex
 	mu          sync.Mutex
 
@@ -115,6 +119,13 @@ func (r *runtime) Describe(ctx context.Context) (*Descriptor, error) {
 					return err
 				}
 				value.Capabilities = capabilities
+			}
+			commands, err := r.commandSet()
+			if err != nil {
+				return err
+			}
+			if commands != nil {
+				value.Commands = commands.Schema()
 			}
 			snapshot, err := toWireDescriptor(value)
 			if err != nil {
@@ -403,12 +414,44 @@ func (r *runtime) HandleEvent(ctx context.Context, value event.Event) (event.Res
 	return result, err
 }
 
-// HandleCommand 在 R04 生成命令 schema 和绑定 Kong 前明确不可用。
-func (r *runtime) HandleCommand(ctx context.Context, _ command.Invocation) error {
+// HandleCommand 使用 Kong 绑定命令参数、校验 selected 节点并调用 Run。
+func (r *runtime) HandleCommand(ctx context.Context, invocation command.Invocation) error {
 	if err := contextError(ctx, "plugin.command"); err != nil {
 		return err
 	}
-	return sdk.NewError(sdk.CategoryUnimplemented, "plugin.command", "command handling is not implemented before R04")
+	commands, err := r.commandSet()
+	if err != nil {
+		return err
+	}
+	if commands == nil {
+		return sdk.NewError(sdk.CategoryUnimplemented, "plugin.command", "command handling is not implemented")
+	}
+	tokens := invocation.Tokens
+	if len(tokens) == 0 && strings.TrimSpace(invocation.Raw) != "" {
+		tokens, err = command.Lex(invocation.Raw)
+		if err != nil {
+			return err
+		}
+	}
+	reply, err := r.commandReply(invocation)
+	if err != nil {
+		return err
+	}
+	handlerCtx, release, err := r.beginHandler(ctx, "plugin.command")
+	if err != nil {
+		return err
+	}
+	defer release()
+	call, err := commands.Parse(tokens, invocation.Owner)
+	if err != nil {
+		return err
+	}
+	if help := call.Help(); help != "" {
+		return protectError("plugin.command", func() error { return reply.Text(handlerCtx, help) })
+	}
+	return protectError("plugin.command", func() error {
+		return call.Run(handlerCtx, r.implementation, reply)
+	})
 }
 
 // HandleCapability 在启用周期内同步执行能力提供者。

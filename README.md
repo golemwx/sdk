@@ -5,7 +5,7 @@ Golem 插件 SDK 定义 frame 与插件共享的公共模型、通信契约和�
 
 ## 当前状态
 
-本修订包含 GOLEM-39 / R02 冻结契约和 GOLEM-40 / R03 实例运行时：
+本修订包含 GOLEM-39 / R02 冻结契约、GOLEM-40 / R03 实例运行时和 GOLEM-41 / R04 命令系统：
 
 - 消息、联系人、群、事件、命令、配置、租约、能力和运行时公共签名已冻结
 - Proto 是唯一 wire 来源，生成代码只存在于 `internal/wire`
@@ -13,7 +13,8 @@ Golem 插件 SDK 定义 frame 与插件共享的公共模型、通信契约和�
 - Describe、Initialize、Load、Start、Stop、Unload、Host 反向连接和真实子进程收尾已实现
 - 插件进程在业务初始化前取得安装目录与插件 ID 对应的 OS 排他锁
 - 启用周期 `Base.Context()`、停用取消、在途 handler 等待和断连失效已实现
-- Kong 命令、配置注入、数据目录和日志桥接仍分别由 R04–R07 实现
+- Kong 结构体命令、统一 lexer、schema、Run/Reply 注入和 validator/v10 校验已实现
+- 配置注入、数据目录和日志桥接仍分别由 R05–R07 实现
 
 未实现行为必须返回 `CategoryUnimplemented`，不能伪装成功。最终跨仓库符合性由 R25
 独立核对。
@@ -23,7 +24,7 @@ Golem 插件 SDK 定义 frame 与插件共享的公共模型、通信契约和�
 - `message`：完整消息、八类类型化数据、发送结果和消息 Host 能力
 - `contact`、`chatroom`、`session`：联系人选择器、群资料和消费租约
 - `event`：Topic、Observe/Consume 订阅和事件结果
-- `command`：结构体命令 schema、调用输入、owner 上下文和 Reply
+- `command`：统一 lexer、Kong 结构体命令、schema、owner 上下文、validator 和 Reply
 - `capability`：有界跨插件能力调用
 - `plugin`：Metadata、可选生命周期、小型 Host、Config[T] 和 Runtime 签名
 - `proto/golem/sdk`：唯一 Proto 源
@@ -103,3 +104,4 @@ task build
 - [故障排查](docs/故障排查.md)：常见生成、依赖和契约问题
 - [R02 验收记录](docs/R02验收记录.md)：条款、测试、命令和未运行项
 - [R03 验收记录](docs/R03验收记录.md)：实例运行时、锁、子进程和未验证项
+- [R04 验收记录](docs/R04验收记录.md)：命令树、lexer、校验、帮助和未验证项

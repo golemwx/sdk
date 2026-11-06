@@ -71,7 +71,7 @@ type EventHandler interface {
 
 // CommandProvider 返回 SDK 用来生成命令 schema 的结构体命令树。
 //
-// 具体实现由 R04 使用 Kong 完成；R02 只冻结类型和调用入口。
+// R04 使用 Kong 从该结构体生成命令树和 schema；R02 只冻结类型和调用入口。
 type CommandProvider interface {
 	Commands() any
 }
@@ -148,7 +148,7 @@ type InitializeOptions struct {
 
 // Runtime 是插件运行时必须提供的最小实例契约。
 //
-// R03 实现生命周期和进程级单实例锁；R04 实现命令，R05 实现配置，R06
+// R03 实现生命周期和进程级单实例锁；R04 实现 Kong 命令，R05 实现配置，R06
 // 实现数据目录，R07 实现日志桥接。尚未实现的方法必须返回 Unimplemented。
 type Runtime interface {
 	Describe(ctx context.Context) (*Descriptor, error)

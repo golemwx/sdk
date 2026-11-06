@@ -1,0 +1,213 @@
+{
+  "Roots": [
+    {
+      "Name": "echo",
+      "Aliases": [
+        "say"
+      ],
+      "Help": "回复文本",
+      "Scope": 1,
+      "Arguments": [
+        {
+          "Name": "target",
+          "Short": "t",
+          "Positional": false,
+          "Type": "string",
+          "Required": true,
+          "Repeated": false,
+          "Default": "",
+          "Enum": null,
+          "Help": "目标会话"
+        },
+        {
+          "Name": "enabled",
+          "Short": "e",
+          "Positional": false,
+          "Type": "bool",
+          "Required": false,
+          "Repeated": false,
+          "Default": "true",
+          "Enum": null,
+          "Help": "启用"
+        },
+        {
+          "Name": "count",
+          "Short": "c",
+          "Positional": false,
+          "Type": "int",
+          "Required": false,
+          "Repeated": false,
+          "Default": "1",
+          "Enum": null,
+          "Help": "次数"
+        },
+        {
+          "Name": "mode",
+          "Short": "",
+          "Positional": false,
+          "Type": "enum",
+          "Required": false,
+          "Repeated": false,
+          "Default": "fast",
+          "Enum": [
+            "fast",
+            "slow"
+          ],
+          "Help": "模式"
+        },
+        {
+          "Name": "window",
+          "Short": "",
+          "Positional": false,
+          "Type": "duration",
+          "Required": false,
+          "Repeated": false,
+          "Default": "5s",
+          "Enum": null,
+          "Help": "窗口"
+        },
+        {
+          "Name": "timeout",
+          "Short": "",
+          "Positional": false,
+          "Type": "string",
+          "Required": false,
+          "Repeated": false,
+          "Default": "",
+          "Enum": null,
+          "Help": "超时文本"
+        },
+        {
+          "Name": "label",
+          "Short": "",
+          "Positional": false,
+          "Type": "map",
+          "Required": false,
+          "Repeated": false,
+          "Default": "",
+          "Enum": null,
+          "Help": "标签"
+        },
+        {
+          "Name": "tag",
+          "Short": "T",
+          "Positional": false,
+          "Type": "string",
+          "Required": false,
+          "Repeated": true,
+          "Default": "",
+          "Enum": null,
+          "Help": "标签列表"
+        },
+        {
+          "Name": "text",
+          "Short": "",
+          "Positional": true,
+          "Type": "string",
+          "Required": true,
+          "Repeated": false,
+          "Default": "",
+          "Enum": null,
+          "Help": "文本"
+        },
+        {
+          "Name": "rest",
+          "Short": "",
+          "Positional": true,
+          "Type": "string",
+          "Required": false,
+          "Repeated": true,
+          "Default": "",
+          "Enum": null,
+          "Help": "剩余参数"
+        }
+      ],
+      "Children": []
+    },
+    {
+      "Name": "owner",
+      "Aliases": null,
+      "Help": "管理员命令",
+      "Scope": 2,
+      "Arguments": [
+        {
+          "Name": "name",
+          "Short": "",
+          "Positional": true,
+          "Type": "string",
+          "Required": true,
+          "Repeated": false,
+          "Default": "",
+          "Enum": null,
+          "Help": "名称"
+        }
+      ],
+      "Children": []
+    },
+    {
+      "Name": "cron",
+      "Aliases": null,
+      "Help": "计划管理",
+      "Scope": 1,
+      "Arguments": [],
+      "Children": [
+        {
+          "Name": "add",
+          "Aliases": null,
+          "Help": "新增计划",
+          "Scope": 2,
+          "Arguments": [
+            {
+              "Name": "target",
+              "Short": "t",
+              "Positional": false,
+              "Type": "string",
+              "Required": true,
+              "Repeated": false,
+              "Default": "",
+              "Enum": null,
+              "Help": "目标会话"
+            },
+            {
+              "Name": "schedule",
+              "Short": "",
+              "Positional": true,
+              "Type": "string",
+              "Required": true,
+              "Repeated": false,
+              "Default": "",
+              "Enum": null,
+              "Help": "Cron 表达式"
+            }
+          ],
+          "Children": []
+        },
+        {
+          "Name": "list",
+          "Aliases": null,
+          "Help": "列出计划",
+          "Scope": 1,
+          "Arguments": [],
+          "Children": []
+        }
+      ]
+    },
+    {
+      "Name": "admin",
+      "Aliases": null,
+      "Help": "管理员命名空间",
+      "Scope": 2,
+      "Arguments": [],
+      "Children": [
+        {
+          "Name": "child",
+          "Aliases": null,
+          "Help": "子命令",
+          "Scope": 2,
+          "Arguments": [],
+          "Children": []
+        }
+      ]
+    }
+  ]
+}
